@@ -2,6 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory
 from django.utils import timezone
 
+from .categories import deviner_categorie
 from .models import ElementRepas, Repas
 
 
@@ -29,6 +30,23 @@ class ElementRepasForm(forms.ModelForm):
             "aliment": forms.TextInput(attrs={"placeholder": "ex. couscous"}),
             "quantite_g": forms.NumberInput(attrs={"min": 1, "max": 3000}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # La catégorie peut être laissée vide : elle est alors devinée à partir du nom
+        self.fields["categorie"].required = False
+        self.fields["categorie"].help_text = "Remplie automatiquement d'après le nom (modifiable)."
+
+    def clean(self):
+        data = super().clean()
+        if data.get("aliment") and not data.get("categorie"):
+            categorie = deviner_categorie(data["aliment"])
+            if categorie:
+                data["categorie"] = categorie
+                self.instance.categorie = categorie
+            else:
+                self.add_error("categorie", f"Choisissez une catégorie : impossible de la deviner pour « {data['aliment']} ».")
+        return data
 
     def clean_aliment(self):
         aliment = self.cleaned_data["aliment"].strip()

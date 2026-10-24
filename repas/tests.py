@@ -242,3 +242,41 @@ class Co2Test(TestCase):
         r = self.client.get(reverse("repas:detail", args=[self.repas.pk]))
         self.assertContains(r, "6,4 kg CO₂e")
         self.assertContains(r, "Astuce")
+
+
+# ======================================================= CATÉGORIE AUTOMATIQUE
+class CategorieAutoTest(TestCase):
+    def test_deviner(self):
+        from .categories import deviner_categorie
+        cas = {
+            "Agneau": "VIANDE_ROUGE", "lentilles": "LEGUMINEUSE", "Pâtes": "FECULENT", "œufs": "LAITIER",
+            "pommes de terre": "FECULENT", "pomme": "FRUIT_LEGUME", "couscous au poulet": "VOLAILLE",
+            "couscous à l'agneau": "VIANDE_ROUGE", "Lablabi": "LEGUMINEUSE", "table": None, "xyz": None,
+        }
+        for nom, attendu in cas.items():
+            with self.subTest(nom=nom):
+                self.assertEqual(deviner_categorie(nom), attendu)
+
+    def test_formulaire_complete_la_categorie(self):
+        f = ElementRepasForm(data={"aliment": "Merguez", "categorie": "", "quantite_g": 100})
+        self.assertTrue(f.is_valid(), f.errors)
+        self.assertEqual(f.cleaned_data["categorie"], "VIANDE_ROUGE")
+
+    def test_choix_manuel_conserve(self):
+        f = ElementRepasForm(data={"aliment": "merguez végétale", "categorie": "LEGUMINEUSE", "quantite_g": 100})
+        self.assertTrue(f.is_valid())
+        self.assertEqual(f.cleaned_data["categorie"], "LEGUMINEUSE")
+
+    def test_categorie_introuvable(self):
+        f = ElementRepasForm(data={"aliment": "plat mystère", "categorie": "", "quantite_g": 100})
+        self.assertIn("categorie", f.errors)
+
+    def test_creation_sans_categorie_via_la_vue(self):
+        amine = creer_user("amine")
+        self.client.force_login(amine)
+        r = self.client.post(reverse("repas:ajouter"), donnees_repas(**{
+            "elements-0-aliment": "Couscous", "elements-0-categorie": ""}))
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(ElementRepas.objects.get(repas__utilisateur=amine).categorie, "FECULENT")
+        r = self.client.get(reverse("repas:ajouter"))
+        self.assertContains(r, 'id="aide-categories"')

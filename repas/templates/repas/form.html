@@ -46,17 +46,88 @@
     border: 1px solid var(--border); border-radius: 10px; padding: .75rem; margin: 0 0 .75rem; }
   .aliment-ligne .field { margin: 0; }
   .aliment-ligne .field-check { align-self: center; margin-top: 1.6rem; }
+  .aliment-ligne .co2-live { grid-column: 1 / -1; margin: 0; min-height: 1.4em; }
   @media (max-width: 640px) { .aliment-ligne { grid-template-columns: 1fr; } .aliment-ligne .field-check { margin-top: 0; } }
 </style>
+{{ aide_categories|json_script:"aide-categories" }}
 <script>
+(function () {
+  const aide = JSON.parse(document.getElementById("aide-categories").textContent);
+  const zone = document.getElementById("aliments");
+
+  // même règle que repas/categories.py : mot entier (+ s/x), catégorie la plus émettrice
+  function normaliser(t) {
+    return (t || "").toLowerCase().replace(/œ/g, "oe").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+  const motifs = [];
+  Object.entries(aide.mots).forEach(function ([cat, mots]) {
+    mots.forEach(function (m) { motifs.push([new RegExp("(^|[^a-z])" + m.split(" ").join("[sx]? ") + "[sx]?(?![a-z])"), cat]); });
+  });
+  function deviner(nom) {
+    const n = normaliser(nom);
+    let meilleure = null;
+    motifs.forEach(function ([re, cat]) {
+      if (re.test(n) && (!meilleure || aide.facteurs[cat] > aide.facteurs[meilleure])) meilleure = cat;
+    });
+    return meilleure;
+  }
+
+  function ligne(el) { return el.closest(".aliment-ligne"); }
+  function champ(l, nom) { return l.querySelector('[name$="-' + nom + '"]'); }
+
+  function majCo2(l) {
+    const cat = champ(l, "categorie").value;
+    const q = parseFloat(champ(l, "quantite_g").value);
+    let sortie = l.querySelector(".co2-live");
+    if (!sortie) {
+      sortie = document.createElement("p");
+      sortie.className = "co2-live small";
+      sortie.setAttribute("aria-live", "polite");
+      l.appendChild(sortie);
+    }
+    if (cat && q > 0) {
+      const kg = q / 1000 * aide.facteurs[cat];
+      const niveau = kg < 0.5 ? "faible" : (kg < 1.5 ? "moyen" : "eleve");
+      sortie.innerHTML = "";
+      const badge = document.createElement("span");
+      badge.className = "co2 co2-" + niveau;
+      badge.textContent = "≈ " + kg.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + " kg CO₂e";
+      sortie.append(badge);
+    } else {
+      sortie.textContent = "";
+    }
+  }
+
+  zone.addEventListener("input", function (e) {
+    const l = ligne(e.target);
+    if (!l) return;
+    if (e.target.name.endsWith("-aliment")) {
+      const select = champ(l, "categorie");
+      // on ne remplace pas un choix fait à la main
+      if (!select.value || select.dataset.auto === "1") {
+        const cat = deviner(e.target.value);
+        if (cat) { select.value = cat; select.dataset.auto = "1"; }
+      }
+    }
+    majCo2(l);
+  });
+  zone.addEventListener("change", function (e) {
+    const l = ligne(e.target);
+    if (!l) return;
+    if (e.target.name.endsWith("-categorie")) e.target.dataset.auto = "0";
+    majCo2(l);
+  });
+  zone.querySelectorAll(".aliment-ligne").forEach(majCo2);
+
   // Ajoute une nouvelle ligne d'aliment (copie du formulaire vide, __prefix__ remplacé par le bon numéro)
   document.getElementById("ajouter-aliment").addEventListener("click", function () {
     const total = document.getElementById("id_elements-TOTAL_FORMS");
     const n = parseInt(total.value, 10);
     const html = document.getElementById("modele-aliment").innerHTML.replace(/__prefix__/g, n);
-    document.getElementById("aliments").insertAdjacentHTML("beforeend", html);
+    zone.insertAdjacentHTML("beforeend", html);
     total.value = n + 1;
     document.getElementById("id_elements-" + n + "-aliment").focus();
   });
+})();
 </script>
 {% endblock %}

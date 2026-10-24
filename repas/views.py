@@ -7,6 +7,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
+from .categories import donnees_js
 from .forms import ElementRepasFormSet, RepasForm
 from .models import Repas
 
@@ -76,6 +77,7 @@ class RepasFormMixin:
         ctx = super().get_context_data(**kwargs)
         if "formset" not in kwargs:
             ctx["formset"] = ElementRepasFormSet(instance=self.object)
+        ctx["aide_categories"] = donnees_js()
         return ctx
 
     def post(self, request, *args, **kwargs):
