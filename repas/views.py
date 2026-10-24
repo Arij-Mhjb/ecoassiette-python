@@ -4,6 +4,7 @@ from django.db import transaction
 from django.db.models import Count, Sum
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
 from .forms import ElementRepasFormSet, RepasForm
@@ -37,7 +38,27 @@ class RepasListView(MesRepasMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx["types"] = Repas.TypeRepas.choices
         ctx["type_actif"] = self.request.GET.get("type", "")
+        ctx["bilan"] = bilan_semaine(self.request.user)
         return ctx
+
+
+def bilan_semaine(user):
+    """Total CO2 des 7 derniers jours, comparé à l'objectif du profil (module users)."""
+    debut = timezone.localdate() - timezone.timedelta(days=6)
+    repas = Repas.objects.filter(utilisateur=user, date__gte=debut).prefetch_related("elements")
+    total = round(sum(r.co2_kg for r in repas), 1)
+    profil = getattr(user, "profil", None)
+    objectif, source = None, ""
+    if profil is not None:
+        if profil.objectif_co2_hebdo:
+            objectif, source = float(profil.objectif_co2_hebdo), "votre objectif"
+        else:
+            objectif, source = float(profil.emission_estimee_hebdo), "l'empreinte moyenne de votre régime"
+    pct = round(100 * total / objectif) if objectif else None
+    return {
+        "total": total, "nb_repas": len(repas), "objectif": objectif, "source": source,
+        "pct": pct, "pct_barre": min(pct or 0, 100), "depasse": bool(pct and pct > 100),
+    }
 
 
 class RepasDetailView(MesRepasMixin, DetailView):

@@ -9,6 +9,20 @@
   <a class="btn" href="{% url 'repas:ajouter' %}">+ Ajouter un repas</a>
 </div>
 
+<section class="card bilan" aria-labelledby="t-bilan">
+  <h2 id="t-bilan">Mon bilan des 7 derniers jours</h2>
+  <p class="bilan-chiffre"><strong>{{ bilan.total }}</strong> kg CO₂e <span class="muted">· {{ bilan.nb_repas }} repas</span></p>
+  {% if bilan.objectif %}
+    <div class="progress-wrap">
+      <span class="small" id="lbl-bilan">{{ bilan.pct }} % de {{ bilan.source }} ({{ bilan.objectif }} kg / semaine)</span>
+      <progress class="{% if bilan.depasse %}progress-alerte{% endif %}" max="100" value="{{ bilan.pct_barre }}" aria-labelledby="lbl-bilan"></progress>
+    </div>
+    {% if bilan.depasse %}
+      <p class="small alerte-texte">Objectif dépassé cette semaine : essayez une alternative végétale pour vos prochains repas.</p>
+    {% endif %}
+  {% endif %}
+</section>
+
 <form method="get" class="filters" role="search" aria-label="Filtrer les repas">
   <div class="field">
     <label for="f-type">Type de repas</label>
@@ -24,13 +38,14 @@
 <div class="table-wrap" tabindex="0" role="region" aria-label="Liste des repas (défilable)">
 <table class="table">
   <caption class="sr-only">Mes repas</caption>
-  <thead><tr><th scope="col">Repas</th><th scope="col">Aliments</th><th scope="col">Total</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+  <thead><tr><th scope="col">Repas</th><th scope="col">Aliments</th><th scope="col">Total</th><th scope="col">CO₂</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
   <tbody>
   {% for r in repas_list %}
     <tr>
       <th scope="row"><a href="{% url 'repas:detail' r.pk %}">{{ r }}</a>{% if r.note %}<br><span class="small muted">{{ r.note }}</span>{% endif %}</th>
       <td>{% for e in r.elements.all %}{{ e.aliment }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
       <td>{{ r.total_g|default:0 }} g</td>
+      <td><span class="co2 co2-{{ r.niveau_co2 }}">{{ r.co2_kg }} kg</span></td>
       <td class="actions-cell">
         <a href="{% url 'repas:modifier' r.pk %}">Modifier<span class="sr-only"> {{ r }}</span></a>
         <a class="danger-link" href="{% url 'repas:supprimer' r.pk %}">Supprimer<span class="sr-only"> {{ r }}</span></a>

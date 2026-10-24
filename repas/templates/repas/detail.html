@@ -6,6 +6,7 @@
   <div>
     <h1>{{ repas }}</h1>
     {% if repas.note %}<p class="muted">{{ repas.note }}</p>{% endif %}
+    <p>Empreinte de ce repas : <span class="co2 co2-{{ repas.niveau_co2 }}">{{ repas.co2_kg }} kg CO₂e</span></p>
   </div>
   <div class="form-actions">
     <a class="btn btn-ghost" href="{% url 'repas:modifier' repas.pk %}">Modifier</a>
@@ -15,12 +16,18 @@
 <section class="card" aria-labelledby="t-aliments">
   <h2 id="t-aliments">Aliments</h2>
   <table class="table compact">
-    <thead><tr><th scope="col">Aliment</th><th scope="col">Catégorie</th><th scope="col">Quantité</th></tr></thead>
+    <thead><tr><th scope="col">Aliment</th><th scope="col">Catégorie</th><th scope="col">Quantité</th><th scope="col">CO₂e</th></tr></thead>
     <tbody>
       {% for e in repas.elements.all %}
-      <tr><th scope="row">{{ e.aliment|capfirst }}</th><td>{{ e.get_categorie_display }}</td><td>{{ e.quantite_g }} g</td></tr>
+      <tr><th scope="row">{{ e.aliment|capfirst }}</th><td>{{ e.get_categorie_display }}</td><td>{{ e.quantite_g }} g</td><td>{{ e.co2_kg }} kg</td></tr>
       {% endfor %}
     </tbody>
   </table>
+  {% with top=repas.element_le_plus_emetteur %}
+    {% if top and repas.niveau_co2 != "faible" %}
+      <p class="astuce"><strong>Astuce :</strong> « {{ top.aliment }} » représente la plus grande part de l'empreinte de ce repas.
+        Consultez <a href="{% url 'users:profil' %}">votre analyse IA</a> pour une alternative végétale.</p>
+    {% endif %}
+  {% endwith %}
 </section>
 {% endblock %}

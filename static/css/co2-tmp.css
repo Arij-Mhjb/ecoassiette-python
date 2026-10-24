@@ -1,0 +1,14 @@
+input[type=date], input[type=time] { width: 100%; min-height: 44px; padding: .55rem .75rem; font: inherit; color: var(--text);
+  background: #fff; border: 1.5px solid #8a8f88; border-radius: 8px; }
+
+/* --- Module repas : empreinte CO2 --- */
+.co2 { display: inline-block; padding: .1rem .6rem; border-radius: 999px; font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.co2-faible { background: #e3f1e5; color: #1f4d29; }
+.co2-moyen  { background: #fdf0d8; color: #7a4f00; }
+.co2-eleve  { background: #fdeceb; color: #8f1c13; }
+.bilan h2 { margin-bottom: .25rem; }
+.bilan-chiffre { font-size: 1.1rem; margin-bottom: .75rem; }
+.bilan-chiffre strong { font: 700 2rem var(--serif); color: var(--primary-dark); }
+progress.progress-alerte { accent-color: var(--danger); }
+.alerte-texte { color: var(--danger); font-weight: 600; margin-top: .5rem; }
+.astuce { margin-top: 1rem; padding: .75rem 1rem; background: var(--primary-soft); border-radius: 10px; }

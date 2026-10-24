@@ -179,3 +179,66 @@ class SecuriteTest(TestCase):
         # même en POST direct, rien n'est supprimé
         self.assertEqual(self.client.post(reverse("repas:supprimer", args=[pk])).status_code, 404)
         self.assertTrue(Repas.objects.filter(pk=pk).exists())
+
+
+# ================================================================ EMPREINTE CO2
+class Co2Test(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.amine = creer_user("amine")
+        cls.repas = Repas.objects.create(utilisateur=cls.amine, type_repas="DEJEUNER")
+        ElementRepas.objects.create(repas=cls.repas, aliment="agneau", categorie="VIANDE_ROUGE", quantite_g=100)
+        ElementRepas.objects.create(repas=cls.repas, aliment="semoule", categorie="FECULENT", quantite_g=250)
+
+    def test_calcul_element_et_repas(self):
+        agneau = self.repas.elements.get(aliment="agneau")
+        self.assertEqual(agneau.co2_kg, 6.0)            # 0,1 kg × 60
+        self.assertEqual(self.repas.co2_kg, 6.4)        # 6,0 + 0,25 × 1,6
+        self.assertEqual(self.repas.niveau_co2, "eleve")
+        self.assertEqual(self.repas.element_le_plus_emetteur, agneau)
+
+    def test_niveaux(self):
+        r = Repas.objects.create(utilisateur=self.amine, type_repas="DINER")
+        self.assertEqual(r.co2_kg, 0)
+        self.assertIsNone(r.element_le_plus_emetteur)
+        ElementRepas.objects.create(repas=r, aliment="lentilles", categorie="LEGUMINEUSE", quantite_g=300)
+        self.assertEqual(r.niveau_co2, "faible")
+        ElementRepas.objects.create(repas=r, aliment="poulet", categorie="VOLAILLE", quantite_g=100)
+        self.assertEqual(r.niveau_co2, "moyen")
+
+    def test_bilan_semaine_avec_objectif(self):
+        p = self.amine.profil
+        p.objectif_co2_hebdo = 8
+        p.save()
+        ancien = Repas.objects.create(utilisateur=self.amine, type_repas="DINER",
+                                      date=timezone.localdate() - datetime.timedelta(days=10))
+        ElementRepas.objects.create(repas=ancien, aliment="boeuf", categorie="VIANDE_ROUGE", quantite_g=500)
+        self.client.force_login(self.amine)
+        r = self.client.get(reverse("repas:liste"))
+        bilan = r.context["bilan"]
+        self.assertEqual(bilan["total"], 6.4)            # le repas d'il y a 10 jours est exclu
+        self.assertEqual(bilan["pct"], 80)
+        self.assertFalse(bilan["depasse"])
+        self.assertContains(r, "co2-eleve")
+
+    def test_bilan_sans_objectif_utilise_empreinte_du_regime(self):
+        from repas.views import bilan_semaine
+        b = bilan_semaine(self.amine)
+        self.assertEqual(b["objectif"], float(self.amine.profil.emission_estimee_hebdo))
+        self.assertIn("régime", b["source"])
+
+    def test_bilan_depasse(self):
+        p = self.amine.profil
+        p.objectif_co2_hebdo = 5
+        p.save()
+        self.client.force_login(self.amine)
+        r = self.client.get(reverse("repas:liste"))
+        self.assertTrue(r.context["bilan"]["depasse"])
+        self.assertEqual(r.context["bilan"]["pct_barre"], 100)
+        self.assertContains(r, "Objectif dépassé")
+
+    def test_detail_affiche_astuce(self):
+        self.client.force_login(self.amine)
+        r = self.client.get(reverse("repas:detail", args=[self.repas.pk]))
+        self.assertContains(r, "6,4 kg CO₂e")
+        self.assertContains(r, "Astuce")
