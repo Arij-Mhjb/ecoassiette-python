@@ -155,6 +155,9 @@ elif EMAIL_HOST_USER:
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"EcoAssiette <{EMAIL_HOST_USER or 'no-reply@ecoassiette.tn'}>")
+# Confirmation obligatoire de l'e-mail à l'inscription. Mettre False quand aucun service
+# d'envoi n'est disponible (ex. Render gratuit sans Brevo) : le compte est activé directement.
+CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", True)
 # Durée de validité des liens (confirmation d'e-mail et réinitialisation) : 1 jour
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 
@@ -172,8 +175,8 @@ REST_FRAMEWORK = {
 
 # --- IA (Gemini) ---------------------------------------------------------------------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "20"))
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "60"))
 
 # --- Traitement asynchrone (Celery + Redis) -------------------------------------------
 # USE_CELERY=True  -> la tâche IA est envoyée à un worker Celery (Redis).

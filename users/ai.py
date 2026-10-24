@@ -207,6 +207,10 @@ def appeler_gemini(prompt):
         return json.loads(texte)
     except requests.Timeout as e:
         raise ErreurIA("Délai dépassé pour l'API Gemini") from e
+    except requests.HTTPError as e:
+        detail = (e.response.text if e.response is not None else "")[:200].replace("\n", " ")
+        code = e.response.status_code if e.response is not None else "?"
+        raise ErreurIA(f"API Gemini HTTP {code} : {detail}") from e
     except requests.RequestException as e:
         raise ErreurIA(f"Erreur réseau/API Gemini : {e.__class__.__name__}") from e
     except (KeyError, IndexError, TypeError, ValueError) as e:

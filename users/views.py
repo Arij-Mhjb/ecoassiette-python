@@ -1,5 +1,7 @@
 import logging
 
+from django.conf import settings
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth import views as auth_views
@@ -36,7 +38,14 @@ def inscription(request):
         return redirect("users:profil")
     form = InscriptionForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        user = form.save()  # compte créé, mais connexion bloquée tant que l'e-mail n'est pas confirmé
+        user = form.save()
+        if not settings.CONFIRMATION_EMAIL:  # pas de service d'e-mail : activation directe
+            user.email_verifie = True
+            user.save(update_fields=["email_verifie"])
+            login(request, user, backend="users.backends.EmailOuUsernameBackend")
+            messages.success(request, f"Bienvenue {user.first_name} ! Complétez votre profil pour une analyse personnalisée.")
+            return redirect("users:modifier_profil")
+        # sinon : connexion bloquée tant que l'e-mail n'est pas confirmé
         envoye = envoyer_confirmation(request, user)
         request.session["email_a_confirmer"] = user.email
         if not envoye:

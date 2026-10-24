@@ -169,3 +169,13 @@ class BrevoBackendTest(BaseTest):
         with self.assertRaises(requests.ConnectionError):
             BrevoBackend().send_messages([EmailMessage("s", "b", to=["a@b.tn"])])
         self.assertEqual(BrevoBackend(fail_silently=True).send_messages([EmailMessage("s", "b", to=["a@b.tn"])]), 0)
+
+
+@override_settings(CONFIRMATION_EMAIL=False)
+class SansConfirmationEmailTest(BaseTest):
+    def test_inscription_active_directement(self):
+        r = self.client.post(reverse("users:inscription"), donnees_inscription())
+        self.assertRedirects(r, reverse("users:modifier_profil"))
+        self.assertTrue(Utilisateur.objects.get(username="nouveau").email_verifie)
+        self.assertIn("_auth_user_id", self.client.session)
+        self.assertEqual(len(mail.outbox), 0)

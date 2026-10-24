@@ -25,6 +25,8 @@ services:
         value: "False"
       - key: GEMINI_API_KEY
         sync: false
+      - key: CONFIRMATION_EMAIL     # False : pas de service e-mail sur Render gratuit
+        value: "False"
       - key: BREVO_API_KEY          # e-mails (Render gratuit bloque l'SMTP)
         sync: false
       - key: DEFAULT_FROM_EMAIL     # ex. "EcoAssiette <adresse.verifiee@gmail.com>"

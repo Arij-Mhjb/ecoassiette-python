@@ -6,7 +6,7 @@
   const statut = document.getElementById("ia-statut");
   const zone = document.getElementById("ia-resultat");
   const tplAppliquer = document.getElementById("tpl-appliquer");
-  const DELAI_MAX_MS = 60000;
+  const DELAI_MAX_MS = 90000;
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
