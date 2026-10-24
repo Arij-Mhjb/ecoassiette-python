@@ -1,0 +1,186 @@
+from django import forms
+from django.contrib.auth import get_user_model, password_validation
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+
+from .models import ProfilAlimentaire
+
+User = get_user_model()
+
+
+class AccessibleFormMixin:
+    """Ajoute aria-describedby / aria-invalid sur les champs (aide + erreurs)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for nom, champ in self.fields.items():
+            if champ.help_text:
+                champ.widget.attrs["aria-describedby"] = f"id_{nom}_aide"
+            if champ.required:
+                champ.widget.attrs["required"] = True
+
+    def full_clean(self):
+        super().full_clean()
+        for nom in self.errors:
+            if nom in self.fields:
+                w = self.fields[nom].widget
+                w.attrs["aria-invalid"] = "true"
+                ids = [f"id_{nom}_erreurs"]
+                if self.fields[nom].help_text:
+                    ids.append(f"id_{nom}_aide")
+                w.attrs["aria-describedby"] = " ".join(ids)
+
+
+def _email_libre(email, exclure_pk=None):
+    email = (email or "").strip().lower()
+    qs = User.objects.filter(email__iexact=email)
+    if exclure_pk:
+        qs = qs.exclude(pk=exclure_pk)
+    if qs.exists():
+        raise forms.ValidationError("Un compte existe déjà avec cette adresse e-mail.")
+    return email
+
+
+class InscriptionForm(AccessibleFormMixin, UserCreationForm):
+    email = forms.EmailField(label="Adresse e-mail", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
+    first_name = forms.CharField(label="Prénom", max_length=150, widget=forms.TextInput(attrs={"autocomplete": "given-name"}))
+    last_name = forms.CharField(label="Nom", max_length=150, widget=forms.TextInput(attrs={"autocomplete": "family-name"}))
+    regime = forms.ChoiceField(label="Votre régime actuel", choices=ProfilAlimentaire.Regime.choices,
+                               initial=ProfilAlimentaire.Regime.OMNIVORE)
+    consentement = forms.BooleanField(
+        label="J'accepte que mes habitudes alimentaires soient utilisées pour calculer mon empreinte carbone.",
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("username", "first_name", "last_name", "email")
+
+    def clean_email(self):
+        return _email_libre(self.cleaned_data.get("email"))
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = User.Role.CITOYEN  # jamais de choix de rôle à l'inscription
+        if commit:
+            user.save()
+            user.profil.regime = self.cleaned_data["regime"]
+            user.profil.save()
+        return user
+
+
+class ConnexionForm(AccessibleFormMixin, AuthenticationForm):
+    username = forms.CharField(
+        label="Nom d'utilisateur ou e-mail",
+        widget=forms.TextInput(attrs={"autofocus": True, "autocomplete": "username"}),
+    )
+    error_messages = {
+        "invalid_login": "Identifiants incorrects. Vérifiez votre nom d'utilisateur/e-mail et votre mot de passe.",
+        "inactive": "Ce compte est désactivé. Contactez un administrateur.",
+    }
+
+
+class InfosPersonnellesForm(AccessibleFormMixin, forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "email", "telephone", "avatar")
+        widgets = {"avatar": forms.ClearableFileInput(attrs={"accept": "image/png,image/jpeg,image/webp"})}
+
+    def clean_email(self):
+        return _email_libre(self.cleaned_data.get("email"), exclure_pk=self.instance.pk)
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get("avatar")
+        if avatar and hasattr(avatar, "size") and avatar.size > 2 * 1024 * 1024:
+            raise forms.ValidationError("L'image ne doit pas dépasser 2 Mo.")
+        return avatar
+
+
+class ProfilAlimentaireForm(AccessibleFormMixin, forms.ModelForm):
+    class Meta:
+        model = ProfilAlimentaire
+        fields = (
+            "regime", "aliments_aimes", "aliments_evites", "taille_foyer",
+            "niveau_activite", "temps_cuisine", "ville", "objectif_co2_hebdo", "profil_public",
+        )
+        widgets = {
+            "aliments_aimes": forms.TextInput(attrs={"placeholder": "couscous, pâtes, poulet"}),
+            "aliments_evites": forms.TextInput(attrs={"placeholder": "aubergines, champignons"}),
+            "objectif_co2_hebdo": forms.NumberInput(attrs={"step": "0.5", "min": "5", "max": "100"}),
+            "taille_foyer": forms.NumberInput(attrs={"min": "1", "max": "15"}),
+        }
+
+
+class SuppressionCompteForm(AccessibleFormMixin, forms.Form):
+    password = forms.CharField(label="Confirmez avec votre mot de passe",
+                               widget=forms.PasswordInput(attrs={"autocomplete": "current-password"}))
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_password(self):
+        pwd = self.cleaned_data["password"]
+        if not self.user.check_password(pwd):
+            raise forms.ValidationError("Mot de passe incorrect.")
+        return pwd
+
+
+# ------------------------------------------------------------- administration (CRUD)
+class AdminUtilisateurCreationForm(AccessibleFormMixin, forms.ModelForm):
+    password1 = forms.CharField(label="Mot de passe", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+                                help_text=password_validation.password_validators_help_text_html())
+    password2 = forms.CharField(label="Confirmation", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
+
+    class Meta:
+        model = User
+        fields = ("username", "first_name", "last_name", "email", "telephone", "role", "is_active")
+
+    def clean_email(self):
+        return _email_libre(self.cleaned_data.get("email"))
+
+    def clean(self):
+        data = super().clean()
+        p1, p2 = data.get("password1"), data.get("password2")
+        if p1 and p2 and p1 != p2:
+            self.add_error("password2", "Les deux mots de passe ne correspondent pas.")
+        elif p1:
+            tmp = User(username=data.get("username"), email=data.get("email"))
+            try:
+                password_validation.validate_password(p1, tmp)
+            except forms.ValidationError as e:
+                self.add_error("password1", e)
+        return data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+        return user
+
+
+class AdminUtilisateurForm(AccessibleFormMixin, forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ("username", "first_name", "last_name", "email", "telephone", "role", "is_active")
+
+    def __init__(self, *args, editeur=None, **kwargs):
+        self.editeur = editeur
+        super().__init__(*args, **kwargs)
+
+    def clean_email(self):
+        return _email_libre(self.cleaned_data.get("email"), exclure_pk=self.instance.pk)
+
+    def clean(self):
+        data = super().clean()
+        if self.editeur and self.editeur.pk == self.instance.pk:
+            if data.get("role") != User.Role.ADMIN or not data.get("is_active"):
+                raise forms.ValidationError("Vous ne pouvez pas retirer vos propres droits d'administrateur.")
+        return data
+
+
+class FiltreUtilisateursForm(forms.Form):
+    q = forms.CharField(label="Rechercher", required=False,
+                        widget=forms.TextInput(attrs={"type": "search", "placeholder": "Nom, e-mail…"}))
+    role = forms.ChoiceField(label="Rôle", required=False, choices=[("", "Tous les rôles")] + list(User.Role.choices))
+    actif = forms.ChoiceField(label="Statut", required=False,
+                              choices=[("", "Tous"), ("1", "Actifs"), ("0", "Désactivés")])

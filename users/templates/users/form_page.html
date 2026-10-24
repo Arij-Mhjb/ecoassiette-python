@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>{{ titre }}</h1>
+  {% if intro %}<p class="muted">{{ intro }}</p>{% endif %}
+  <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %}>
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+    <div class="form-actions">
+      <button type="submit" class="btn">Enregistrer</button>
+      <a class="btn btn-ghost" href="{% if user.is_authenticated %}{% url 'users:profil' %}{% else %}{% url 'users:login' %}{% endif %}">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

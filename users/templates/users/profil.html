@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Mon profil{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="identity">
+    {% if user.avatar %}
+      <img class="avatar" src="{{ user.avatar.url }}" alt="Photo de profil de {{ user.get_full_name|default:user.username }}" width="64" height="64">
+    {% else %}
+      <span class="avatar avatar-initiales" aria-hidden="true">{{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>
+    {% endif %}
+    <div>
+      <h1>{{ user.get_full_name|default:user.username }}</h1>
+      <p class="muted">{{ user.get_role_display }} · membre depuis {{ user.date_joined|date:"F Y" }}</p>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <section class="card" aria-labelledby="titre-empreinte">
+    <h2 id="titre-empreinte">Mon empreinte alimentaire</h2>
+    <dl class="kpis">
+      <div><dt>Empreinte estimée</dt><dd><strong>{{ profil.emission_estimee_hebdo }}</strong> kg CO₂e / semaine</dd></div>
+      <div><dt>Mon objectif</dt><dd>{% if profil.objectif_co2_hebdo %}<strong>{{ profil.objectif_co2_hebdo }}</strong> kg CO₂e / semaine{% else %}<span class="muted">non défini</span>{% endif %}</dd></div>
+    </dl>
+    <p class="small muted">Estimation basée sur votre régime déclaré ({{ profil.get_regime_display|lower }}), par personne.</p>
+    <div class="progress-wrap">
+      <span class="small" id="lbl-completion">Profil complété à {{ profil.taux_completion }} %</span>
+      <progress max="100" value="{{ profil.taux_completion }}" aria-labelledby="lbl-completion"></progress>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="titre-habitudes">
+    <div class="card-head">
+      <h2 id="titre-habitudes">Mes habitudes</h2>
+      <a class="btn btn-small btn-ghost" href="{% url 'users:modifier_profil' %}">Modifier <span class="sr-only">mes habitudes</span></a>
+    </div>
+    <dl class="details">
+      <div><dt>Régime</dt><dd>{{ profil.get_regime_display }}</dd></div>
+      <div><dt>J'aime</dt><dd>{{ profil.aliments_aimes|default:"—" }}</dd></div>
+      <div><dt>J'évite</dt><dd>{{ profil.aliments_evites|default:"—" }}</dd></div>
+      <div><dt>Foyer</dt><dd>{{ profil.taille_foyer }} personne{{ profil.taille_foyer|pluralize }}</dd></div>
+      <div><dt>Cuisine</dt><dd>{{ profil.get_temps_cuisine_display }}</dd></div>
+      <div><dt>Ville</dt><dd>{{ profil.ville|default:"—" }}</dd></div>
+    </dl>
+  </section>
+</div>
+
+<section class="card ai-card" aria-labelledby="titre-ia">
+  <div class="card-head">
+    <h2 id="titre-ia">Analyse IA de mon profil</h2>
+    <button type="button" class="btn" id="btn-analyse"
+            data-url="{% url 'users:analyse_lancer' %}" data-csrf="{{ csrf_token }}">
+      {% if analyse %}Relancer l'analyse{% else %}Analyser mon profil{% endif %}
+    </button>
+  </div>
+  <p class="small muted">L'IA propose un objectif réaliste et des alternatives végétales adaptées à vos goûts. Aucune donnée d'identité n'est envoyée.</p>
+
+  <div id="ia-statut" role="status" aria-live="polite" class="ia-statut"></div>
+
+  <div id="ia-resultat" {% if not analyse %}hidden{% endif %}>
+    {% if analyse %}{% include "users/_analyse.html" with r=analyse.resultat a=analyse %}{% endif %}
+  </div>
+  <template id="tpl-appliquer">
+    <form method="post" class="inline-form apply-form">
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+      <button type="submit" class="btn btn-small">Adopter cet objectif</button>
+    </form>
+  </template>
+</section>
+
+<section class="card" aria-labelledby="titre-compte">
+  <h2 id="titre-compte">Mon compte</h2>
+  <dl class="details">
+    <div><dt>Nom d'utilisateur</dt><dd>{{ user.username }}</dd></div>
+    <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
+    <div><dt>Téléphone</dt><dd>{{ user.telephone|default:"—" }}</dd></div>
+  </dl>
+  <ul class="link-list">
+    <li><a href="{% url 'users:modifier_infos' %}">Modifier mes informations personnelles</a></li>
+    <li><a href="{% url 'users:password_change' %}">Changer mon mot de passe</a></li>
+    <li><a class="danger-link" href="{% url 'users:supprimer_compte' %}">Supprimer mon compte</a></li>
+  </ul>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'js/analyse.js' %}" defer></script>{% endblock %}

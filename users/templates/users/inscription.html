@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Créer un compte{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>Créer un compte</h1>
+  <p class="muted">Gratuit. Vous pourrez compléter vos habitudes alimentaires juste après.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+    <button type="submit" class="btn btn-block">Créer mon compte</button>
+  </form>
+  <p class="center small">Déjà inscrit ? <a href="{% url 'users:login' %}">Se connecter</a></p>
+</div>
+{% endblock %}

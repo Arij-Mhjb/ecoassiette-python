@@ -1,0 +1,9 @@
+{% if form.non_field_errors %}
+  <div class="alert alert-error" role="alert">
+    {% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}
+  </div>
+{% elif form.errors %}
+  <div class="alert alert-error" role="alert"><p>Veuillez corriger les champs signalés ci-dessous.</p></div>
+{% endif %}
+<p class="muted small">Les champs marqués <span class="req" aria-hidden="true">*</span><span class="sr-only">d'un astérisque</span> sont obligatoires.</p>
+{% for field in form %}{% include "includes/champ.html" %}{% endfor %}

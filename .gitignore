@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+db.sqlite3
+media/
+staticfiles/
+htmlcov/
+.coverage
+rapport_ia.json

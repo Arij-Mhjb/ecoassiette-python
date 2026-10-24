@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Accueil{% endblock %}
+{% block content %}
+<section class="hero" aria-labelledby="titre-accueil">
+  <div>
+    <p class="eyebrow">Alimentation durable</p>
+    <h1 id="titre-accueil">Mangez ce que vous aimez,<br>avec moins de CO₂.</h1>
+    <p class="lead">EcoAssiette mesure l'empreinte carbone de vos habitudes alimentaires et vous propose
+      des alternatives végétales qui respectent vos goûts et votre quotidien.</p>
+    <p class="actions">
+      {% if user.is_authenticated %}
+        <a class="btn" href="{% url 'users:profil' %}">Accéder à mon profil</a>
+      {% else %}
+        <a class="btn" href="{% url 'users:inscription' %}">Créer mon profil</a>
+        <a class="btn btn-ghost" href="{% url 'users:login' %}">J'ai déjà un compte</a>
+      {% endif %}
+    </p>
+  </div>
+  <figure class="hero-figure">
+    <table class="compare">
+      <caption>Émissions pour 1 kg d'aliment (kg CO₂e)</caption>
+      <tbody>
+        <tr><th scope="row">Bœuf</th><td><span class="bar" style="--v:100%"></span>99,5</td></tr>
+        <tr><th scope="row">Agneau</th><td><span class="bar" style="--v:40%"></span>39,7</td></tr>
+        <tr><th scope="row">Poulet</th><td><span class="bar" style="--v:10%"></span>9,9</td></tr>
+        <tr><th scope="row">Tofu</th><td><span class="bar bar-good" style="--v:3.2%"></span>3,2</td></tr>
+        <tr><th scope="row">Pois chiches</th><td><span class="bar bar-good" style="--v:1%"></span>0,9</td></tr>
+      </tbody>
+    </table>
+    <figcaption class="muted small">Source : Poore &amp; Nemecek, <cite>Science</cite>, 2018.</figcaption>
+  </figure>
+</section>
+
+<section class="features" aria-labelledby="titre-etapes">
+  <h2 id="titre-etapes">Comment ça marche</h2>
+  <ol class="steps">
+    <li><h3>Décrivez vos habitudes</h3><p>Régime, plats préférés, aliments que vous évitez, temps de cuisine.</p></li>
+    <li><h3>Recevez votre analyse IA</h3><p>Empreinte estimée, objectif réaliste et conseils personnalisés.</p></li>
+    <li><h3>Remplacez, pas à pas</h3><p>Des alternatives végétales concrètes, adaptées à la cuisine que vous aimez.</p></li>
+  </ol>
+</section>
+{% endblock %}

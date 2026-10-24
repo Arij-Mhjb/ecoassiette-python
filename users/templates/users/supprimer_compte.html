@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Supprimer mon compte{% endblock %}
+{% block content %}
+<div class="narrow card card-danger">
+  <h1>Supprimer mon compte</h1>
+  <p>Cette action est <strong>définitive</strong> : votre compte, votre profil alimentaire et vos analyses seront supprimés.</p>
+  <form method="post">
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-danger">Supprimer définitivement</button>
+      <a class="btn btn-ghost" href="{% url 'users:profil' %}">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

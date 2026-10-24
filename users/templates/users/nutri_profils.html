@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Profils citoyens{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Profils citoyens</h1>
+  <p class="muted">Profils que les citoyens ont choisi de partager avec les nutritionnistes.</p>
+</div>
+<form method="get" class="filters" role="search" aria-label="Filtrer les profils">
+  <div class="field">
+    <label for="f-regime">Régime</label>
+    <select id="f-regime" name="regime">
+      <option value="">Tous les régimes</option>
+      {% for val, lib in regimes %}<option value="{{ val }}" {% if val == regime_actif %}selected{% endif %}>{{ lib }}</option>{% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-small">Filtrer</button>
+</form>
+{% if profils %}
+<ul class="cards-grid">
+  {% for p in profils %}
+  <li class="card">
+    <h2 class="h3"><a href="{% url 'users:nutri_profil_detail' p.pk %}">{{ p.utilisateur.get_full_name|default:p.utilisateur.username }}</a></h2>
+    <p class="small">{{ p.get_regime_display }}</p>
+    <p class="small muted">{{ p.emission_estimee_hebdo }} kg CO₂e/sem.{% if p.ville %} · {{ p.ville }}{% endif %}</p>
+  </li>
+  {% endfor %}
+</ul>
+{% include "users/_pagination.html" %}
+{% else %}
+<p class="empty">Aucun profil ne correspond à ce filtre.</p>
+{% endif %}
+{% endblock %}

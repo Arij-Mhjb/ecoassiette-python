@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>{{ titre }}</h1>
+  <p>{{ texte }}</p>
+  <p><a class="btn" href="{% url 'users:login' %}">Aller à la connexion</a></p>
+</div>
+{% endblock %}

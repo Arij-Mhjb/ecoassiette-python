@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Supprimer {{ cible.username }}{% endblock %}
+{% block content %}
+<div class="narrow card card-danger">
+  <h1>Supprimer le compte « {{ cible.username }} » ?</h1>
+  <p>Le compte, son profil alimentaire et ses {{ cible.profil.analyses.count }} analyse(s) IA seront définitivement supprimés.
+     Pour une suspension temporaire, préférez la <strong>désactivation</strong>.</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+      <a class="btn btn-ghost" href="{% url 'users:admin_detail' cible.pk %}">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

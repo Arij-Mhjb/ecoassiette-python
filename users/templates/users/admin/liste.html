@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Gestion des comptes{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <h1>Gestion des comptes</h1>
+    <p class="muted">{{ paginator.count }} compte{{ paginator.count|pluralize }}</p>
+  </div>
+  <a class="btn" href="{% url 'users:admin_creer' %}">+ Nouveau compte</a>
+</div>
+
+<form method="get" class="filters" role="search" aria-label="Rechercher des comptes">
+  {% for field in filtre %}
+    <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
+  {% endfor %}
+  <button type="submit" class="btn btn-small">Appliquer</button>
+  <a class="btn btn-small btn-ghost" href="{% url 'users:admin_liste' %}">Réinitialiser</a>
+</form>
+
+{% if utilisateurs %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Tableau des comptes (défilable)">
+<table class="table">
+  <caption class="sr-only">Liste des comptes utilisateurs</caption>
+  <thead><tr><th scope="col">Utilisateur</th><th scope="col">E-mail</th><th scope="col">Rôle</th><th scope="col">Statut</th><th scope="col">Inscrit le</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+  <tbody>
+  {% for u in utilisateurs %}
+    <tr>
+      <th scope="row"><a href="{% url 'users:admin_detail' u.pk %}">{{ u.get_full_name|default:u.username }}</a><br><span class="small muted">@{{ u.username }}</span></th>
+      <td>{{ u.email }}</td>
+      <td><span class="badge badge-{{ u.role|lower }}">{{ u.get_role_display }}</span></td>
+      <td>{% if u.is_active %}<span class="badge badge-ok">Actif</span>{% else %}<span class="badge badge-off">Désactivé</span>{% endif %}</td>
+      <td>{{ u.date_joined|date:"d/m/Y" }}</td>
+      <td class="actions-cell">
+        <a href="{% url 'users:admin_modifier' u.pk %}">Modifier<span class="sr-only"> {{ u.username }}</span></a>
+        <a class="danger-link" href="{% url 'users:admin_supprimer' u.pk %}">Supprimer<span class="sr-only"> {{ u.username }}</span></a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "users/_pagination.html" %}
+{% else %}
+<p class="empty">Aucun compte ne correspond à la recherche.</p>
+{% endif %}
+{% endblock %}

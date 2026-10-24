@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Statistiques{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Statistiques du module</h1></div>
+
+<section aria-labelledby="t-u">
+  <h2 id="t-u">Utilisateurs</h2>
+  <dl class="stat-tiles">
+    <div class="tile"><dt>Comptes</dt><dd>{{ total }}</dd></div>
+    <div class="tile"><dt>Actifs</dt><dd>{{ actifs }}</dd></div>
+    <div class="tile"><dt>Inscrits (7 j)</dt><dd>{{ inscrits_7j }}</dd></div>
+    <div class="tile"><dt>Avec objectif CO₂</dt><dd>{{ avec_objectif }}</dd></div>
+  </dl>
+</section>
+
+<div class="grid-2">
+  <section class="card" aria-labelledby="t-r">
+    <h2 id="t-r">Répartition par rôle</h2>
+    <table class="table compact">
+      <thead><tr><th scope="col">Rôle</th><th scope="col">Comptes</th></tr></thead>
+      <tbody>{% for lib, n in par_role %}<tr><th scope="row">{{ lib }}</th><td>{{ n }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+  <section class="card" aria-labelledby="t-reg">
+    <h2 id="t-reg">Régimes déclarés</h2>
+    <table class="compare">
+      <tbody>
+      {% for r in regimes %}
+        <tr><th scope="row">{{ r.libelle }}</th><td><span class="bar" style="--v:{{ r.pct }}%"></span>{{ r.n }} ({{ r.pct }} %)</td></tr>
+      {% empty %}<tr><td colspan="2">Aucune donnée.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<section class="card" aria-labelledby="t-ia">
+  <h2 id="t-ia">Performance de l'IA</h2>
+  <dl class="stat-tiles">
+    <div class="tile"><dt>Analyses</dt><dd>{{ ia_total }}</dd></div>
+    <div class="tile"><dt>Réussies</dt><dd>{{ ia_succes }}</dd></div>
+    <div class="tile"><dt>Via Gemini / local</dt><dd>{{ ia_gemini }} / {{ ia_local }}</dd></div>
+    <div class="tile"><dt>Échecs</dt><dd>{{ ia_echecs }}</dd></div>
+    <div class="tile"><dt>Temps moyen</dt><dd>{{ ia_moyenne_ms }} ms</dd></div>
+    <div class="tile"><dt>Temps p95</dt><dd>{{ ia_p95_ms|default:"—" }}{% if ia_p95_ms %} ms{% endif %}</dd></div>
+  </dl>
+  <p class="small muted">Évaluation qualitative détaillée : <code>python manage.py evaluer_ia</code>.</p>
+</section>
+{% endblock %}

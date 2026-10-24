@@ -1,0 +1,70 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="EcoAssiette — suivez et réduisez l'empreinte carbone de votre alimentation.">
+  <title>{% block title %}EcoAssiette{% endblock %} · EcoAssiette</title>
+  <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu principal</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="{% url 'home' %}">
+        <img src="{% static 'img/logo.svg' %}" alt="" width="32" height="32">
+        <span>EcoAssiette</span>
+      </a>
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="menu-principal">
+        <span class="sr-only">Ouvrir le menu</span>
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <nav id="menu-principal" class="main-nav" aria-label="Navigation principale">
+        <ul>
+          {% if user.is_authenticated %}
+            <li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>Mon profil</a></li>
+            {% if perms.users.view_profilalimentaire %}
+              <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' %}aria-current="page"{% endif %}>Profils citoyens</a></li>
+            {% endif %}
+            {% if perms.users.gerer_utilisateurs %}
+              <li><a href="{% url 'users:admin_liste' %}" {% if request.resolver_match.url_name == 'admin_liste' %}aria-current="page"{% endif %}>Comptes</a></li>
+              <li><a href="{% url 'users:admin_stats' %}" {% if request.resolver_match.url_name == 'admin_stats' %}aria-current="page"{% endif %}>Statistiques</a></li>
+            {% endif %}
+            <li>
+              <form method="post" action="{% url 'users:logout' %}" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="link-button">Déconnexion <span class="sr-only">({{ user.username }})</span></button>
+              </form>
+            </li>
+          {% else %}
+            <li><a href="{% url 'users:login' %}">Connexion</a></li>
+            <li><a class="btn btn-small" href="{% url 'users:inscription' %}">Créer un compte</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="contenu" class="wrap" tabindex="-1">
+    {% if messages %}
+      <div class="messages" role="status" aria-live="polite">
+        {% for m in messages %}
+          <p class="message message-{{ m.tags }}">{{ m }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>EcoAssiette — projet Django, 5TWIN · Esprit {% now "Y" %}</p>
+      <p class="muted">Facteurs d'émission : Poore &amp; Nemecek (2018), Scarborough et al. (2014).</p>
+    </div>
+  </footer>
+  <script src="{% static 'js/app.js' %}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
