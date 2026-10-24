@@ -1,0 +1,77 @@
+{% extends "admin/index.html" %}
+{% load i18n static eco_admin %}
+
+{% block content_title %}{% endblock %}
+
+{% block content %}
+{% eco_stats app_list as cartes %}
+{% eco_resume as resume %}
+<div id="content-main" class="eco-dashboard">
+
+  <section class="eco-hero" aria-labelledby="eco-hello">
+    <div class="eco-hero-text">
+      <p class="eco-eyebrow">{% now "l j F Y" %}</p>
+      <h1 id="eco-hello">Bonjour, {{ user.first_name|default:user.username }} 👋</h1>
+      <p class="eco-hero-sub">Voici l'état de la plateforme aujourd'hui. Gérez les comptes, les repas et le contenu en un clic.</p>
+    </div>
+    <dl class="eco-hero-kpis">
+      <div><dt>Comptes actifs</dt><dd>{{ resume.actifs }}</dd></div>
+      <div><dt>Inscrits (7 j)</dt><dd>{{ resume.inscrits_7j }}</dd></div>
+      <div><dt>Connectés (7 j)</dt><dd>{{ resume.connectes_7j }}</dd></div>
+    </dl>
+    <div class="eco-hero-deco" aria-hidden="true"></div>
+  </section>
+
+  {% if cartes %}
+  <section aria-labelledby="eco-stats-title">
+    <h2 id="eco-stats-title" class="eco-section-title">Vue d'ensemble</h2>
+    <ul class="eco-stats">
+      {% for c in cartes %}
+      <li class="eco-stat eco-{{ c.teinte }}">
+        <a class="eco-stat-link" href="{{ c.url|default:'#' }}">
+          <span class="eco-stat-icon">{% eco_icon c.icone 22 %}</span>
+          <span class="eco-stat-body">
+            <span class="eco-stat-value">{{ c.total }}</span>
+            <span class="eco-stat-label">{{ c.nom }}</span>
+            <span class="eco-stat-app">{{ c.app }}</span>
+          </span>
+        </a>
+        {% if c.add_url %}
+        <a class="eco-stat-add" href="{{ c.add_url }}" title="Ajouter : {{ c.nom }}">
+          {% eco_icon "plus" 16 %}<span class="visually-hidden">Ajouter : {{ c.nom }}</span>
+        </a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section aria-labelledby="eco-apps-title">
+    <h2 id="eco-apps-title" class="eco-section-title">Modules</h2>
+    {% if app_list %}
+    <div class="eco-apps">
+      {% for app in app_list %}
+      <div class="eco-app">
+        <div class="eco-app-head">
+          <span class="eco-app-icon">{% eco_app_icon app.app_label %}</span>
+          <a href="{{ app.app_url }}" class="eco-app-name">{{ app.name }}</a>
+          <span class="eco-app-count">{{ app.models|length }}</span>
+        </div>
+        <ul class="eco-app-models">
+          {% for model in app.models %}
+          <li>
+            {% if model.admin_url %}<a class="eco-model" href="{{ model.admin_url }}">{{ model.name }} <span aria-hidden="true">{% eco_icon "arrow" 14 %}</span></a>{% else %}<span class="eco-model">{{ model.name }}</span>{% endif %}
+            {% if model.add_url %}<a class="eco-model-add" href="{{ model.add_url }}">{% eco_icon "plus" 14 %} Ajouter<span class="visually-hidden"> : {{ model.name }}</span></a>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="eco-empty">{% translate 'You don’t have permission to view or edit anything.' %}</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

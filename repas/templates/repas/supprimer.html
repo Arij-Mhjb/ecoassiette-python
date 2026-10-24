@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Supprimer {{ repas }}{% endblock %}
+{% block content %}
+<div class="narrow card card-danger">
+  <h1>Supprimer « {{ repas }} » ?</h1>
+  <p>Ce repas et ses {{ repas.elements.count }} aliment(s) seront définitivement supprimés.</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+      <a class="btn btn-ghost" href="{% url 'repas:detail' repas.pk %}">Annuler</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

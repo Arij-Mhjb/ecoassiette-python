@@ -18,5 +18,5 @@ class BaseTest(TestCase):
     def creer(username, role, **kw):
         return Utilisateur.objects.create_user(
             username=username, email=f"{username}@test.tn", password=MDP, role=role,
-            first_name=username.title(), last_name="Test", **kw,
+            first_name=username.title(), last_name="Test", email_verifie=True, **kw,
         )

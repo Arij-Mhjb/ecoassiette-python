@@ -206,3 +206,6 @@ progress { width: 100%; height: .6rem; accent-color: var(--primary); }
 .error-page { text-align: center; padding: 3rem 0; }
 .error-code { font: 700 5rem/1 var(--serif); color: var(--primary); margin: 0 0 .5rem; }
 .error-page .lead { margin-inline: auto; }
+
+input[type=date], input[type=time] { width: 100%; min-height: 44px; padding: .55rem .75rem; font: inherit; color: var(--text);
+  background: #fff; border: 1.5px solid #8a8f88; border-radius: 8px; }

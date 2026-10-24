@@ -1,0 +1,31 @@
+{% extends "admin/base.html" %}
+{% load static eco_admin %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} · EcoAssiette Admin{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="{% static 'css/eco-admin.css' %}">
+<link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a href="{% url 'admin:index' %}" class="eco-brand">
+    <img src="{% static 'img/logo.svg' %}" alt="" width="34" height="34">
+    <span class="eco-brand-text">EcoAssiette <span class="eco-brand-badge">Admin</span></span>
+  </a>
+</div>
+{% if user.is_anonymous %}{% include "admin/color_theme_toggle.html" %}{% endif %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block footer %}
+<div class="eco-footer">
+  <span>EcoAssiette · Administration</span>
+  <a href="/">Retour au site {% eco_icon "arrow" 14 %}</a>
+</div>
+{% endblock %}

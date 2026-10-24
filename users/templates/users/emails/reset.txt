@@ -1,0 +1,10 @@
+Bonjour {{ user.first_name|default:user.username }},
+
+Vous avez demandé la réinitialisation de votre mot de passe EcoAssiette.
+Ouvrez ce lien pour en choisir un nouveau (valable 24 heures, utilisable une seule fois) :
+
+{{ protocol }}://{{ domain }}{% url 'users:password_reset_confirm' uidb64=uid token=token %}
+
+Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe reste inchangé.
+
+L'équipe EcoAssiette

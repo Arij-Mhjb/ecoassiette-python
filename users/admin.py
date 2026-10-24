@@ -13,13 +13,13 @@ class ProfilInline(admin.StackedInline):
 @admin.register(Utilisateur)
 class UtilisateurAdmin(UserAdmin):
     inlines = [ProfilInline]
-    list_display = ("username", "email", "first_name", "last_name", "role", "is_active", "date_joined")
-    list_filter = ("role", "is_active", "is_staff", "date_joined")
+    list_display = ("username", "email", "email_verifie", "first_name", "last_name", "role", "is_active", "date_joined")
+    list_filter = ("role", "is_active", "email_verifie", "is_staff", "date_joined")
     search_fields = ("username", "email", "first_name", "last_name")
     ordering = ("-date_joined",)
     list_editable = ("role", "is_active")
     actions = ["desactiver", "activer"]
-    fieldsets = UserAdmin.fieldsets + (("EcoAssiette", {"fields": ("role", "telephone", "avatar")}),)
+    fieldsets = UserAdmin.fieldsets + (("EcoAssiette", {"fields": ("role", "telephone", "avatar", "email_verifie")}),)
     add_fieldsets = UserAdmin.add_fieldsets + (("EcoAssiette", {"fields": ("email", "role")}),)
 
     @admin.action(description="Désactiver les comptes sélectionnés")

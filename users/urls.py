@@ -8,13 +8,17 @@ app_name = "users"
 urlpatterns = [
     # Authentification
     path("inscription/", views.inscription, name="inscription"),
+    path("inscription/verifiez-vos-emails/", views.verification_envoyee, name="verification_envoyee"),
+    path("confirmer/<uidb64>/<token>/", views.confirmer_email, name="confirmer_email"),
+    path("confirmer/renvoyer/", views.renvoyer_confirmation, name="renvoyer_confirmation"),
     path("connexion/", views.ConnexionView.as_view(), name="login"),
     path("deconnexion/", views.DeconnexionView.as_view(), name="logout"),
     path("mot-de-passe/", views.ChangementMotDePasseView.as_view(), name="password_change"),
     path("mot-de-passe/oubli/", auth_views.PasswordResetView.as_view(
         template_name="users/form_page.html",
-        email_template_name="users/email_reset.txt",
-        subject_template_name="users/email_reset_sujet.txt",
+        email_template_name="users/emails/reset.txt",
+        html_email_template_name="users/emails/reset.html",
+        subject_template_name="users/emails/reset_sujet.txt",
         success_url=reverse_lazy("users:password_reset_done"),
         extra_context={"titre": "Mot de passe oublié",
                        "intro": "Saisissez votre e-mail : vous recevrez un lien de réinitialisation."},
@@ -24,11 +28,8 @@ urlpatterns = [
         extra_context={"titre": "E-mail envoyé",
                        "texte": "Si un compte correspond à cette adresse, un lien de réinitialisation vient d'être envoyé."},
     ), name="password_reset_done"),
-    path("mot-de-passe/reinitialiser/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(
-        template_name="users/form_page.html",
-        success_url=reverse_lazy("users:password_reset_complete"),
-        extra_context={"titre": "Nouveau mot de passe"},
-    ), name="password_reset_confirm"),
+    path("mot-de-passe/reinitialiser/<uidb64>/<token>/", views.ReinitialisationConfirmView.as_view(),
+         name="password_reset_confirm"),
     path("mot-de-passe/reinitialise/", auth_views.PasswordResetCompleteView.as_view(
         template_name="users/message.html",
         extra_context={"titre": "Mot de passe modifié", "texte": "Vous pouvez maintenant vous connecter."},

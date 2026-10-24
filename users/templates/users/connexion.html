@@ -9,6 +9,9 @@
     <input type="hidden" name="next" value="{{ next }}">
     <button type="submit" class="btn btn-block">Se connecter</button>
   </form>
+  {% if form.email_non_verifie %}
+  <p class="center"><a class="btn btn-ghost btn-small" href="{% url 'users:renvoyer_confirmation' %}">Renvoyer le lien de confirmation</a></p>
+  {% endif %}
   <p class="center small"><a href="{% url 'users:password_reset' %}">Mot de passe oublié ?</a></p>
   <p class="center small">Pas encore de compte ? <a href="{% url 'users:inscription' %}">Créer un compte</a></p>
 </div>

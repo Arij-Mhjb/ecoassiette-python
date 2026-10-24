@@ -1,0 +1,8 @@
+{% include "users/emails/_layout_debut.html" %}
+<h1 style="font:bold 22px Georgia,serif;margin:0 0 16px">Mot de passe modifié</h1>
+<p>Bonjour {{ user.first_name|default:user.username }},</p>
+<p>Le mot de passe de votre compte <strong>{{ user.username }}</strong> vient d'être modifié, le {% now "d/m/Y à H:i" %}.</p>
+<p>Si c'est bien vous, aucune action n'est nécessaire.</p>
+<p style="background:#fdeceb;border-left:4px solid #b42318;padding:12px 16px;border-radius:6px"><strong>Ce n'est pas vous ?</strong> Réinitialisez immédiatement votre mot de passe.</p>
+<p style="margin:24px 0"><a href="{{ lien_reset }}" style="display:inline-block;background:#2f6b3b;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:999px">Réinitialiser mon mot de passe</a></p>
+{% include "users/emails/_layout_fin.html" %}

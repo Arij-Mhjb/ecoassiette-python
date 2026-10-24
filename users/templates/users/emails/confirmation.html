@@ -1,0 +1,7 @@
+{% include "users/emails/_layout_debut.html" %}
+<h1 style="font:bold 22px Georgia,serif;margin:0 0 16px">Bienvenue {{ user.first_name|default:user.username }} !</h1>
+<p>Merci pour votre inscription. Il reste une étape : confirmer votre adresse e-mail pour activer votre compte.</p>
+<p style="margin:28px 0"><a href="{{ lien }}" style="display:inline-block;background:#2f6b3b;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:999px">Confirmer mon adresse e-mail</a></p>
+<p style="font-size:14px;color:#535e57">Ce lien est valable 24 heures. Si le bouton ne fonctionne pas, copiez ce lien :<br><a href="{{ lien }}" style="color:#22502c;word-break:break-all">{{ lien }}</a></p>
+<p style="font-size:14px;color:#535e57">Vous n'avez pas créé de compte ? Ignorez ce message.</p>
+{% include "users/emails/_layout_fin.html" %}

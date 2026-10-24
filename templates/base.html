@@ -25,6 +25,7 @@
         <ul>
           {% if user.is_authenticated %}
             <li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>Mon profil</a></li>
+            <li><a href="{% url 'repas:liste' %}" {% if request.resolver_match.app_name == 'repas' %}aria-current="page"{% endif %}>Mes repas</a></li>
             {% if perms.users.view_profilalimentaire %}
               <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' %}aria-current="page"{% endif %}>Profils citoyens</a></li>
             {% endif %}

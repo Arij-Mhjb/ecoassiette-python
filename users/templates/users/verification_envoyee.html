@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Vérifiez vos e-mails{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>Vérifiez votre boîte e-mail</h1>
+  <p>Nous avons envoyé un lien de confirmation{% if email %} à <strong>{{ email }}</strong>{% endif %}.
+     Cliquez dessus pour activer votre compte (lien valable 24 heures).</p>
+  <ul>
+    <li>Le message peut mettre une minute à arriver.</li>
+    <li>Pensez à regarder dans les <strong>spams / courriers indésirables</strong>.</li>
+  </ul>
+  <div class="form-actions">
+    <a class="btn" href="{% url 'users:login' %}">Aller à la connexion</a>
+    <a class="btn btn-ghost" href="{% url 'users:renvoyer_confirmation' %}">Renvoyer le lien</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Lien invalide{% endblock %}
+{% block content %}
+<div class="narrow card card-danger">
+  <h1>Lien invalide ou expiré</h1>
+  <p>Ce lien de confirmation n'est plus valable (il expire après 24 heures et ne sert qu'une fois).</p>
+  <p><a class="btn" href="{% url 'users:renvoyer_confirmation' %}">Recevoir un nouveau lien</a></p>
+</div>
+{% endblock %}

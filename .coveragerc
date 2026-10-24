@@ -1,8 +1,9 @@
 [run]
-source = users,config
+source = users,repas,config
 omit =
     */migrations/*
     */tests/*
+    */tests.py
     config/asgi.py
     config/wsgi.py
     manage.py

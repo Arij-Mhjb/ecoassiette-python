@@ -32,7 +32,9 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "")
 if RENDER_EXTERNAL_HOSTNAME:
     CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
 
-if not DEBUG:
+# Protections HTTPS activées uniquement en production réelle (Render ou HTTPS_ONLY=True),
+# pour ne pas casser `runserver` en local (http://127.0.0.1).
+if not DEBUG and (RENDER_EXTERNAL_HOSTNAME or env_bool("HTTPS_ONLY", False)):
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -52,6 +54,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "users.apps.UsersConfig",
+    "repas",
 ]
 
 MIDDLEWARE = [
@@ -133,9 +136,27 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- E-mails (réinitialisation de mot de passe) -------------------------------------
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "EcoAssiette <no-reply@ecoassiette.tn>")
+# --- E-mails ------------------------------------------------------------------------
+# Choix automatique du backend :
+#   BREVO_API_KEY défini   -> API HTTPS Brevo (fonctionne sur Render gratuit, qui bloque l'SMTP)
+#   EMAIL_HOST_USER défini -> SMTP (ex. Gmail + mot de passe d'application) — idéal en local
+#   sinon                  -> console (les e-mails s'affichent dans le terminal)
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_TIMEOUT = 15
+if BREVO_API_KEY:
+    EMAIL_BACKEND = "users.email_backends.BrevoBackend"
+elif EMAIL_HOST_USER:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"EcoAssiette <{EMAIL_HOST_USER or 'no-reply@ecoassiette.tn'}>")
+# Durée de validité des liens (confirmation d'e-mail et réinitialisation) : 1 jour
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 
 # --- Django REST Framework ----------------------------------------------------------
 REST_FRAMEWORK = {

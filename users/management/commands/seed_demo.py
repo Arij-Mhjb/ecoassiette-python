@@ -27,11 +27,13 @@ class Command(BaseCommand):
         for username, prenom, nom, role, profil in COMPTES:
             u, cree = Utilisateur.objects.get_or_create(
                 username=username,
-                defaults=dict(first_name=prenom, last_name=nom, email=f"{username}@ecoassiette.tn", role=role),
+                defaults=dict(first_name=prenom, last_name=nom, email=f"{username}@ecoassiette.tn", role=role,
+                              email_verifie=True),
             )
             if cree:
                 u.set_password(MDP)
                 u.save()
+            Utilisateur.objects.filter(pk=u.pk).update(email_verifie=True)
             if profil:
                 ProfilAlimentaire.objects.filter(utilisateur=u).update(**profil)
             self.stdout.write(f"{'+' if cree else '='} {username} ({role})")

@@ -1,0 +1,57 @@
+"""
+E-mails transactionnels du module :
+  - confirmation de l'adresse à l'inscription (lien unique, valable 24 h) ;
+  - notification de changement de mot de passe ;
+  - (la réinitialisation « mot de passe oublié » utilise les vues Django + nos templates).
+"""
+import logging
+
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+
+logger = logging.getLogger(__name__)
+
+
+class ConfirmationEmailTokenGenerator(PasswordResetTokenGenerator):
+    """Jeton signé (SECRET_KEY) qui devient invalide dès que l'e-mail est confirmé (usage unique)."""
+    key_salt = "users.ConfirmationEmailTokenGenerator"
+
+    def _make_hash_value(self, user, timestamp):
+        return f"{user.pk}{user.email}{user.email_verifie}{timestamp}"
+
+
+jeton_confirmation = ConfirmationEmailTokenGenerator()
+
+
+def envoyer(sujet, gabarit, destinataire, contexte):
+    """Envoie un e-mail texte + HTML. Retourne True/False (ne fait jamais planter la vue)."""
+    texte = render_to_string(f"users/emails/{gabarit}.txt", contexte)
+    html = render_to_string(f"users/emails/{gabarit}.html", contexte)
+    msg = EmailMultiAlternatives(sujet, texte, to=[destinataire])
+    msg.attach_alternative(html, "text/html")
+    try:
+        msg.send()
+        return True
+    except Exception as e:  # SMTP/HTTP indisponible : on journalise, l'utilisateur est prévenu
+        logger.error("Envoi de l'e-mail « %s » à %s impossible : %s", sujet, destinataire, e)
+        return False
+
+
+def envoyer_confirmation(request, user):
+    lien = request.build_absolute_uri(reverse("users:confirmer_email", kwargs={
+        "uidb64": urlsafe_base64_encode(force_bytes(user.pk)),
+        "token": jeton_confirmation.make_token(user),
+    }))
+    return envoyer("Confirmez votre adresse e-mail — EcoAssiette", "confirmation", user.email,
+                   {"user": user, "lien": lien})
+
+
+def notifier_changement_mdp(request, user):
+    return envoyer("Votre mot de passe a été modifié — EcoAssiette", "mdp_modifie", user.email, {
+        "user": user,
+        "lien_reset": request.build_absolute_uri(reverse("users:password_reset")),
+    })

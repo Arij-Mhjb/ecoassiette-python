@@ -75,7 +75,22 @@ class ConnexionForm(AccessibleFormMixin, AuthenticationForm):
     error_messages = {
         "invalid_login": "Identifiants incorrects. Vérifiez votre nom d'utilisateur/e-mail et votre mot de passe.",
         "inactive": "Ce compte est désactivé. Contactez un administrateur.",
+        "email_non_verifie": (
+            "Votre adresse e-mail n'est pas encore confirmée. Cliquez sur le lien reçu par e-mail "
+            "(pensez aux spams) ou demandez un nouveau lien."
+        ),
     }
+
+    def confirm_login_allowed(self, user):
+        super().confirm_login_allowed(user)
+        if not user.email_verifie:
+            self.email_non_verifie = True
+            raise forms.ValidationError(self.error_messages["email_non_verifie"], code="email_non_verifie")
+
+
+class RenvoyerConfirmationForm(AccessibleFormMixin, forms.Form):
+    email = forms.EmailField(label="Adresse e-mail utilisée à l'inscription",
+                             widget=forms.EmailInput(attrs={"autocomplete": "email"}))
 
 
 class InfosPersonnellesForm(AccessibleFormMixin, forms.ModelForm):
@@ -153,6 +168,7 @@ class AdminUtilisateurCreationForm(AccessibleFormMixin, forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data["password1"])
+        user.email_verifie = True  # compte créé par un administrateur
         if commit:
             user.save()
         return user

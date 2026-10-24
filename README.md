@@ -5,7 +5,7 @@ Ce dépôt contient le **module Utilisateurs & profils** (app Django `users`) : 
 rôles, profil alimentaire, analyse IA du profil, gestion des comptes (CRUD), API REST.
 
 - Django 5.2 · DRF · PostgreSQL (Render) / SQLite (local) · WhiteNoise · Celery (optionnel)
-- **102 tests**, couverture **97 %** · **0 violation axe-core** (WCAG 2 A/AA) sur toutes les pages
+- **117 tests**, couverture **97 %** · **0 violation axe-core** (WCAG 2 A/AA) sur toutes les pages
 
 ---
 
@@ -33,7 +33,7 @@ Connexion possible avec le **nom d'utilisateur ou l'e-mail**.
 
 | Rôle | Ce qu'il peut faire |
 |------|---------------------|
-| Visiteur | Accueil, inscription (rôle forcé à *Citoyen*), connexion, mot de passe oublié |
+| Visiteur | Accueil, inscription (rôle forcé à *Citoyen*) avec **confirmation par e-mail**, connexion, mot de passe oublié **par e-mail** |
 | Citoyen | Voir/modifier son profil alimentaire et ses infos, avatar, changer son mot de passe, **analyse IA**, adopter l'objectif CO₂ proposé, supprimer son compte |
 | Nutritionniste | Consulter les profils que les citoyens ont choisi de **partager** (`profil_public`) + leur dernière analyse |
 | Administrateur | **CRUD complet des comptes** (liste, recherche, filtres, création, modification, suppression, activation/désactivation), statistiques, dashboard `/admin/` |
@@ -51,7 +51,27 @@ Connexion possible avec le **nom d'utilisateur ou l'e-mail**.
 Empreinte estimée = émissions moyennes du régime × 7 (Scarborough et al., 2014, *Climatic Change*) :
 végan 2,89 · végétarien 3,81 · pescétarien 3,91 · flexitarien 4,67 · omnivore 5,63 · gros mangeur de viande 7,19 kg CO₂e/jour.
 
-## 3. Intelligence artificielle
+## 3. E-mails
+
+| Quand | E-mail envoyé |
+|---|---|
+| Inscription | Lien de **confirmation de l'adresse** (valable 24 h, usage unique). La connexion est **bloquée** tant que l'adresse n'est pas confirmée ; lien « Renvoyer le lien » disponible. |
+| Mot de passe oublié | Lien de **réinitialisation** (24 h, usage unique). Même réponse que l'e-mail existe ou non (anti-énumération). |
+| Mot de passe changé (depuis le profil ou après réinitialisation) | **Notification de sécurité** avec un lien « Ce n'est pas vous ? ». |
+
+Jetons signés avec `SECRET_KEY` (`PasswordResetTokenGenerator`) : le lien de confirmation devient invalide
+dès que l'adresse est confirmée ou modifiée. E-mails en **HTML + texte**. Comptes créés par un admin,
+superutilisateurs et comptes démo sont considérés comme confirmés. Si l'envoi échoue, le compte est créé
+et l'utilisateur est invité à renvoyer le lien (pas de page d'erreur).
+
+**Configuration** (dans `.env`, le backend est choisi automatiquement) :
+- *Rien* → les e-mails s'affichent dans le terminal (pratique pour tester / démo).
+- *Gmail (local)* : activer la validation en 2 étapes, créer un **mot de passe d'application**
+  (myaccount.google.com/apppasswords), puis `EMAIL_HOST_USER=...@gmail.com` et `EMAIL_HOST_PASSWORD=...`.
+- *Render* : l'offre gratuite **bloque les ports SMTP** → utiliser l'API HTTPS **Brevo** (300 e-mails/jour
+  gratuits) : `BREVO_API_KEY=...` et `DEFAULT_FROM_EMAIL=EcoAssiette <expediteur.verifie.dans.brevo@...>`.
+
+## 3 bis. Intelligence artificielle
 
 **Besoin réel couvert :** à l'inscription, l'utilisateur ne sait pas quel objectif se fixer ni par quoi
 remplacer les plats qu'il aime. L'IA transforme son profil en : empreinte estimée, **objectif CO₂ réaliste**
@@ -92,7 +112,7 @@ nombre d'analyses, part Gemini/local, échecs, temps moyen et p95.
 ## 4. Tests
 
 ```bash
-python manage.py test users              # 102 tests
+python manage.py test users              # 117 tests
 coverage run manage.py test users && coverage report && coverage html   # rapport dans htmlcov/
 ```
 
@@ -103,6 +123,7 @@ coverage run manage.py test users && coverage report && coverage html   # rappor
 | `test_views.py` | statuts HTTP, inscription/connexion/déconnexion, reset par e-mail, IA (202, polling), 404/500 |
 | `test_permissions.py` | **accès par URL directe** : anonyme → login, citoyen → 403, nutritionniste limité, CRUD admin |
 | `test_api.py` | API DRF : authentification, permissions, validation métier (400) |
+| `test_emails.py` | confirmation (envoi, connexion bloquée, lien unique, lien invalide, renvoi), notification de changement, reset complet, backend Brevo |
 | `test_ai.py` | Gemini simulé (`mock`) : succès, filtrage, timeout, 429, JSON invalide → repli ; tâche ; commandes |
 
 ## 5. Sécurité (bases OWASP)
@@ -165,7 +186,9 @@ users/
   tasks.py         exécution asynchrone (Celery / thread)
   api/             DRF
   management/commands/  seed_demo, evaluer_ia
-  tests/           102 tests
+  emails.py        e-mails (confirmation, notification) + jeton
+  email_backends.py  envoi via API Brevo
+  tests/           117 tests
 templates/         base, accueil, includes accessibles, erreurs
 static/            css, js (menu, analyse IA)
 ```

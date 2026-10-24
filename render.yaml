@@ -25,6 +25,10 @@ services:
         value: "False"
       - key: GEMINI_API_KEY
         sync: false
+      - key: BREVO_API_KEY          # e-mails (Render gratuit bloque l'SMTP)
+        sync: false
+      - key: DEFAULT_FROM_EMAIL     # ex. "EcoAssiette <adresse.verifiee@gmail.com>"
+        sync: false
       - key: DJANGO_SUPERUSER_USERNAME
         sync: false
       - key: DJANGO_SUPERUSER_EMAIL

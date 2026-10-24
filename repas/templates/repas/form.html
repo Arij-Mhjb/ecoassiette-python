@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:820px;margin-inline:auto">
+  <h1>{{ titre }}</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+
+    <h2>Aliments</h2>
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}
+      <div class="alert alert-error" role="alert">{% for e in formset.non_form_errors %}<p>{{ e }}</p>{% endfor %}</div>
+    {% endif %}
+
+    <div id="aliments">
+      {% for f in formset %}
+        <fieldset class="aliment-ligne">
+          <legend class="sr-only">Aliment {{ forloop.counter }}</legend>
+          {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+          {% for field in f.visible_fields %}{% include "includes/champ.html" %}{% endfor %}
+        </fieldset>
+      {% endfor %}
+    </div>
+
+    <template id="modele-aliment">
+      <fieldset class="aliment-ligne">
+        <legend class="sr-only">Nouvel aliment</legend>
+        {% with f=formset.empty_form %}
+          {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
+          {% for field in f.visible_fields %}{% include "includes/champ.html" %}{% endfor %}
+        {% endwith %}
+      </fieldset>
+    </template>
+    <button type="button" class="btn btn-small btn-ghost" id="ajouter-aliment">+ Ajouter un aliment</button>
+
+    <div class="form-actions">
+      <button type="submit" class="btn">Enregistrer</button>
+      <a class="btn btn-ghost" href="{% url 'repas:liste' %}">Annuler</a>
+    </div>
+  </form>
+</div>
+
+<style>
+  .aliment-ligne { display: grid; grid-template-columns: 2fr 2fr 1fr auto; gap: .75rem; align-items: start;
+    border: 1px solid var(--border); border-radius: 10px; padding: .75rem; margin: 0 0 .75rem; }
+  .aliment-ligne .field { margin: 0; }
+  .aliment-ligne .field-check { align-self: center; margin-top: 1.6rem; }
+  @media (max-width: 640px) { .aliment-ligne { grid-template-columns: 1fr; } .aliment-ligne .field-check { margin-top: 0; } }
+</style>
+<script>
+  // Ajoute une nouvelle ligne d'aliment (copie du formulaire vide, __prefix__ remplacé par le bon numéro)
+  document.getElementById("ajouter-aliment").addEventListener("click", function () {
+    const total = document.getElementById("id_elements-TOTAL_FORMS");
+    const n = parseInt(total.value, 10);
+    const html = document.getElementById("modele-aliment").innerHTML.replace(/__prefix__/g, n);
+    document.getElementById("aliments").insertAdjacentHTML("beforeend", html);
+    total.value = n + 1;
+    document.getElementById("id_elements-" + n + "-aliment").focus();
+  });
+</script>
+{% endblock %}

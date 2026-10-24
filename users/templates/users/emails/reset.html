@@ -1,0 +1,7 @@
+{% include "users/emails/_layout_debut.html" %}{% url 'users:password_reset_confirm' uidb64=uid token=token as chemin %}
+<h1 style="font:bold 22px Georgia,serif;margin:0 0 16px">Réinitialiser votre mot de passe</h1>
+<p>Bonjour {{ user.first_name|default:user.username }},</p>
+<p>Vous avez demandé à changer votre mot de passe. Cliquez sur le bouton ci-dessous pour en choisir un nouveau.</p>
+<p style="margin:28px 0"><a href="{{ protocol }}://{{ domain }}{{ chemin }}" style="display:inline-block;background:#2f6b3b;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:999px">Choisir un nouveau mot de passe</a></p>
+<p style="font-size:14px;color:#535e57">Lien valable 24 heures, utilisable une seule fois. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>
+{% include "users/emails/_layout_fin.html" %}

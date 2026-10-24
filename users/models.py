@@ -31,6 +31,10 @@ class Utilisateur(AbstractUser):
         validators=[RegexValidator(r"^\+?[0-9 ]{8,15}$", "Numéro invalide (8 à 15 chiffres, + autorisé).")],
     )
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
+    email_verifie = models.BooleanField(
+        "e-mail confirmé", default=False,
+        help_text="Passe à vrai quand l'utilisateur clique sur le lien reçu par e-mail.",
+    )
 
     REQUIRED_FIELDS = ["email"]
 
@@ -50,6 +54,7 @@ class Utilisateur(AbstractUser):
         self.email = (self.email or "").strip().lower()
         if self.is_superuser:
             self.role = self.Role.ADMIN
+            self.email_verifie = True
         super().save(*args, **kwargs)
 
     @property

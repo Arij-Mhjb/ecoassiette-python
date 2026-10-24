@@ -11,13 +11,17 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
 from .forms import (
     AdminUtilisateurCreationForm, AdminUtilisateurForm, ConnexionForm, FiltreUtilisateursForm,
-    InfosPersonnellesForm, InscriptionForm, ProfilAlimentaireForm, SuppressionCompteForm,
+    InfosPersonnellesForm, InscriptionForm, ProfilAlimentaireForm, RenvoyerConfirmationForm,
+    SuppressionCompteForm,
 )
+from .emails import envoyer_confirmation, jeton_confirmation, notifier_changement_mdp
 from .models import AnalyseProfilIA, ProfilAlimentaire
 from .permissions import PermissionOu403Mixin
 from .tasks import lancer_analyse
@@ -32,11 +36,56 @@ def inscription(request):
         return redirect("users:profil")
     form = InscriptionForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        user = form.save()
-        login(request, user, backend="users.backends.EmailOuUsernameBackend")
-        messages.success(request, f"Bienvenue {user.first_name} ! Complétez votre profil pour une analyse personnalisée.")
-        return redirect("users:modifier_profil")
+        user = form.save()  # compte créé, mais connexion bloquée tant que l'e-mail n'est pas confirmé
+        envoye = envoyer_confirmation(request, user)
+        request.session["email_a_confirmer"] = user.email
+        if not envoye:
+            messages.error(request, "Votre compte est créé mais l'e-mail n'a pas pu être envoyé. "
+                                    "Réessayez avec « Renvoyer le lien ».")
+        return redirect("users:verification_envoyee")
     return render(request, "users/inscription.html", {"form": form})
+
+
+def verification_envoyee(request):
+    return render(request, "users/verification_envoyee.html",
+                  {"email": request.session.get("email_a_confirmer", "")})
+
+
+def confirmer_email(request, uidb64, token):
+    try:
+        user = User.objects.get(pk=force_str(urlsafe_base64_decode(uidb64)))
+    except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+        user = None
+    if user is None or not jeton_confirmation.check_token(user, token):
+        if user is not None and user.email_verifie:
+            messages.info(request, "Votre adresse est déjà confirmée : vous pouvez vous connecter.")
+            return redirect("users:login")
+        return render(request, "users/lien_invalide.html", status=400)
+    user.email_verifie = True
+    user.save(update_fields=["email_verifie"])
+    request.session.pop("email_a_confirmer", None)
+    login(request, user, backend="users.backends.EmailOuUsernameBackend")
+    messages.success(request, f"Adresse confirmée, bienvenue {user.first_name or user.username} ! "
+                              "Complétez votre profil pour une analyse personnalisée.")
+    return redirect("users:modifier_profil")
+
+
+def renvoyer_confirmation(request):
+    form = RenvoyerConfirmationForm(request.POST or None,
+                                    initial={"email": request.session.get("email_a_confirmer", "")})
+    if request.method == "POST" and form.is_valid():
+        user = User.objects.filter(email__iexact=form.cleaned_data["email"], email_verifie=False,
+                                   is_active=True).first()
+        if user:
+            envoyer_confirmation(request, user)
+        request.session["email_a_confirmer"] = form.cleaned_data["email"]
+        # même réponse que le compte existe ou non (anti-énumération)
+        messages.success(request, "Si un compte non confirmé correspond à cette adresse, un nouveau lien vient d'être envoyé.")
+        return redirect("users:verification_envoyee")
+    return render(request, "users/form_page.html", {
+        "form": form, "titre": "Renvoyer le lien de confirmation",
+        "intro": "Le lien précédent a expiré ou vous ne l'avez pas reçu ? Recevez-en un nouveau.",
+    })
 
 
 class ConnexionView(auth_views.LoginView):
@@ -47,6 +96,21 @@ class ConnexionView(auth_views.LoginView):
     def form_valid(self, form):
         messages.success(self.request, "Connexion réussie.")
         return super().form_valid(form)
+
+
+class ReinitialisationConfirmView(auth_views.PasswordResetConfirmView):
+    template_name = "users/form_page.html"
+    success_url = reverse_lazy("users:password_reset_complete")
+    extra_context = {"titre": "Nouveau mot de passe"}
+
+    def form_valid(self, form):
+        reponse = super().form_valid(form)
+        user = form.user
+        if not user.email_verifie:  # cliquer sur le lien prouve aussi la possession de l'e-mail
+            user.email_verifie = True
+            user.save(update_fields=["email_verifie"])
+        notifier_changement_mdp(self.request, user)
+        return reponse
 
 
 class DeconnexionView(auth_views.LogoutView):
@@ -108,8 +172,10 @@ class ChangementMotDePasseView(LoginRequiredMixin, auth_views.PasswordChangeView
     extra_context = {"titre": "Changer mon mot de passe"}
 
     def form_valid(self, form):
-        messages.success(self.request, "Mot de passe modifié.")
-        return super().form_valid(form)
+        reponse = super().form_valid(form)
+        notifier_changement_mdp(self.request, self.request.user)
+        messages.success(self.request, "Mot de passe modifié. Un e-mail de confirmation vous a été envoyé.")
+        return reponse
 
 
 # ============================================================ IA (asynchrone)

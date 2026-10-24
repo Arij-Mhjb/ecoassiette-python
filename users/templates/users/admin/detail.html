@@ -22,7 +22,7 @@
 <div class="grid-2">
   <section class="card" aria-labelledby="t-c"><h2 id="t-c">Compte</h2>
     <dl class="details">
-      <div><dt>E-mail</dt><dd>{{ cible.email }}</dd></div>
+      <div><dt>E-mail</dt><dd>{{ cible.email }} {% if cible.email_verifie %}<span class="badge badge-ok">confirmé</span>{% else %}<span class="badge badge-off">non confirmé</span>{% endif %}</dd></div>
       <div><dt>Téléphone</dt><dd>{{ cible.telephone|default:"—" }}</dd></div>
       <div><dt>Inscription</dt><dd>{{ cible.date_joined|date:"d/m/Y H:i" }}</dd></div>
       <div><dt>Dernière connexion</dt><dd>{{ cible.last_login|date:"d/m/Y H:i"|default:"jamais" }}</dd></div>

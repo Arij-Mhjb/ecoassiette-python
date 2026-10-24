@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Mes repas{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <h1>Mes repas</h1>
+    <p class="muted">{{ paginator.count }} repas enregistré{{ paginator.count|pluralize }}</p>
+  </div>
+  <a class="btn" href="{% url 'repas:ajouter' %}">+ Ajouter un repas</a>
+</div>
+
+<form method="get" class="filters" role="search" aria-label="Filtrer les repas">
+  <div class="field">
+    <label for="f-type">Type de repas</label>
+    <select id="f-type" name="type">
+      <option value="">Tous</option>
+      {% for val, lib in types %}<option value="{{ val }}" {% if val == type_actif %}selected{% endif %}>{{ lib }}</option>{% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn btn-small">Filtrer</button>
+</form>
+
+{% if repas_list %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Liste des repas (défilable)">
+<table class="table">
+  <caption class="sr-only">Mes repas</caption>
+  <thead><tr><th scope="col">Repas</th><th scope="col">Aliments</th><th scope="col">Total</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+  <tbody>
+  {% for r in repas_list %}
+    <tr>
+      <th scope="row"><a href="{% url 'repas:detail' r.pk %}">{{ r }}</a>{% if r.note %}<br><span class="small muted">{{ r.note }}</span>{% endif %}</th>
+      <td>{% for e in r.elements.all %}{{ e.aliment }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td>{{ r.total_g|default:0 }} g</td>
+      <td class="actions-cell">
+        <a href="{% url 'repas:modifier' r.pk %}">Modifier<span class="sr-only"> {{ r }}</span></a>
+        <a class="danger-link" href="{% url 'repas:supprimer' r.pk %}">Supprimer<span class="sr-only"> {{ r }}</span></a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "users/_pagination.html" %}
+{% else %}
+<p class="empty">Aucun repas pour l'instant. <a href="{% url 'repas:ajouter' %}">Ajoutez votre premier repas</a>.</p>
+{% endif %}
+{% endblock %}

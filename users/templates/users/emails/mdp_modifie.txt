@@ -1,0 +1,9 @@
+Bonjour {{ user.first_name|default:user.username }},
+
+Le mot de passe de votre compte EcoAssiette ({{ user.username }}) vient d'être modifié, le {% now "d/m/Y à H:i" %}.
+
+Si c'est bien vous, aucune action n'est nécessaire.
+Si ce n'est PAS vous, réinitialisez immédiatement votre mot de passe :
+{{ lien_reset }}
+
+L'équipe EcoAssiette

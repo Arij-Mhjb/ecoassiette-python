@@ -1,0 +1,10 @@
+Bonjour {{ user.first_name|default:user.username }},
+
+Merci pour votre inscription sur EcoAssiette !
+Pour activer votre compte, confirmez votre adresse e-mail en ouvrant ce lien (valable 24 heures) :
+
+{{ lien }}
+
+Si vous n'avez pas créé de compte, ignorez simplement ce message.
+
+L'équipe EcoAssiette

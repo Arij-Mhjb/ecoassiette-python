@@ -14,12 +14,6 @@ class AuthViewsTest(BaseTest):
             with self.subTest(nom=nom):
                 self.assertEqual(self.client.get(reverse(nom)).status_code, 200)
 
-    def test_inscription_connecte_et_redirige(self):
-        r = self.client.post(reverse("users:inscription"), donnees_inscription())
-        self.assertRedirects(r, reverse("users:modifier_profil"))
-        self.assertTrue(Utilisateur.objects.filter(username="nouveau").exists())
-        self.assertEqual(int(self.client.session["_auth_user_id"]), Utilisateur.objects.get(username="nouveau").pk)
-
     def test_inscription_si_deja_connecte(self):
         self.client.force_login(self.citoyen)
         self.assertRedirects(self.client.get(reverse("users:inscription")), reverse("users:profil"))
@@ -56,6 +50,7 @@ class AuthViewsTest(BaseTest):
         self.assertRedirects(r, reverse("users:password_reset_done"))
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("/comptes/mot-de-passe/reinitialiser/", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].alternatives[0][1], "text/html")
 
     def test_changement_mot_de_passe(self):
         self.client.force_login(self.citoyen)
