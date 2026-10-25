@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Mes surplus{% endblock %}
+{% block content %}
+<div class="page-head row-between"><div><h1>Mes surplus</h1><p class="muted">Gérez les annonces et les demandes de réservation.</p></div><a class="btn" href="{% url 'food_rescue:creer' %}">{% icon "plus" %}Publier</a></div>
+{% if annonces %}<div class="table-wrap" tabindex="0" role="region" aria-label="Mes annonces de surplus"><table class="table"><caption class="sr-only">Mes annonces</caption><thead><tr><th scope="col">Annonce</th><th scope="col">Statut</th><th scope="col">Demandes</th><th scope="col">Fin</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>
+{% for annonce in annonces %}<tr><th scope="row"><a href="{% url 'food_rescue:detail' annonce.pk %}">{{ annonce.titre }}</a><br><span class="small muted">{{ annonce.ville }}</span></th><td><span class="badge statut-{{ annonce.statut }}">{{ annonce.get_statut_display }}</span></td><td>{{ annonce.reservations.count }}</td><td>{{ annonce.disponible_jusquau|date:"d/m/Y H:i" }}</td><td class="actions-cell"><a class="icon-btn" href="{% url 'food_rescue:modifier' annonce.pk %}" title="Modifier">{% icon "edit" %}<span class="sr-only">Modifier {{ annonce.titre }}</span></a><a class="icon-btn icon-btn-danger" href="{% url 'food_rescue:supprimer' annonce.pk %}" title="Supprimer">{% icon "trash" %}<span class="sr-only">Supprimer {{ annonce.titre }}</span></a></td></tr>{% endfor %}
+</tbody></table></div>{% else %}<div class="empty"><p>Vous n'avez encore publié aucun surplus.</p></div>{% endif %}
+{% endblock %}
+

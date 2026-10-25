@@ -5,7 +5,7 @@ Ce dépôt contient le **module Utilisateurs & profils** (app Django `users`) : 
 rôles, profil alimentaire, analyse IA du profil, gestion des comptes (CRUD), API REST.
 
 - Django 5.2 · DRF · PostgreSQL (Render) / SQLite (local) · WhiteNoise · Celery (optionnel)
-- **117 tests**, couverture **97 %** · **0 violation axe-core** (WCAG 2 A/AA) sur toutes les pages
+- **323 tests**, couverture globale **91 %** (branches incluses) · audit axe-core historique sans violation sur les pages couvertes
 
 ---
 
@@ -198,6 +198,13 @@ users/
   emails.py        e-mails (confirmation, notification) + jeton
   email_backends.py  envoi via API Brevo
   tests/           117 tests
+food_rescue/
+  models.py        annonces, analyses IA, réservations, collectes
+  ai.py            vision Gemini + moteur local gratuit
+  services.py      recommandations explicables
+  tasks.py         traitement asynchrone
+  management/      données de démo + évaluation IA
+  tests/           modèles, CRUD, permissions, IA et scénario complet
 templates/         base, accueil, includes accessibles, erreurs
 static/            css, js (menu, analyse IA)
 ```
@@ -216,3 +223,62 @@ static/            css, js (menu, analyse IA)
   respectées, cohérence des chiffres, pertinence par rapport aux goûts) + latence.
 - **Comment empêcher le contournement par URL ?** Toutes les vues sensibles sont protégées côté serveur
   et testées (`test_permissions.py`), y compris les requêtes POST directes.
+
+## 11. Food Rescue AI — surplus alimentaires solidaires
+
+L'application Django `food_rescue` transforme un surplus en don traçable : publication, analyse IA,
+recommandation, réservation, acceptation, code de collecte et double confirmation. L'adresse précise
+reste masquée jusqu'à l'acceptation de la demande.
+
+### Parcours de démonstration complet
+
+```bash
+python manage.py migrate
+python manage.py seed_demo
+python manage.py seed_food_rescue
+python manage.py runserver
+```
+
+Tous les comptes de démonstration utilisent `EcoDemo2026!` :
+
+1. Se connecter avec `amine`, ouvrir **Food Rescue**, puis publier un surplus avec ou sans photo.
+2. Constater l'analyse asynchrone : Gemini si `GEMINI_API_KEY` est définie, sinon moteur local gratuit.
+3. Se connecter avec `yasmine`, ouvrir l'annonce et envoyer une demande de réservation.
+4. Revenir avec `amine`, accepter la demande et noter le code de collecte.
+5. Confirmer la remise côté donateur, puis la récupération côté bénéficiaire avec le code.
+6. Consulter **Mon impact Food Rescue** : la collecte et le CO₂ évité sont comptabilisés.
+
+La commande de seed ajoute aussi quatre scénarios prêts à présenter : disponible, urgent, réservé et collecté.
+
+### IA gratuite et résiliente
+
+- **Gemini API** : clé gratuite créée dans Google AI Studio, utilisée via HTTPS et stockée uniquement dans
+  `GEMINI_API_KEY`. Elle analyse le texte et, lorsqu'elle existe, la photo.
+- **Moteur local** : classifieur déterministe français/tounsi, détection d'allergènes, urgence temporelle
+  et estimation CO₂. Il fonctionne hors ligne, sans clé et sans coût.
+- **Asynchronisme** : thread local par défaut ; Celery + Redis lorsque `USE_CELERY=True`.
+- **Validation humaine** : l'IA ne certifie jamais la sécurité sanitaire et ses champs restent vérifiables.
+
+### Tests et métriques
+
+```bash
+python manage.py test food_rescue
+coverage run manage.py test food_rescue
+coverage report -m
+python manage.py evaluer_food_rescue
+python manage.py evaluer_food_rescue --json rapport_food_rescue.json
+```
+
+Le jeu annoté contient 20 descriptions couvrant les six catégories. La commande calcule accuracy,
+précision, rappel, F1 macro et matrice de confusion. Le moteur local de référence obtient actuellement
+une accuracy de 0,90 et un F1 macro de 0,925 sur ce petit jeu de démonstration ; ces résultats ne doivent
+pas être présentés comme une validation scientifique générale.
+
+### Entités et sécurité
+
+- `AnnonceSurplus` : CRUD propriétaire, statut, disponibilité, conservation et impact estimé.
+- `AnalyseSurplusIA` : résultat structuré, source, erreur et latence.
+- `ReservationSurplus` : une demande par bénéficiaire et par annonce.
+- `CollecteSurplus` : double confirmation donateur/bénéficiaire.
+- Toutes les écritures utilisent POST + CSRF ; les requêtes sont filtrées par propriétaire et testées
+  contre l'accès direct par URL.

@@ -1,5 +1,5 @@
 [run]
-source = users,repas,config
+source = users,repas,impact,food_rescue,config
 omit =
     */migrations/*
     */tests/*
