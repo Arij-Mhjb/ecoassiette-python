@@ -497,6 +497,10 @@ class BilanTest(TestCase):
         self.assertEqual((f["sains"], f["fatigues"], f["morts"]), (3, 4, 7))
         self.assertEqual(foret(2, True)["morts"], 14)
         self.assertIn("Ajoutez", foret(0, False)["message"])
+        vide = foret(0, False)          # aucun repas : de jeunes pousses, pas une forêt « parfaite »
+        self.assertTrue(vide["vide"])
+        self.assertEqual({a["etat"] for a in vide["arbres"]}, {"pousse"})
+        self.assertEqual(vide["sains"], 0)
         self.assertEqual(len({a["etat"] for a in foret(1.15, True)["arbres"]}), 3)
         for ratio, mot in [(0.5, "luxuriante"), (0.9, "tient bon"), (1.2, "souffre"), (2, "Alerte")]:
             self.assertIn(mot, foret(ratio, True)["message"])

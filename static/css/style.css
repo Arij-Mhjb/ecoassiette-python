@@ -620,6 +620,11 @@ progress.progress-alerte::-moz-progress-bar { background: linear-gradient(90deg,
 .arbre-sain .feuillage circle { fill: #2f7d3e; } .arbre-sain .feuillage circle:first-child { fill: #3b9a4c; }
 .arbre-fatigue .feuillage circle { fill: #c9a227; } .arbre-fatigue .feuillage circle:first-child { fill: #d8b744; }
 .arbre-mort .tronc { fill: #6b4a2e; }
+.butte { fill: #a5875f; }
+.pousse .tige { stroke: #3f8a3a; stroke-width: 2.2; stroke-linecap: round; fill: none; }
+.pousse .feuille { fill: #5fb04c; }
+.pousse { transform-box: fill-box; transform-origin: 50% 100%; animation: balance 3s ease-in-out infinite; animation-delay: var(--d); }
+.foret-vide .colline { fill: #c9dcb0; } .foret-vide .sol { fill: #b59a6f; }
 .arbre { transform-box: fill-box; transform-origin: 50% 100%; animation: pousse .9s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--d) * .25); }
 .arbre-sain .feuillage, .arbre-fatigue .feuillage { transform-box: fill-box; transform-origin: 50% 100%; animation: balance 4s ease-in-out infinite; animation-delay: var(--d); }
 .feuille-tombe { fill: #c9a227; animation: tombe 3.5s ease-in infinite; animation-delay: var(--d); }

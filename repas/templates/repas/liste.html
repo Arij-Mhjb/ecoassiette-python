@@ -43,9 +43,9 @@
       <h3>{% icon "trees" 18 %}Ma forêt</h3>
     {% with f=bilan.foret %}
     <figure class="foret-wrap">
-      <svg class="foret{% if bilan.depasse %} foret-alerte{% endif %}" viewBox="0 0 600 200" role="img" aria-labelledby="foret-titre foret-desc">
+      <svg class="foret{% if bilan.depasse %} foret-alerte{% endif %}{% if f.vide %} foret-vide{% endif %}" viewBox="0 0 600 200" role="img" aria-labelledby="foret-titre foret-desc">
         <title id="foret-titre">Ma forêt</title>
-        <desc id="foret-desc">{{ f.sains }} arbres en bonne santé, {{ f.fatigues }} fatigués et {{ f.morts }} morts.</desc>
+        <desc id="foret-desc">{% if f.vide %}Terrain avec de jeunes pousses : aucun repas enregistré cette semaine.{% else %}{{ f.sains }} arbres en bonne santé, {{ f.fatigues }} fatigués et {{ f.morts }} morts.{% endif %}</desc>
         <defs>
           <linearGradient id="ciel" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" class="ciel-haut"/><stop offset="1" class="ciel-bas"/>
@@ -58,8 +58,11 @@
         {% for a in f.arbres %}
         <g transform="translate({{ a.x|stringformat:'.1f' }} {{ a.y }}) scale({{ a.echelle|stringformat:'.2f' }})">
           <g class="arbre arbre-{{ a.etat }}" style="--d: {{ a.delai|stringformat:'.2f' }}s">
-            <rect class="tronc" x="-3" y="-32" width="6" height="32" rx="2"/>
-            {% if a.etat == "mort" %}
+            {% if a.etat == "pousse" %}
+              <ellipse class="butte" cx="0" cy="0" rx="9" ry="2.6"/>
+              <g class="pousse"><path class="tige" d="M0 0 V-14"/><ellipse class="feuille" cx="-5" cy="-14" rx="5" ry="2.6" transform="rotate(-30 -5 -14)"/><ellipse class="feuille" cx="5" cy="-17" rx="5" ry="2.6" transform="rotate(30 5 -17)"/></g>
+            {% else %}<rect class="tronc" x="-3" y="-32" width="6" height="32" rx="2"/>{% endif %}
+            {% if a.etat == "pousse" %}{% elif a.etat == "mort" %}
               <path class="branches" d="M0 -30 L-11 -50 M0 -38 L10 -56 M0 -44 L-3 -62"/>
             {% else %}
               <g class="feuillage"><circle cy="-54" r="21"/><circle cx="-14" cy="-40" r="15"/><circle cx="14" cy="-40" r="15"/></g>

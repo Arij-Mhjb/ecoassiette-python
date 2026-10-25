@@ -34,10 +34,15 @@ def _totaux_par_jour(user, debut):
 def foret(ratio, a_des_repas):
     """Etat de la forêt selon le ratio émissions / objectif (0 = parfait, 1 = objectif atteint)."""
     borne = lambda v: max(0.0, min(1.0, v))  # noqa: E731
-    sains = round(NB_ARBRES * borne((1.3 - ratio) / 0.7)) if a_des_repas else NB_ARBRES
-    morts = round(NB_ARBRES * borne((ratio - 1.0) / 0.3)) if a_des_repas else 0
-    fatigues = max(0, NB_ARBRES - sains - morts)
-    etats = ["sain"] * sains + ["fatigue"] * fatigues + ["mort"] * morts
+    if a_des_repas:
+        sains = round(NB_ARBRES * borne((1.3 - ratio) / 0.7))
+        morts = round(NB_ARBRES * borne((ratio - 1.0) / 0.3))
+        fatigues = max(0, NB_ARBRES - sains - morts)
+        etats = ["sain"] * sains + ["fatigue"] * fatigues + ["mort"] * morts
+    else:
+        # aucun repas cette semaine : la forêt n'est pas encore plantée, seulement de jeunes pousses
+        sains = fatigues = morts = 0
+        etats = ["pousse"] * NB_ARBRES
     # mélange déterministe pour que les arbres malades soient répartis dans la forêt
     ordre = sorted(range(NB_ARBRES), key=lambda i: (i * 7) % NB_ARBRES)
     arbres = []
@@ -51,7 +56,7 @@ def foret(ratio, a_des_repas):
         })
     arbres.sort(key=lambda a: a["y"])          # les arbres du fond sont dessinés en premier
     if not a_des_repas:
-        message = "Ajoutez vos repas : votre forêt réagit à chacun d'eux"
+        message = "Ajoutez vos repas pour planter votre forêt : elle grandit avec chacun d'eux"
     elif ratio <= 0.6:
         message = "Votre forêt est luxuriante. Continuez comme ça !"
     elif ratio <= 1:
@@ -60,7 +65,8 @@ def foret(ratio, a_des_repas):
         message = "Votre forêt souffre : quelques arbres jaunissent."
     else:
         message = "Alerte : votre forêt dépérit. Essayez le simulateur « Et si… » sur vos repas."
-    return {"arbres": arbres, "sains": sains, "fatigues": fatigues, "morts": morts, "message": message}
+    return {"arbres": arbres, "sains": sains, "fatigues": fatigues, "morts": morts, "message": message,
+            "vide": not a_des_repas}
 
 
 def serie_verte(user, objectif, totaux=None):
