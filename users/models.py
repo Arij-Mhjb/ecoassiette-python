@@ -7,7 +7,12 @@ Module « Utilisateurs & profils ».
 - AnalyseProfilIA : historique des analyses IA du profil (résultat, source,
   temps de réponse) -> sert aussi aux métriques de performance.
 """
+import hashlib
+import secrets
+from datetime import timedelta
 from decimal import Decimal
+
+from django.conf import settings
 
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
@@ -201,3 +206,115 @@ class AnalyseProfilIA(models.Model):
     @property
     def est_terminee(self):
         return self.statut in (self.Statut.TERMINE, self.Statut.ECHEC)
+
+
+# ============================================================ rôle nutritionniste
+# Deux façons de devenir nutritionniste (jamais en se l'attribuant soi-même) :
+#   1. Invitation : un administrateur invite une adresse e-mail -> lien unique (48 h) -> création du compte.
+#   2. Demande : à l'inscription (ou depuis son profil), le citoyen demande le statut ; il reste CITOYEN
+#      tant qu'un administrateur n'a pas validé la demande.
+def _hash_jeton(jeton):
+    return hashlib.sha256(jeton.encode()).hexdigest()
+
+
+class Invitation(models.Model):
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "EN_ATTENTE", "En attente"
+        ACCEPTEE = "ACCEPTEE", "Acceptée"
+        ANNULEE = "ANNULEE", "Annulée"
+
+    email = models.EmailField("adresse e-mail")
+    first_name = models.CharField("prénom", max_length=150, blank=True)
+    last_name = models.CharField("nom", max_length=150, blank=True)
+    role = models.CharField(max_length=20, choices=Utilisateur.Role.choices, default=Utilisateur.Role.NUTRITIONNISTE)
+    # On ne stocke que l'empreinte SHA-256 du jeton : une fuite de la base ne donne pas de lien utilisable.
+    jeton_hash = models.CharField(max_length=64, unique=True, editable=False)
+    statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.EN_ATTENTE)
+    invite_par = models.ForeignKey(Utilisateur, on_delete=models.SET_NULL, null=True, related_name="invitations_envoyees")
+    utilisateur = models.OneToOneField(Utilisateur, on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name="invitation", help_text="Compte créé à partir de l'invitation.")
+    cree_le = models.DateTimeField(default=timezone.now)
+    expire_le = models.DateTimeField()
+    acceptee_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "invitation"
+        verbose_name_plural = "invitations"
+        ordering = ["-cree_le"]
+
+    def __str__(self):
+        return f"Invitation {self.get_role_display().lower()} — {self.email}"
+
+    def save(self, *args, **kwargs):
+        self.email = (self.email or "").strip().lower()
+        super().save(*args, **kwargs)
+
+    def nouveau_jeton(self):
+        """Génère un jeton aléatoire (256 bits), en garde l'empreinte, repousse l'expiration. Renvoie le jeton en clair."""
+        jeton = secrets.token_urlsafe(32)
+        self.jeton_hash = _hash_jeton(jeton)
+        self.expire_le = timezone.now() + timedelta(hours=settings.INVITATION_DUREE_HEURES)
+        return jeton
+
+    @classmethod
+    def depuis_jeton(cls, jeton):
+        return cls.objects.filter(jeton_hash=_hash_jeton(jeton or "")).first()
+
+    @property
+    def est_expiree(self):
+        return self.statut == self.Statut.EN_ATTENTE and timezone.now() >= self.expire_le
+
+    @property
+    def est_utilisable(self):
+        return self.statut == self.Statut.EN_ATTENTE and not self.est_expiree
+
+    @property
+    def statut_affiche(self):
+        return "Expirée" if self.est_expiree else self.get_statut_display()
+
+
+class DemandeNutritionniste(models.Model):
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "EN_ATTENTE", "En attente"
+        ACCEPTEE = "ACCEPTEE", "Acceptée"
+        REFUSEE = "REFUSEE", "Refusée"
+
+    utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name="demandes_nutritionniste")
+    numero_ordre = models.CharField(
+        "numéro d'inscription à l'ordre", max_length=30,
+        validators=[RegexValidator(r"^[A-Za-z0-9\-/ ]{3,30}$", "Numéro invalide (lettres, chiffres, - et /).")],
+        help_text="Numéro d'inscription au Conseil / à l'Ordre des diététiciens-nutritionnistes.",
+    )
+    etablissement = models.CharField("lieu d'exercice", max_length=150, help_text="Cabinet, hôpital, clinique…")
+    message = models.TextField("message (facultatif)", max_length=500, blank=True)
+    statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.EN_ATTENTE)
+    motif_refus = models.CharField("motif du refus", max_length=300, blank=True)
+    traitee_par = models.ForeignKey(Utilisateur, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name="demandes_traitees")
+    cree_le = models.DateTimeField(default=timezone.now)
+    traitee_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "demande de statut nutritionniste"
+        verbose_name_plural = "demandes de statut nutritionniste"
+        ordering = ["-cree_le"]
+        constraints = [
+            # une seule demande en attente à la fois par utilisateur
+            models.UniqueConstraint(fields=["utilisateur"], condition=models.Q(statut="EN_ATTENTE"),
+                                    name="une_demande_en_attente_par_utilisateur"),
+        ]
+
+    def __str__(self):
+        return f"Demande de {self.utilisateur} ({self.get_statut_display().lower()})"
+
+    def accepter(self, admin):
+        self.statut, self.traitee_par, self.traitee_le = self.Statut.ACCEPTEE, admin, timezone.now()
+        self.save()
+        u = self.utilisateur
+        u.role = Utilisateur.Role.NUTRITIONNISTE
+        u.save()            # le signal synchronise le groupe et donc les permissions
+
+    def refuser(self, admin, motif):
+        self.statut, self.traitee_par, self.traitee_le = self.Statut.REFUSEE, admin, timezone.now()
+        self.motif_refus = motif
+        self.save()

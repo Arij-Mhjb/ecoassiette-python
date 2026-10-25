@@ -1,0 +1,8 @@
+Bonjour {{ user.first_name|default:user.username }},
+
+Nous n'avons pas pu valider votre demande de statut nutritionniste.
+{% if d.motif_refus %}Motif : {{ d.motif_refus }}
+{% endif %}
+Votre compte citoyen reste actif ; vous pouvez refaire une demande depuis votre profil : {{ lien }}
+
+L'équipe EcoAssiette

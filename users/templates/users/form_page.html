@@ -5,7 +5,7 @@
 <div class="narrow card">
   <div class="auth-tete">
     {% with t=titre|lower %}
-    <span class="auth-ico">{% if "passe" in t %}{% icon "lock" 26 %}{% elif "lien" in t %}{% icon "mail" 26 %}{% elif "habitudes" in t %}{% icon "leaf" 26 %}{% elif "créer" in t %}{% icon "user-plus" 26 %}{% else %}{% icon "edit" 26 %}{% endif %}</span>
+    <span class="auth-ico">{% if "passe" in t %}{% icon "lock" 26 %}{% elif "lien" in t %}{% icon "mail" 26 %}{% elif "nutritionniste" in t %}{% icon "chef-hat" 26 %}{% elif "habitudes" in t %}{% icon "leaf" 26 %}{% elif "créer" in t %}{% icon "user-plus" 26 %}{% else %}{% icon "edit" 26 %}{% endif %}</span>
     {% endwith %}
     <h1>{{ titre }}</h1>
     {% if intro %}<p>{{ intro }}</p>{% endif %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Demandes nutritionnistes{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <p class="eyebrow">{% icon "shield" 14 %}Administration</p>
+    <h1>Demandes nutritionnistes</h1>
+    <p class="muted">Vérifiez le numéro d'ordre avant de valider : un nutritionniste accède aux profils partagés par les citoyens.</p>
+  </div>
+  <a class="btn" href="{% url 'users:admin_invitations' %}">{% icon "mail" %}Inviter une nutritionniste</a>
+</div>
+{% include "users/admin/_onglets.html" %}
+
+<h2 class="section-titre"><span class="h-ico h-ico-amber">{% icon "clock" %}</span>En attente ({{ en_attente|length }})</h2>
+{% if en_attente %}
+<ul class="demandes">
+  {% for d in en_attente %}
+  <li class="card demande">
+    <div>
+      <div class="demande-qui">
+        <span class="avatar avatar-xs avatar-initiales" style="width:44px;height:44px;font-size:.95rem" aria-hidden="true">{{ d.utilisateur.first_name|first|upper }}{{ d.utilisateur.last_name|first|upper }}</span>
+        <div>
+          <h3><a href="{% url 'users:admin_detail' d.utilisateur.pk %}">{{ d.utilisateur.get_full_name|default:d.utilisateur.username }}</a></h3>
+          <p>{{ d.utilisateur.email }} · demande du {{ d.cree_le|date:"d/m/Y à H:i" }}</p>
+        </div>
+      </div>
+      <dl class="details">
+        <div><dt>N° d'ordre</dt><dd>{{ d.numero_ordre }}</dd></div>
+        <div><dt>Lieu d'exercice</dt><dd>{{ d.etablissement }}</dd></div>
+        {% if d.message %}<div><dt>Message</dt><dd>{{ d.message }}</dd></div>{% endif %}
+        <div><dt>E-mail confirmé</dt><dd>{% if d.utilisateur.email_verifie %}<span class="badge badge-ok">oui</span>{% else %}<span class="badge badge-off">non</span>{% endif %}</dd></div>
+      </dl>
+    </div>
+    <div class="demande-actions">
+      <form method="post" action="{% url 'users:admin_demande_accepter' d.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-block">{% icon "check" %}Valider<span class="sr-only"> la demande de {{ d.utilisateur }}</span></button>
+      </form>
+      <form method="post" action="{% url 'users:admin_demande_refuser' d.pk %}" class="refus">
+        {% csrf_token %}
+        <label class="sr-only" for="motif-{{ d.pk }}">Motif du refus pour {{ d.utilisateur }}</label>
+        <input type="text" id="motif-{{ d.pk }}" name="motif" maxlength="300" required placeholder="Motif du refus…">
+        <button type="submit" class="btn btn-small btn-danger">{% icon "x" 16 %}Refuser</button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty">{% icon "check-circle" 28 %}<p><strong>Aucune demande en attente.</strong></p><p>Les nouvelles demandes apparaîtront ici et vous serez prévenu par e-mail.</p></div>
+{% endif %}
+
+{% if traitees %}
+<h2 class="section-titre" style="margin-top:2.5rem"><span class="h-ico h-ico-blue">{% icon "clock" %}</span>Historique</h2>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Historique des demandes (défilable)">
+<table class="table">
+  <caption class="sr-only">Demandes déjà traitées</caption>
+  <thead><tr><th scope="col">Demandeur</th><th scope="col">N° d'ordre</th><th scope="col">Décision</th><th scope="col">Par</th><th scope="col">Le</th></tr></thead>
+  <tbody>
+  {% for d in traitees %}
+    <tr>
+      <th scope="row">{{ d.utilisateur.get_full_name|default:d.utilisateur.username }}<br><span class="small muted">{{ d.utilisateur.email }}</span></th>
+      <td>{{ d.numero_ordre }}</td>
+      <td><span class="statut statut-{{ d.statut }}">{{ d.get_statut_display }}</span>{% if d.motif_refus %}<br><span class="small muted">{{ d.motif_refus }}</span>{% endif %}</td>
+      <td>{{ d.traitee_par|default:"—" }}</td>
+      <td>{{ d.traitee_le|date:"d/m/Y H:i" }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

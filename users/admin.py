@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import AnalyseProfilIA, ProfilAlimentaire, Utilisateur
+from .models import DemandeNutritionniste, Invitation, AnalyseProfilIA, ProfilAlimentaire, Utilisateur
 
 
 class ProfilInline(admin.StackedInline):
@@ -50,3 +50,22 @@ class AnalyseProfilIAAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(DemandeNutritionniste)
+class DemandeNutritionnisteAdmin(admin.ModelAdmin):
+    list_display = ("utilisateur", "numero_ordre", "etablissement", "statut", "cree_le", "traitee_par", "traitee_le")
+    list_filter = ("statut",)
+    search_fields = ("utilisateur__username", "utilisateur__email", "numero_ordre", "etablissement")
+    readonly_fields = ("cree_le", "traitee_le", "traitee_par")
+
+
+@admin.register(Invitation)
+class InvitationAdmin(admin.ModelAdmin):
+    list_display = ("email", "role", "statut", "invite_par", "cree_le", "expire_le", "acceptee_le")
+    list_filter = ("statut", "role")
+    search_fields = ("email", "first_name", "last_name")
+    readonly_fields = ("jeton_hash", "cree_le", "acceptee_le", "utilisateur")
+
+    def has_add_permission(self, request):
+        return False   # une invitation se crée depuis /comptes/gestion/invitations/ (envoi de l'e-mail)

@@ -31,7 +31,7 @@
               <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' or request.resolver_match.url_name == 'nutri_profil_detail' %}aria-current="page"{% endif %}>{% icon "users" %}Profils citoyens</a></li>
             {% endif %}
             {% if perms.users.gerer_utilisateurs %}
-              <li><a href="{% url 'users:admin_liste' %}" {% if request.resolver_match.url_name == 'admin_liste' %}aria-current="page"{% endif %}>{% icon "shield" %}Comptes</a></li>
+              <li><a href="{% url 'users:admin_liste' %}" {% if request.resolver_match.url_name == 'admin_liste' or request.resolver_match.url_name == 'admin_demandes' or request.resolver_match.url_name == 'admin_invitations' %}aria-current="page"{% endif %}>{% icon "shield" %}Comptes{% if nb_demandes_attente %} <span class="pastille" title="Demandes nutritionnistes en attente">{{ nb_demandes_attente }}<span class="sr-only"> demande(s) en attente</span></span>{% endif %}</a></li>
               <li><a href="{% url 'users:admin_stats' %}" {% if request.resolver_match.url_name == 'admin_stats' %}aria-current="page"{% endif %}>{% icon "chart" %}Statistiques</a></li>
             {% endif %}
             <li class="user-menu-li">

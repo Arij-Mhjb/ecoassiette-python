@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Invitations{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p class="eyebrow">{% icon "shield" 14 %}Administration</p>
+  <h1>Inviter une nutritionniste</h1>
+  <p class="muted">Elle reçoit un lien personnel (usage unique, valable 48 h) pour créer son compte : aucune validation supplémentaire n'est nécessaire.</p>
+</div>
+{% include "users/admin/_onglets.html" %}
+
+<div class="grid-2" style="align-items:start">
+  <section class="card" aria-labelledby="t-inviter">
+    <h2 id="t-inviter"><span class="h-ico">{% icon "user-plus" %}</span>Nouvelle invitation</h2>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "includes/form.html" %}
+      <button type="submit" class="btn">{% icon "mail" %}Envoyer l'invitation</button>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="t-comment">
+    <h2 id="t-comment"><span class="h-ico h-ico-blue">{% icon "info" %}</span>Comment ça marche</h2>
+    <ol class="steps-mini">
+      <li>Vous saisissez l'e-mail de la nutritionniste.</li>
+      <li>Elle reçoit un lien sécurisé et choisit son identifiant et son mot de passe.</li>
+      <li>Son compte est créé directement avec le rôle <strong>Nutritionniste</strong> et l'e-mail confirmé.</li>
+    </ol>
+    <p class="small muted">Sécurité : seule l'empreinte SHA-256 du lien est stockée ; renvoyer une invitation invalide l'ancien lien.</p>
+    {% if dernier_lien %}
+    <div class="bandeau bandeau-ok" style="display:block;margin:1rem 0 0">
+      <p><strong>Lien d'invitation pour {{ dernier_lien.email }}</strong> — à transmettre si l'e-mail n'arrive pas (il ne sera plus affiché).</p>
+      <div class="lien-copie">
+        <label class="sr-only" for="lien-invit">Lien d'invitation</label>
+        <input type="text" id="lien-invit" value="{{ dernier_lien.lien }}" readonly>
+        <button type="button" class="btn btn-small" data-copier="lien-invit">{% icon "check" 16 %}<span>Copier</span></button>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<h2 class="section-titre" style="margin-top:2.5rem"><span class="h-ico h-ico-amber">{% icon "mail" %}</span>Invitations envoyées</h2>
+{% if invitations %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Invitations envoyées (défilable)">
+<table class="table">
+  <caption class="sr-only">Invitations envoyées</caption>
+  <thead><tr><th scope="col">Destinataire</th><th scope="col">Statut</th><th scope="col">Envoyée</th><th scope="col">Expire / acceptée</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+  <tbody>
+  {% for inv in invitations %}
+    <tr>
+      <th scope="row">{{ inv.first_name }} {{ inv.last_name }}<br><span class="small muted">{{ inv.email }}</span></th>
+      <td><span class="statut statut-{% if inv.est_expiree %}EXPIREE{% else %}{{ inv.statut }}{% endif %}">{{ inv.statut_affiche }}</span></td>
+      <td>{{ inv.cree_le|date:"d/m/Y H:i" }}<br><span class="small muted">par {{ inv.invite_par|default:"—" }}</span></td>
+      <td>{% if inv.acceptee_le %}{{ inv.acceptee_le|date:"d/m/Y H:i" }}{% if inv.utilisateur %}<br><a class="small" href="{% url 'users:admin_detail' inv.utilisateur.pk %}">@{{ inv.utilisateur.username }}</a>{% endif %}{% elif inv.statut == "EN_ATTENTE" %}{{ inv.expire_le|date:"d/m/Y H:i" }}{% else %}—{% endif %}</td>
+      <td class="actions-cell">
+        {% if inv.statut == "EN_ATTENTE" %}
+        <form method="post" action="{% url 'users:admin_invitation_renvoyer' inv.pk %}" class="inline-form">
+          {% csrf_token %}<button type="submit" class="icon-btn" title="Renvoyer (nouveau lien)">{% icon "refresh" %}<span class="sr-only">Renvoyer l'invitation à {{ inv.email }}</span></button>
+        </form>
+        <form method="post" action="{% url 'users:admin_invitation_annuler' inv.pk %}" class="inline-form">
+          {% csrf_token %}<button type="submit" class="icon-btn icon-btn-danger" title="Annuler l'invitation">{% icon "x" %}<span class="sr-only">Annuler l'invitation de {{ inv.email }}</span></button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty">{% icon "mail" 28 %}<p>Aucune invitation envoyée pour l'instant.</p></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll("[data-copier]").forEach(function (b) {
+  b.addEventListener("click", async function () {
+    const champ = document.getElementById(b.dataset.copier);
+    champ.select();
+    try { await navigator.clipboard.writeText(champ.value); } catch (e) { document.execCommand("copy"); }
+    b.querySelector("span").textContent = "Copié !";
+    setTimeout(function () { b.querySelector("span").textContent = "Copier"; }, 2000);
+  });
+});
+</script>
+{% endblock %}

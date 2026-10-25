@@ -1,0 +1,11 @@
+Bonjour {{ inv.first_name|default:"" }},
+
+{% if invite_par %}{{ invite_par.get_full_name|default:invite_par.username }} vous invite{% else %}Vous êtes invité(e){% endif %} à rejoindre EcoAssiette en tant que nutritionniste.
+
+Créez votre compte avec ce lien personnel (usage unique, valable jusqu'au {{ inv.expire_le|date:"d/m/Y à H:i" }}) :
+
+{{ lien }}
+
+Vous n'attendiez pas cette invitation ? Ignorez simplement ce message.
+
+L'équipe EcoAssiette

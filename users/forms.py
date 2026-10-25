@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
-from .models import ProfilAlimentaire
+from .models import DemandeNutritionniste, Invitation, ProfilAlimentaire
 
 User = get_user_model()
 
@@ -40,30 +40,69 @@ def _email_libre(email, exclure_pk=None):
     return email
 
 
+_DEMANDE = DemandeNutritionniste._meta
+
+
 class InscriptionForm(AccessibleFormMixin, UserCreationForm):
+    type_compte = forms.ChoiceField(
+        label="Je suis", widget=forms.RadioSelect, initial="CITOYEN", required=False,   # par défaut : citoyen
+        choices=[("CITOYEN", "Citoyen·ne — je veux suivre et réduire l'empreinte de mon alimentation"),
+                 ("NUTRITIONNISTE", "Nutritionniste — je veux accompagner des citoyens (validation requise)")],
+    )
     email = forms.EmailField(label="Adresse e-mail", widget=forms.EmailInput(attrs={"autocomplete": "email"}))
     first_name = forms.CharField(label="Prénom", max_length=150, widget=forms.TextInput(attrs={"autocomplete": "given-name"}))
     last_name = forms.CharField(label="Nom", max_length=150, widget=forms.TextInput(attrs={"autocomplete": "family-name"}))
+    numero_ordre = _DEMANDE.get_field("numero_ordre").formfield(required=False)
+    etablissement = _DEMANDE.get_field("etablissement").formfield(required=False)
     regime = forms.ChoiceField(label="Votre régime actuel", choices=ProfilAlimentaire.Regime.choices,
                                initial=ProfilAlimentaire.Regime.OMNIVORE)
     consentement = forms.BooleanField(
         label="J'accepte que mes habitudes alimentaires soient utilisées pour calculer mon empreinte carbone.",
     )
+    CHAMPS_NUTRI = ("numero_ordre", "etablissement")
 
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ("username", "first_name", "last_name", "email")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ordre = ["type_compte", "numero_ordre", "etablissement"]
+        self.order_fields(ordre + [n for n in self.fields if n not in ordre])
+        for n in self.CHAMPS_NUTRI:
+            self.fields[n].widget.attrs["data-nutri"] = "1"
+
+    @property
+    def est_nutritionniste(self):
+        return self.cleaned_data.get("type_compte") == "NUTRITIONNISTE"
+
+    def clean_type_compte(self):
+        return self.cleaned_data.get("type_compte") or "CITOYEN"
+
     def clean_email(self):
         return _email_libre(self.cleaned_data.get("email"))
 
+    def clean(self):
+        data = super().clean()
+        if data.get("type_compte") == "NUTRITIONNISTE":
+            for n in self.CHAMPS_NUTRI:
+                if not data.get(n) and n not in self.errors:
+                    self.add_error(n, "Obligatoire pour une demande de statut nutritionniste.")
+        return data
+
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.role = User.Role.CITOYEN  # jamais de choix de rôle à l'inscription
+        # Le rôle n'est JAMAIS choisi librement : un nutritionniste reste citoyen jusqu'à validation par un admin.
+        user.role = User.Role.CITOYEN
         if commit:
             user.save()
             user.profil.regime = self.cleaned_data["regime"]
             user.profil.save()
+            if self.est_nutritionniste:
+                self.demande = DemandeNutritionniste.objects.create(
+                    utilisateur=user, numero_ordre=self.cleaned_data["numero_ordre"],
+                    etablissement=self.cleaned_data["etablissement"],
+                )
         return user
 
 
@@ -200,3 +239,58 @@ class FiltreUtilisateursForm(forms.Form):
     role = forms.ChoiceField(label="Rôle", required=False, choices=[("", "Tous les rôles")] + list(User.Role.choices))
     actif = forms.ChoiceField(label="Statut", required=False,
                               choices=[("", "Tous"), ("1", "Actifs"), ("0", "Désactivés")])
+
+
+# ------------------------------------------------------------- rôle nutritionniste
+class DemandeNutritionnisteForm(AccessibleFormMixin, forms.ModelForm):
+    class Meta:
+        model = DemandeNutritionniste
+        fields = ("numero_ordre", "etablissement", "message")
+        widgets = {"message": forms.Textarea(attrs={"rows": 3, "placeholder": "Spécialité, expérience…"})}
+
+
+class RefusDemandeForm(forms.Form):
+    motif = forms.CharField(label="Motif du refus", max_length=300,
+                            widget=forms.TextInput(attrs={"placeholder": "ex. numéro introuvable auprès de l'Ordre"}))
+
+
+class InvitationForm(AccessibleFormMixin, forms.ModelForm):
+    class Meta:
+        model = Invitation
+        fields = ("email", "first_name", "last_name")
+        labels = {"email": "Adresse e-mail de la nutritionniste"}
+
+    def clean_email(self):
+        return _email_libre(self.cleaned_data.get("email"))
+
+
+class AccepterInvitationForm(AccessibleFormMixin, UserCreationForm):
+    first_name = forms.CharField(label="Prénom", max_length=150, widget=forms.TextInput(attrs={"autocomplete": "given-name"}))
+    last_name = forms.CharField(label="Nom", max_length=150, widget=forms.TextInput(attrs={"autocomplete": "family-name"}))
+
+    class Meta(UserCreationForm.Meta):
+        model = User
+        fields = ("username", "first_name", "last_name")
+
+    def __init__(self, *args, invitation, **kwargs):
+        self.invitation = invitation
+        kwargs.setdefault("initial", {}).update(first_name=invitation.first_name, last_name=invitation.last_name)
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        data = super().clean()
+        _email_libre(self.invitation.email)  # l'adresse a pu être utilisée entre-temps
+        return data
+
+    def _post_clean(self):
+        self.instance.email = self.invitation.email   # pour la validation « mot de passe trop proche de l'e-mail »
+        super()._post_clean()
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.invitation.email
+        user.role = self.invitation.role
+        user.email_verifie = True    # le lien reçu par e-mail prouve la possession de l'adresse
+        if commit:
+            user.save()
+        return user

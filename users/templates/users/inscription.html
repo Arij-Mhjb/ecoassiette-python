@@ -8,11 +8,56 @@
     <h1>Créer un compte</h1>
     <p>Gratuit. Vous pourrez compléter vos habitudes alimentaires juste après.</p>
   </div>
-  <form method="post">
+  <form method="post" id="form-inscription">
     {% csrf_token %}
-    {% include "includes/form.html" %}
+    {% if form.non_field_errors %}
+      <div class="alert alert-error" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>
+    {% elif form.errors %}
+      <div class="alert alert-error" role="alert"><p>Veuillez corriger les champs signalés ci-dessous.</p></div>
+    {% endif %}
+
+    <fieldset class="choix-cartes">
+      <legend>{{ form.type_compte.label }}</legend>
+      {% for radio in form.type_compte %}
+        <label class="choix-carte" for="{{ radio.id_for_label }}">
+          {{ radio.tag }}
+          <span class="choix-ico">{% if radio.data.value == "NUTRITIONNISTE" %}{% icon "chef-hat" 22 %}{% else %}{% icon "leaf" 22 %}{% endif %}</span>
+          <span class="choix-texte">
+            {% if radio.data.value == "NUTRITIONNISTE" %}<strong>Nutritionniste</strong><small>J'accompagne des citoyens · validation requise</small>
+            {% else %}<strong>Citoyen·ne</strong><small>Je suis et je réduis l'empreinte de mes repas</small>{% endif %}
+          </span>
+        </label>
+      {% endfor %}
+    </fieldset>
+
+    <div id="bloc-nutri" class="bloc-nutri">
+      <p class="bloc-nutri-info">{% icon "shield" 18 %}<span>Pour protéger les données des citoyens, votre compte reste <strong>citoyen</strong>
+        jusqu'à ce qu'un administrateur vérifie votre numéro d'ordre. Vous recevrez un e-mail dès la validation.</span></p>
+      {% with field=form.numero_ordre %}{% include "includes/champ.html" %}{% endwith %}
+      {% with field=form.etablissement %}{% include "includes/champ.html" %}{% endwith %}
+    </div>
+
+    <p class="muted small">Les champs marqués <span class="req" aria-hidden="true">*</span><span class="sr-only">d'un astérisque</span> sont obligatoires.</p>
+    {% for field in form %}
+      {% if field.name != "type_compte" and field.name != "numero_ordre" and field.name != "etablissement" %}{% include "includes/champ.html" %}{% endif %}
+    {% endfor %}
     <button type="submit" class="btn btn-block btn-large">Créer mon compte{% icon "arrow" 18 "i-fleche" %}</button>
   </form>
   <div class="auth-pied"><p>Déjà inscrit ? <a href="{% url 'users:login' %}">Se connecter</a></p></div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const bloc = document.getElementById("bloc-nutri");
+  const radios = document.querySelectorAll('input[name="type_compte"]');
+  function maj() {
+    const nutri = document.querySelector('input[name="type_compte"]:checked')?.value === "NUTRITIONNISTE";
+    bloc.hidden = !nutri;
+    bloc.querySelectorAll("input").forEach(function (i) { i.required = nutri; i.disabled = !nutri; });
+  }
+  radios.forEach(function (r) { r.addEventListener("change", maj); });
+  maj();
+})();
+</script>
 {% endblock %}

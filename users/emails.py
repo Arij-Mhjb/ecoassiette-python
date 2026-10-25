@@ -55,3 +55,33 @@ def notifier_changement_mdp(request, user):
         "user": user,
         "lien_reset": request.build_absolute_uri(reverse("users:password_reset")),
     })
+
+
+# ------------------------------------------------------------- rôle nutritionniste
+def lien_invitation(request, jeton):
+    return request.build_absolute_uri(reverse("users:invitation_accepter", kwargs={"jeton": jeton}))
+
+
+def envoyer_invitation(request, invitation, jeton):
+    return envoyer("Invitation à rejoindre EcoAssiette en tant que nutritionniste", "invitation", invitation.email, {
+        "inv": invitation, "lien": lien_invitation(request, jeton), "invite_par": invitation.invite_par,
+    })
+
+
+def notifier_admins_demande(request, demande):
+    """Prévient chaque administrateur actif qu'une demande attend une validation."""
+    from .models import Utilisateur
+    lien = request.build_absolute_uri(reverse("users:admin_demandes"))
+    admins = Utilisateur.objects.filter(role=Utilisateur.Role.ADMIN, is_active=True).exclude(email="")
+    return sum(envoyer("Nouvelle demande de statut nutritionniste — EcoAssiette", "demande_recue", a.email,
+                       {"admin": a, "d": demande, "lien": lien}) for a in admins)
+
+
+def notifier_demande_traitee(request, demande):
+    gabarit = "demande_acceptee" if demande.statut == demande.Statut.ACCEPTEE else "demande_refusee"
+    sujet = ("Votre statut de nutritionniste est validé" if gabarit == "demande_acceptee"
+             else "Votre demande de statut nutritionniste") + " — EcoAssiette"
+    return envoyer(sujet, gabarit, demande.utilisateur.email, {
+        "user": demande.utilisateur, "d": demande,
+        "lien": request.build_absolute_uri(reverse("users:nutri_profils" if gabarit == "demande_acceptee" else "users:profil")),
+    })

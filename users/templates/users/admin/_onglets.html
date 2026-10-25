@@ -1,0 +1,7 @@
+{% with n=request.resolver_match.url_name %}
+<nav class="onglets" aria-label="Sections de la gestion des comptes">
+  <a href="{% url 'users:admin_liste' %}" {% if n == "admin_liste" %}aria-current="page"{% endif %}>{% icon "users" 16 %}Comptes</a>
+  <a href="{% url 'users:admin_demandes' %}" {% if n == "admin_demandes" %}aria-current="page"{% endif %}>{% icon "chef-hat" 16 %}Demandes nutritionnistes{% if nb_demandes_attente %} <span class="pastille">{{ nb_demandes_attente }}<span class="sr-only"> en attente</span></span>{% endif %}</a>
+  <a href="{% url 'users:admin_invitations' %}" {% if n == "admin_invitations" %}aria-current="page"{% endif %}>{% icon "mail" 16 %}Invitations</a>
+</nav>
+{% endwith %}

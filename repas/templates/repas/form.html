@@ -43,7 +43,7 @@
         <fieldset class="aliment-ligne">
           <legend class="sr-only">Aliment {{ forloop.counter }}</legend>
           {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
-          {% for field in f.visible_fields %}{% include "includes/champ.html" %}{% endfor %}
+          {% include "repas/_aliment_champs.html" %}
         </fieldset>
       {% endfor %}
     </div>
@@ -53,7 +53,7 @@
         <legend class="sr-only">Nouvel aliment</legend>
         {% with f=formset.empty_form %}
           {% for hidden in f.hidden_fields %}{{ hidden }}{% endfor %}
-          {% for field in f.visible_fields %}{% include "includes/champ.html" %}{% endfor %}
+          {% include "repas/_aliment_champs.html" %}
         {% endwith %}
       </fieldset>
     </template>

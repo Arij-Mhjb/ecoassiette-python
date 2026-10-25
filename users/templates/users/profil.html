@@ -17,6 +17,19 @@
   <a class="btn btn-light" href="{% url 'repas:liste' %}">{% icon "utensils" %}Mes repas & mon bilan</a>
 </section>
 
+{% if demande and demande.statut == "EN_ATTENTE" %}
+<div class="bandeau bandeau-attente" role="status"><span class="h-ico h-ico-amber">{% icon "clock" %}</span>
+  <p><strong>Demande de statut nutritionniste en cours d'examen.</strong> Envoyée le {{ demande.cree_le|date:"d/m/Y" }} · n° d'ordre {{ demande.numero_ordre }}. Vous recevrez un e-mail dès qu'elle sera traitée.</p></div>
+{% elif demande and demande.statut == "REFUSEE" and user.role == "CITOYEN" %}
+<div class="bandeau bandeau-refus"><span class="h-ico h-ico-red">{% icon "alert" %}</span>
+  <p><strong>Votre demande de statut nutritionniste n'a pas été validée.</strong>{% if demande.motif_refus %} Motif : {{ demande.motif_refus }}{% endif %}</p>
+  <a class="btn btn-small btn-ghost" href="{% url 'users:demande_nutritionniste' %}">{% icon "refresh" 16 %}Refaire une demande</a></div>
+{% elif user.role == "NUTRITIONNISTE" %}
+<div class="bandeau bandeau-ok"><span class="h-ico">{% icon "chef-hat" %}</span>
+  <p><strong>Vous êtes nutritionniste.</strong> Consultez les profils que les citoyens partagent avec vous.</p>
+  <a class="btn btn-small" href="{% url 'users:nutri_profils' %}">{% icon "users" 16 %}Profils citoyens</a></div>
+{% endif %}
+
 <div class="grid-2">
   <section class="card" aria-labelledby="titre-empreinte">
     <h2 id="titre-empreinte"><span class="h-ico">{% icon "leaf" %}</span>Mon empreinte alimentaire</h2>
@@ -80,6 +93,7 @@
   <ul class="link-list">
     <li><a href="{% url 'users:modifier_infos' %}">{% icon "edit" %}Modifier mes informations personnelles</a></li>
     <li><a href="{% url 'users:password_change' %}">{% icon "lock" %}Changer mon mot de passe</a></li>
+    {% if user.role == "CITOYEN" and not demande or user.role == "CITOYEN" and demande.statut == "ACCEPTEE" %}<li><a href="{% url 'users:demande_nutritionniste' %}">{% icon "chef-hat" %}Je suis nutritionniste</a></li>{% endif %}
     <li><a class="danger-link" href="{% url 'users:supprimer_compte' %}">{% icon "trash" %}Supprimer mon compte</a></li>
   </ul>
 </section>

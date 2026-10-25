@@ -1,0 +1,11 @@
+{% include "users/emails/_layout_debut.html" %}
+<h1 style="font:bold 22px Arial,sans-serif;margin:0 0 16px">Nouvelle demande à valider</h1>
+<p><strong>{{ d.utilisateur.get_full_name|default:d.utilisateur.username }}</strong> ({{ d.utilisateur.email }}) demande le statut de nutritionniste.</p>
+<table role="presentation" cellpadding="6" style="font-size:15px;margin:8px 0 0">
+<tr><td style="color:#56675e">N° d'ordre</td><td><strong>{{ d.numero_ordre }}</strong></td></tr>
+<tr><td style="color:#56675e">Lieu d'exercice</td><td>{{ d.etablissement }}</td></tr>
+{% if d.message %}<tr><td style="color:#56675e;vertical-align:top">Message</td><td>{{ d.message }}</td></tr>{% endif %}
+</table>
+<p style="margin:28px 0"><a href="{{ lien }}" style="display:inline-block;background:#146c43;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:12px">Examiner la demande</a></p>
+<p style="font-size:14px;color:#56675e">Vérifiez le numéro auprès de l'Ordre avant de valider.</p>
+{% include "users/emails/_layout_fin.html" %}

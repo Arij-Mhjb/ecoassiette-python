@@ -1,0 +1,13 @@
+{% for field in f.visible_fields %}
+  {% if field.name == "DELETE" %}
+    <div class="aliment-suppr">
+      {{ field }}
+      <label for="{{ field.id_for_label }}" title="Retirer cet aliment">
+        <span class="suppr-off">{% icon "trash" %}<span class="sr-only">Retirer cet aliment</span></span>
+        <span class="suppr-on">{% icon "refresh" 16 %}Rétablir</span>
+      </label>
+    </div>
+  {% else %}
+    {% include "includes/champ.html" %}
+  {% endif %}
+{% endfor %}

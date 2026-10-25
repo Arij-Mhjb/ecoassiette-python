@@ -58,4 +58,14 @@ urlpatterns = [
     path("gestion/<int:pk>/modifier/", views.UtilisateurUpdateView.as_view(), name="admin_modifier"),
     path("gestion/<int:pk>/supprimer/", views.UtilisateurDeleteView.as_view(), name="admin_supprimer"),
     path("gestion/<int:pk>/basculer/", views.UtilisateurBasculerActifView.as_view(), name="admin_basculer"),
+
+    # Rôle nutritionniste : demandes (validation) et invitations
+    path("gestion/demandes/", views.DemandesView.as_view(), name="admin_demandes"),
+    path("gestion/demandes/<int:pk>/accepter/", views.TraiterDemandeView.as_view(action="accepter"), name="admin_demande_accepter"),
+    path("gestion/demandes/<int:pk>/refuser/", views.TraiterDemandeView.as_view(action="refuser"), name="admin_demande_refuser"),
+    path("gestion/invitations/", views.InvitationsView.as_view(), name="admin_invitations"),
+    path("gestion/invitations/<int:pk>/renvoyer/", views.InvitationActionView.as_view(action="renvoyer"), name="admin_invitation_renvoyer"),
+    path("gestion/invitations/<int:pk>/annuler/", views.InvitationActionView.as_view(action="annuler"), name="admin_invitation_annuler"),
+    path("invitation/<str:jeton>/", views.invitation_accepter, name="invitation_accepter"),
+    path("profil/devenir-nutritionniste/", views.demande_nutritionniste, name="demande_nutritionniste"),
 ]

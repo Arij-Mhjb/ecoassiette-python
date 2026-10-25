@@ -1,0 +1,6 @@
+Bonjour {{ user.first_name|default:user.username }},
+
+Votre statut de nutritionniste a été validé par l'équipe EcoAssiette.
+Accédez à l'espace « Profils citoyens » : {{ lien }}
+
+L'équipe EcoAssiette

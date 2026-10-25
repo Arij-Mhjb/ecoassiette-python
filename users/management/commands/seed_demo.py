@@ -1,7 +1,7 @@
 """python manage.py seed_demo  — crée des comptes de démonstration (idempotent)."""
 from django.core.management.base import BaseCommand
 
-from users.models import ProfilAlimentaire, Utilisateur
+from users.models import DemandeNutritionniste, ProfilAlimentaire, Utilisateur
 
 MDP = "EcoDemo2026!"
 
@@ -17,6 +17,7 @@ COMPTES = [
     ("karim", "Karim", "Mansouri", "CITOYEN",
      dict(regime="VEGETARIEN", aliments_aimes="fromage, oeufs, lablabi", taille_foyer=1,
           temps_cuisine="LONG", ville="Ariana", profil_public=False)),
+    ("leila", "Leïla", "Haddad", "CITOYEN", dict(regime="FLEXITARIEN", ville="Tunis")),
 ]
 
 
@@ -37,4 +38,11 @@ class Command(BaseCommand):
             if profil:
                 ProfilAlimentaire.objects.filter(utilisateur=u).update(**profil)
             self.stdout.write(f"{'+' if cree else '='} {username} ({role})")
+        # une demande de statut nutritionniste en attente, pour montrer la validation pendant la démo
+        leila = Utilisateur.objects.get(username="leila")
+        if leila.role == Utilisateur.Role.CITOYEN and not leila.demandes_nutritionniste.exists():
+            DemandeNutritionniste.objects.create(utilisateur=leila, numero_ordre="DN-2019-0457",
+                                                 etablissement="Cabinet de diététique, Lac 2 — Tunis",
+                                                 message="Diététicienne-nutritionniste, 6 ans d'expérience.")
+            self.stdout.write("+ demande nutritionniste en attente (leila)")
         self.stdout.write(self.style.SUCCESS(f"Mot de passe commun des comptes démo : {MDP}"))

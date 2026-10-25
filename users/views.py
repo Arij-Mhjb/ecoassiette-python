@@ -8,6 +8,7 @@ from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,12 +20,15 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
 from .forms import (
-    AdminUtilisateurCreationForm, AdminUtilisateurForm, ConnexionForm, FiltreUtilisateursForm,
-    InfosPersonnellesForm, InscriptionForm, ProfilAlimentaireForm, RenvoyerConfirmationForm,
-    SuppressionCompteForm,
+    AccepterInvitationForm, AdminUtilisateurCreationForm, AdminUtilisateurForm, ConnexionForm,
+    DemandeNutritionnisteForm, FiltreUtilisateursForm, InfosPersonnellesForm, InscriptionForm, InvitationForm,
+    ProfilAlimentaireForm, RefusDemandeForm, RenvoyerConfirmationForm, SuppressionCompteForm,
 )
-from .emails import envoyer_confirmation, jeton_confirmation, notifier_changement_mdp
-from .models import AnalyseProfilIA, ProfilAlimentaire
+from .emails import (
+    envoyer_confirmation, envoyer_invitation, jeton_confirmation, lien_invitation, notifier_admins_demande,
+    notifier_changement_mdp, notifier_demande_traitee,
+)
+from .models import AnalyseProfilIA, DemandeNutritionniste, Invitation, ProfilAlimentaire
 from .permissions import PermissionOu403Mixin
 from .tasks import lancer_analyse
 
@@ -39,6 +43,10 @@ def inscription(request):
     form = InscriptionForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
+        if form.est_nutritionniste:
+            notifier_admins_demande(request, form.demande)
+            messages.info(request, "Votre demande de statut nutritionniste a été transmise : un administrateur va "
+                                   "vérifier votre numéro d'ordre. Vous recevrez un e-mail dès qu'elle sera traitée.")
         if not settings.CONFIRMATION_EMAIL:  # pas de service d'e-mail : activation directe
             user.email_verifie = True
             user.save(update_fields=["email_verifie"])
@@ -131,7 +139,32 @@ class DeconnexionView(auth_views.LogoutView):
 def profil(request):
     p = request.user.profil
     derniere = p.analyses.filter(statut=AnalyseProfilIA.Statut.TERMINE).first()
-    return render(request, "users/profil.html", {"profil": p, "analyse": derniere})
+    demande = request.user.demandes_nutritionniste.first()
+    return render(request, "users/profil.html", {"profil": p, "analyse": derniere, "demande": demande})
+
+
+@login_required
+def demande_nutritionniste(request):
+    """Un citoyen déjà inscrit demande le statut de nutritionniste (validation par un administrateur)."""
+    user = request.user
+    if user.role != User.Role.CITOYEN:
+        messages.info(request, "Votre compte a déjà un rôle professionnel.")
+        return redirect("users:profil")
+    if user.demandes_nutritionniste.filter(statut=DemandeNutritionniste.Statut.EN_ATTENTE).exists():
+        messages.info(request, "Vous avez déjà une demande en cours d'examen.")
+        return redirect("users:profil")
+    form = DemandeNutritionnisteForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        demande = form.save(commit=False)
+        demande.utilisateur = user
+        demande.save()
+        notifier_admins_demande(request, demande)
+        messages.success(request, "Demande envoyée : vous recevrez un e-mail dès qu'un administrateur l'aura examinée.")
+        return redirect("users:profil")
+    return render(request, "users/form_page.html", {
+        "form": form, "titre": "Devenir nutritionniste",
+        "intro": "Votre compte restera citoyen jusqu'à la vérification de votre numéro d'ordre par un administrateur.",
+    })
 
 
 @login_required
@@ -389,6 +422,124 @@ class UtilisateurBasculerActifView(AdminRequisMixin, DetailView):
             cible.save(update_fields=["is_active"])
             messages.success(request, f"Compte {'activé' if cible.is_active else 'désactivé'} : {cible}.")
         return redirect(request.POST.get("next") or "users:admin_liste")
+
+
+# ============================================ administration : rôle nutritionniste
+class DemandesView(AdminRequisMixin, TemplateView):
+    template_name = "users/admin/demandes.html"
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        qs = DemandeNutritionniste.objects.select_related("utilisateur", "traitee_par")
+        ctx["en_attente"] = qs.filter(statut=DemandeNutritionniste.Statut.EN_ATTENTE).order_by("cree_le")
+        ctx["traitees"] = qs.exclude(statut=DemandeNutritionniste.Statut.EN_ATTENTE).order_by("-traitee_le")[:20]
+        ctx["form_refus"] = RefusDemandeForm()
+        return ctx
+
+
+class TraiterDemandeView(AdminRequisMixin, DetailView):
+    """POST uniquement : accepter (rôle -> nutritionniste) ou refuser (avec motif), puis e-mail au demandeur."""
+    model = DemandeNutritionniste
+    http_method_names = ["post"]
+    action = None
+
+    def post(self, request, *args, **kwargs):
+        demande = self.get_object()
+        if demande.statut != DemandeNutritionniste.Statut.EN_ATTENTE:
+            messages.error(request, "Cette demande a déjà été traitée.")
+            return redirect("users:admin_demandes")
+        if self.action == "accepter":
+            demande.accepter(request.user)
+            messages.success(request, f"{demande.utilisateur} est maintenant nutritionniste.")
+        else:
+            form = RefusDemandeForm(request.POST)
+            if not form.is_valid():
+                messages.error(request, "Indiquez un motif de refus : il sera communiqué au demandeur.")
+                return redirect("users:admin_demandes")
+            demande.refuser(request.user, form.cleaned_data["motif"])
+            messages.success(request, f"Demande de {demande.utilisateur} refusée.")
+        if not notifier_demande_traitee(request, demande):
+            messages.warning(request, "L'e-mail de notification n'a pas pu être envoyé.")
+        return redirect("users:admin_demandes")
+
+
+class InvitationsView(AdminRequisMixin, TemplateView):
+    template_name = "users/admin/invitations.html"
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        ctx.setdefault("form", InvitationForm())
+        ctx["invitations"] = Invitation.objects.select_related("invite_par", "utilisateur")[:30]
+        # lien affiché UNE fois (on ne garde que son empreinte en base) : utile si l'e-mail n'arrive pas
+        ctx["dernier_lien"] = self.request.session.pop("dernier_lien_invitation", None)
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        form = InvitationForm(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+        Invitation.objects.filter(email=form.cleaned_data["email"], statut=Invitation.Statut.EN_ATTENTE) \
+            .update(statut=Invitation.Statut.ANNULEE)          # une seule invitation valable par adresse
+        inv = form.save(commit=False)
+        inv.invite_par = request.user
+        jeton = inv.nouveau_jeton()
+        inv.save()
+        _envoyer_invitation(request, inv, jeton)
+        return redirect("users:admin_invitations")
+
+
+def _envoyer_invitation(request, inv, jeton):
+    request.session["dernier_lien_invitation"] = {"email": inv.email, "lien": lien_invitation(request, jeton)}
+    if envoyer_invitation(request, inv, jeton):
+        messages.success(request, f"Invitation envoyée à {inv.email}.")
+    else:
+        messages.warning(request, f"L'e-mail n'a pas pu être envoyé à {inv.email} : copiez le lien ci-dessous et transmettez-le.")
+
+
+class InvitationActionView(AdminRequisMixin, DetailView):
+    model = Invitation
+    http_method_names = ["post"]
+    action = None
+
+    def post(self, request, *args, **kwargs):
+        inv = self.get_object()
+        if inv.statut != Invitation.Statut.EN_ATTENTE:
+            messages.error(request, "Cette invitation n'est plus en attente.")
+        elif self.action == "annuler":
+            inv.statut = Invitation.Statut.ANNULEE
+            inv.save(update_fields=["statut"])
+            messages.success(request, f"Invitation de {inv.email} annulée : le lien ne fonctionne plus.")
+        else:  # renvoyer : nouveau lien (l'ancien devient invalide) et nouvelle échéance
+            jeton = inv.nouveau_jeton()
+            inv.save(update_fields=["jeton_hash", "expire_le"])
+            _envoyer_invitation(request, inv, jeton)
+        return redirect("users:admin_invitations")
+
+
+def invitation_accepter(request, jeton):
+    inv = Invitation.depuis_jeton(jeton)
+    if inv is None or not inv.est_utilisable:
+        motif = ("Ce lien a expiré : demandez à l'administrateur de vous renvoyer une invitation." if inv and inv.est_expiree
+                 else "Cette invitation a déjà été utilisée." if inv and inv.statut == Invitation.Statut.ACCEPTEE
+                 else "Ce lien d'invitation n'est pas valide ou a été annulé.")
+        return render(request, "users/invitation_invalide.html", {"motif": motif}, status=400)
+    if request.user.is_authenticated:
+        return render(request, "users/invitation_invalide.html", {
+            "motif": f"Vous êtes connecté(e) en tant que {request.user.username}. Déconnectez-vous puis rouvrez le lien "
+                     "pour créer le compte nutritionniste.", "deconnexion": True}, status=400)
+    form = AccepterInvitationForm(request.POST or None, invitation=inv)
+    if request.method == "POST" and form.is_valid():
+        with transaction.atomic():
+            inv = Invitation.objects.select_for_update().get(pk=inv.pk)
+            if not inv.est_utilisable:          # double clic / deux onglets : usage unique garanti
+                return redirect("users:invitation_accepter", jeton=jeton)
+            user = form.save()
+            inv.statut, inv.utilisateur, inv.acceptee_le = Invitation.Statut.ACCEPTEE, user, timezone.now()
+            inv.save(update_fields=["statut", "utilisateur", "acceptee_le"])
+        login(request, user, backend="users.backends.EmailOuUsernameBackend")
+        messages.success(request, f"Bienvenue {user.first_name} ! Votre compte nutritionniste est prêt.")
+        return redirect("users:nutri_profils")
+    return render(request, "users/invitation_accepter.html", {"form": form, "inv": inv})
 
 
 class StatistiquesView(PermissionOu403Mixin, TemplateView):

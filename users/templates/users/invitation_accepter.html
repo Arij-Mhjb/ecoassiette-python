@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Créer mon compte nutritionniste{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <div class="auth-tete">
+    <span class="auth-ico">{% icon "chef-hat" 26 %}</span>
+    <h1>Bienvenue{% if inv.first_name %}, {{ inv.first_name }}{% endif %} !</h1>
+    <p>{% if inv.invite_par %}{{ inv.invite_par.get_full_name|default:inv.invite_par.username }} vous invite{% else %}Vous êtes invité(e){% endif %} à rejoindre EcoAssiette en tant que <strong>nutritionniste</strong>.</p>
+  </div>
+  <p class="bandeau bandeau-info" style="margin-bottom:1.25rem">{% icon "mail" 18 %}<span>Compte rattaché à <strong>{{ inv.email }}</strong> — lien valable jusqu'au {{ inv.expire_le|date:"d/m/Y à H:i" }}.</span></p>
+  <form method="post">
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+    <button type="submit" class="btn btn-block btn-large">Créer mon compte nutritionniste{% icon "arrow" 18 "i-fleche" %}</button>
+  </form>
+</div>
+{% endblock %}

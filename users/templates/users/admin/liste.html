@@ -10,6 +10,8 @@
   <a class="btn" href="{% url 'users:admin_creer' %}">{% icon "user-plus" %}Nouveau compte</a>
 </div>
 
+{% include "users/admin/_onglets.html" %}
+
 <form method="get" class="filters" role="search" aria-label="Rechercher des comptes">
   {% for field in filtre %}
     <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>

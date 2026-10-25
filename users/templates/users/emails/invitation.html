@@ -1,0 +1,8 @@
+{% include "users/emails/_layout_debut.html" %}
+<h1 style="font:bold 22px Arial,sans-serif;margin:0 0 16px">Bonjour {{ inv.first_name|default:"" }},</h1>
+<p>{% if invite_par %}{{ invite_par.get_full_name|default:invite_par.username }} vous invite{% else %}Vous êtes invité(e){% endif %} à rejoindre <strong>EcoAssiette</strong> en tant que <strong>nutritionniste</strong>.</p>
+<p>Vous pourrez consulter les profils alimentaires que les citoyens choisissent de partager et suivre leurs analyses.</p>
+<p style="margin:28px 0"><a href="{{ lien }}" style="display:inline-block;background:#146c43;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:12px">Créer mon compte nutritionniste</a></p>
+<p style="font-size:14px;color:#56675e">Ce lien est personnel, à usage unique et valable {{ inv.expire_le|timeuntil }} (jusqu'au {{ inv.expire_le|date:"d/m/Y à H:i" }}). Si le bouton ne fonctionne pas, copiez ce lien :<br><a href="{{ lien }}" style="color:#0e4f31;word-break:break-all">{{ lien }}</a></p>
+<p style="font-size:14px;color:#56675e">Vous n'attendiez pas cette invitation ? Ignorez simplement ce message.</p>
+{% include "users/emails/_layout_fin.html" %}

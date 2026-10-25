@@ -1,0 +1,6 @@
+{% include "users/emails/_layout_debut.html" %}
+<h1 style="font:bold 22px Arial,sans-serif;margin:0 0 16px">Bienvenue parmi les nutritionnistes, {{ user.first_name|default:user.username }} !</h1>
+<p>Votre statut de <strong>nutritionniste</strong> a été validé par l'équipe EcoAssiette.</p>
+<p>Vous avez désormais accès à l'espace « Profils citoyens » : les profils alimentaires partagés et leurs analyses IA.</p>
+<p style="margin:28px 0"><a href="{{ lien }}" style="display:inline-block;background:#146c43;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:12px">Accéder à l'espace nutritionniste</a></p>
+{% include "users/emails/_layout_fin.html" %}

@@ -81,6 +81,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "users.context_processors.notifications_admin",
             ],
         },
     },
@@ -159,6 +160,7 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"EcoAssiette <{EMAIL_HOST_
 # Confirmation obligatoire de l'e-mail à l'inscription. Mettre False quand aucun service
 # d'envoi n'est disponible (ex. Render gratuit sans Brevo) : le compte est activé directement.
 CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", True)
+INVITATION_DUREE_HEURES = 48          # validité d'un lien d'invitation (nutritionniste)
 # Durée de validité des liens (confirmation d'e-mail et réinitialisation) : 1 jour
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 

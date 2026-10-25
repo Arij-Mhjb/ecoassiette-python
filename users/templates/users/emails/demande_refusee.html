@@ -1,0 +1,7 @@
+{% include "users/emails/_layout_debut.html" %}
+<h1 style="font:bold 22px Arial,sans-serif;margin:0 0 16px">Bonjour {{ user.first_name|default:user.username }},</h1>
+<p>Nous n'avons pas pu valider votre demande de statut <strong>nutritionniste</strong>.</p>
+{% if d.motif_refus %}<p style="background:#fdeeec;border-radius:10px;padding:12px 16px;color:#7a1810"><strong>Motif :</strong> {{ d.motif_refus }}</p>{% endif %}
+<p>Votre compte citoyen reste actif. Vous pouvez faire une nouvelle demande depuis votre profil avec des informations complétées.</p>
+<p style="margin:28px 0"><a href="{{ lien }}" style="display:inline-block;background:#146c43;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:12px">Accéder à mon profil</a></p>
+{% include "users/emails/_layout_fin.html" %}

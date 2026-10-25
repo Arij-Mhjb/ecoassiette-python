@@ -1,0 +1,8 @@
+Nouvelle demande de statut nutritionniste
+
+{{ d.utilisateur.get_full_name|default:d.utilisateur.username }} ({{ d.utilisateur.email }})
+N° d'ordre : {{ d.numero_ordre }}
+Lieu d'exercice : {{ d.etablissement }}
+{% if d.message %}Message : {{ d.message }}
+{% endif %}
+Examiner la demande : {{ lien }}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Invitation indisponible{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <div class="auth-tete">
+    <span class="auth-ico auth-ico-red">{% icon "alert" 26 %}</span>
+    <h1>Invitation indisponible</h1>
+    <p>{{ motif }}</p>
+  </div>
+  {% if deconnexion %}
+  <form method="post" action="{% url 'users:logout' %}">
+    {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+    <button type="submit" class="btn btn-block btn-large">{% icon "log-out" 18 %}Me déconnecter</button>
+  </form>
+  {% else %}
+  <a class="btn btn-block btn-large" href="{% url 'home' %}">{% icon "home" 18 %}Retour à l'accueil</a>
+  {% endif %}
+</div>
+{% endblock %}
