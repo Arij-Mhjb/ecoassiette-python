@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Laboratoire IA{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <p class="eyebrow">{% icon "sparkles" 14 %}Administration</p>
+    <h1>Laboratoire IA</h1>
+    <p class="muted">Évaluation chiffrée de « Remplir avec l'IA » (texte → aliments → catégorie) sur un jeu de test annoté de
+      <strong>{{ nb_phrases_jeu }} phrases</strong> en français, en tounsi et en arabe.</p>
+  </div>
+  <a class="btn btn-ghost" href="{% url 'users:admin_stats' %}">{% icon "chart" %}Statistiques</a>
+</div>
+
+<section class="card labo-lancer" aria-labelledby="t-lancer">
+  <h2 id="t-lancer"><span class="h-ico h-ico-violet">{% icon "zap" %}</span>Lancer une évaluation</h2>
+  {% if en_cours %}
+    <div class="labo-progression" role="status" aria-live="polite">
+      <p><span class="spinner"></span> Évaluation de <strong>{{ en_cours.get_moteur_display }}</strong> en cours en arrière-plan :
+        {{ en_cours.avancement }} / {{ en_cours.nb_phrases|default:"…" }} phrases ({{ en_cours.pourcentage }} %).</p>
+      <progress max="100" value="{{ en_cours.pourcentage }}" aria-label="Avancement de l'évaluation"></progress>
+      <p class="small muted">Pause de quelques secondes entre deux appels pour respecter le quota gratuit de l'API. La page se met à jour toute seule.</p>
+    </div>
+  {% else %}
+  <div class="labo-boutons">
+    <form method="post">{% csrf_token %}<input type="hidden" name="moteur" value="LOCAL">
+      <button type="submit" class="btn btn-ghost btn-block">{% icon "zap" %}Moteur local<small>instantané</small></button></form>
+    <form method="post">{% csrf_token %}<input type="hidden" name="moteur" value="GEMINI">
+      <button type="submit" class="btn btn-block" {% if not cle_gemini %}disabled aria-describedby="sans-cle"{% endif %}>{% icon "sparkles" %}Gemini<small>{{ limite_gemini }} phrases · quelques minutes</small></button></form>
+  </div>
+  {% if not cle_gemini %}<p class="small muted" id="sans-cle">Clé GEMINI_API_KEY absente : seul le moteur local peut être évalué ici.</p>{% endif %}
+  {% endif %}
+  <p class="small muted" style="margin:.75rem 0 0">En ligne de commande : <code>python manage.py evaluer_repas_ia --moteur TOUS --json rapport.json</code></p>
+</section>
+
+{% if comparaison %}
+<div class="bandeau bandeau-info labo-verdict"><span class="h-ico h-ico-blue">{% icon "scale" %}</span>
+  <p><strong>Verdict :</strong> Gemini {% if comparaison.delta_rappel >= 0 %}retrouve <strong>+{{ comparaison.delta_rappel }} points</strong> d'aliments{% else %}retrouve {{ comparaison.delta_rappel }} points d'aliments{% endif %}
+  (plats composés comme la chakchouka ou le kafteji) et gagne <strong>{% if comparaison.delta_f1 >= 0 %}+{% endif %}{{ comparaison.delta_f1 }} points de F1</strong>,
+  mais répond{% if comparaison.facteur_temps > 1 %} environ <strong>{{ comparaison.facteur_temps }}× plus lentement</strong>{% endif %}.
+  D'où l'architecture retenue : <strong>Gemini en arrière-plan, moteur local en repli instantané</strong>.</p></div>
+{% endif %}
+
+{% if vues %}
+<section class="card" aria-labelledby="t-comparatif">
+  <h2 id="t-comparatif"><span class="h-ico">{% icon "chart" %}</span>Comparatif des moteurs</h2>
+  <div class="table-wrap-plain">
+  <table class="table compact labo-table">
+    <caption class="sr-only">Métriques par moteur</caption>
+    <thead><tr><th scope="col">Métrique</th>{% if local %}<th scope="col">Moteur local</th>{% endif %}{% if gemini %}<th scope="col">Gemini</th>{% endif %}</tr></thead>
+    <tbody>
+      <tr><th scope="row">Détection des aliments — précision</th>{% if local %}<td>{{ local.m.detection.precision|pct }}</td>{% endif %}{% if gemini %}<td>{{ gemini.m.detection.precision|pct }}</td>{% endif %}</tr>
+      <tr><th scope="row">Détection des aliments — rappel</th>{% if local %}<td>{{ local.m.detection.rappel|pct }}</td>{% endif %}{% if gemini %}<td>{{ gemini.m.detection.rappel|pct }}</td>{% endif %}</tr>
+      <tr><th scope="row">Détection des aliments — <strong>F1</strong></th>{% if local %}<td><strong>{{ local.m.detection.f1|floatformat:2 }}</strong></td>{% endif %}{% if gemini %}<td><strong>{{ gemini.m.detection.f1|floatformat:2 }}</strong></td>{% endif %}</tr>
+      <tr><th scope="row">Catégories — exactitude</th>{% if local %}<td>{{ local.m.categories.exactitude|pct }}</td>{% endif %}{% if gemini %}<td>{{ gemini.m.categories.exactitude|pct }}</td>{% endif %}</tr>
+      <tr><th scope="row">Catégories — F1 macro</th>{% if local %}<td>{{ local.m.categories.f1_macro|floatformat:2 }}</td>{% endif %}{% if gemini %}<td>{{ gemini.m.categories.f1_macro|floatformat:2 }}</td>{% endif %}</tr>
+      <tr><th scope="row">Bout en bout (aliment + catégorie) — <strong>F1</strong></th>{% if local %}<td><strong>{{ local.m.bout_en_bout.f1|floatformat:2 }}</strong></td>{% endif %}{% if gemini %}<td><strong>{{ gemini.m.bout_en_bout.f1|floatformat:2 }}</strong></td>{% endif %}</tr>
+      <tr><th scope="row">Phrases parfaitement analysées</th>{% if local %}<td>{{ local.m.phrases_parfaites|pct }}</td>{% endif %}{% if gemini %}<td>{{ gemini.m.phrases_parfaites|pct }}</td>{% endif %}</tr>
+      <tr><th scope="row">Temps de réponse médian (p50)</th>{% if local %}<td>{{ local.p50 }}</td>{% endif %}{% if gemini %}<td>{{ gemini.p50 }}</td>{% endif %}</tr>
+      <tr><th scope="row">Temps de réponse p95</th>{% if local %}<td>{{ local.p95 }}</td>{% endif %}{% if gemini %}<td>{{ gemini.p95 }}</td>{% endif %}</tr>
+      <tr><th scope="row">Erreurs d'API</th>{% if local %}<td>{{ local.m.erreurs_api }}</td>{% endif %}{% if gemini %}<td>{{ gemini.m.erreurs_api }}</td>{% endif %}</tr>
+      <tr><th scope="row">Évalué le</th>{% if local %}<td class="small">{{ local.ev.termine_le|date:"d/m/Y H:i" }} · {{ local.m.nb_phrases }} phrases</td>{% endif %}{% if gemini %}<td class="small">{{ gemini.ev.termine_le|date:"d/m/Y H:i" }} · {{ gemini.m.nb_phrases }} phrases</td>{% endif %}</tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+{% for code, v in vues.items %}
+<section class="card labo-moteur" aria-labelledby="t-m-{{ code }}">
+  <h2 id="t-m-{{ code }}"><span class="h-ico {% if code == 'GEMINI' %}h-ico-violet{% endif %}">{% if code == "GEMINI" %}{% icon "sparkles" %}{% else %}{% icon "zap" %}{% endif %}</span>{{ v.ev.get_moteur_display }}</h2>
+  <dl class="stat-tiles">
+    <div class="tile"><dt>F1 détection</dt><dd>{{ v.m.detection.f1|floatformat:2 }}</dd></div>
+    <div class="tile"><dt>Précision</dt><dd>{{ v.m.detection.precision|pct }}</dd></div>
+    <div class="tile"><dt>Rappel</dt><dd>{{ v.m.detection.rappel|pct }}</dd></div>
+    <div class="tile"><dt>Exactitude catégories</dt><dd>{{ v.m.categories.exactitude|pct }}</dd></div>
+    <div class="tile"><dt>Latence p50 / p95</dt><dd class="tile-petit">{{ v.p50 }} / {{ v.p95 }}</dd></div>
+  </dl>
+  <div class="labo-grille">
+    <div>
+      <h3>Matrice de confusion des catégories</h3>
+      <p class="small muted">Lignes : catégorie attendue · colonnes : catégorie prédite. La diagonale = bonnes réponses.</p>
+      <div class="table-wrap-plain">
+      <table class="matrice">
+        <caption class="sr-only">Matrice de confusion — {{ v.ev.get_moteur_display }}</caption>
+        <thead><tr><th scope="col"><span class="sr-only">Attendu \ prédit</span></th>{% for c in v.colonnes %}<th scope="col" title="{{ c.label }}"><abbr title="{{ c.label }}">{{ c.court }}</abbr></th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for l in v.lignes %}
+          <tr><th scope="row">{{ l.label }}</th>
+          {% for c in l.cellules %}<td class="{% if c.diag %}diag{% elif c.n %}faux{% endif %}{% if c.intensite > 0.6 %} fort{% endif %}" style="--i: {{ c.intensite|stringformat:'.2f' }}"><span class="sr-only">{{ l.label }} prédit {{ c.label }} : </span>{{ c.n }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <div>
+      <h3>F1 par catégorie</h3>
+      <table class="compare">
+        <caption class="sr-only">F1 par catégorie — {{ v.ev.get_moteur_display }}</caption>
+        <tbody>{% for c in v.par_cat %}<tr><th scope="row">{{ c.label }}</th><td><span class="bar bar-good" style="--v: {{ c.pct }}%"></span>{{ c.f1|floatformat:2 }} <span class="small muted">(n = {{ c.support }})</span></td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+  {% if v.m.erreurs %}
+  <details class="labo-erreurs">
+    <summary>Où l'IA se trompe ({{ v.m.erreurs|length }} phrase{{ v.m.erreurs|length|pluralize }})</summary>
+    <ul>
+      {% for e in v.m.erreurs|slice:":12" %}
+      <li><q>{{ e.texte }}</q>
+        {% if e.manques %}<span class="tag tag-manque">oublié : {{ e.manques|join:", " }}</span>{% endif %}
+        {% if e.en_trop %}<span class="tag tag-trop">en trop : {{ e.en_trop|join:", " }}</span>{% endif %}
+        {% for x in e.mal_classes %}<span class="tag tag-trop">{{ x }}</span>{% endfor %}
+        {% if e.erreur %}<span class="tag">erreur API</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</section>
+{% endfor %}
+{% else %}
+<div class="empty">{% icon "sparkles" 28 %}<p><strong>Aucune évaluation pour l'instant.</strong></p><p>Lancez le moteur local (instantané), puis Gemini.</p></div>
+{% endif %}
+
+{% if usage %}
+<section class="card" aria-labelledby="t-usage">
+  <h2 id="t-usage"><span class="h-ico h-ico-amber">{% icon "users" %}</span>Utilisation réelle par les citoyens</h2>
+  <dl class="stat-tiles">
+    <div class="tile"><dt>Demandes « Remplir avec l'IA »</dt><dd>{{ usage.total }}</dd></div>
+    <div class="tile"><dt>Réussies</dt><dd>{{ usage.succes }} %</dd></div>
+    <div class="tile"><dt>Servies par Gemini</dt><dd>{{ usage.part_gemini }} %</dd></div>
+    <div class="tile"><dt>Repli local</dt><dd>{{ usage.part_local }} %</dd></div>
+  </dl>
+  <div class="table-wrap-plain">
+  <table class="table compact">
+    <caption class="sr-only">Temps de réponse réels par mode</caption>
+    <thead><tr><th scope="col">Mode</th><th scope="col">Demandes</th><th scope="col">Réussite</th><th scope="col">p50</th><th scope="col">p95</th></tr></thead>
+    <tbody>{% for m in usage.modes %}<tr><th scope="row">{{ m.label }}</th><td>{{ m.n }}</td><td>{{ m.succes }} %</td><td>{{ m.p50 }}</td><td>{{ m.p95 }}</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+  <p class="small muted">Chaque analyse tourne en arrière-plan (réponse HTTP 202 immédiate, suivi par le navigateur) : le serveur n'est jamais bloqué pendant l'appel à l'IA.</p>
+</section>
+{% endif %}
+
+<section class="card" aria-labelledby="t-methode">
+  <h2 id="t-methode"><span class="h-ico h-ico-blue">{% icon "info" %}</span>Méthodologie</h2>
+  <ul class="liste-check">
+    <li>{% icon "check" 16 %}<span><strong>Jeu de test</strong> : {{ nb_phrases_jeu }} phrases annotées à la main (<code>repas/evaluation/jeu_de_test.json</code>), plats composés décomposés en ingrédients.</span></li>
+    <li>{% icon "check" 16 %}<span><strong>Précision</strong> = aliments trouvés corrects / aliments trouvés · <strong>Rappel</strong> = aliments corrects trouvés / aliments attendus · <strong>F1</strong> = moyenne harmonique des deux.</span></li>
+    <li>{% icon "check" 16 %}<span>« 3dham », « œufs » et « oeuf » comptent comme le même aliment (traductions tounsi / arabe → français).</span></li>
+    <li>{% icon "check" 16 %}<span><strong>Bout en bout</strong> : l'aliment ET sa catégorie doivent être justes (c'est ce qui détermine le CO₂ calculé).</span></li>
+  </ul>
+</section>
+
+{% if historique %}
+<section class="card" aria-labelledby="t-histo">
+  <h2 id="t-histo"><span class="h-ico">{% icon "clock" %}</span>Historique</h2>
+  <div class="table-wrap-plain">
+  <table class="table compact">
+    <caption class="sr-only">Dernières évaluations</caption>
+    <thead><tr><th scope="col">Date</th><th scope="col">Moteur</th><th scope="col">Statut</th><th scope="col">F1 bout en bout</th><th scope="col">Durée</th></tr></thead>
+    <tbody>{% for e in historique %}<tr><th scope="row">{{ e.cree_le|date:"d/m/Y H:i" }}</th><td>{{ e.get_moteur_display }}</td>
+      <td><span class="statut statut-{% if e.statut == 'TERMINE' %}ACCEPTEE{% elif e.statut == 'ECHEC' %}EXPIREE{% else %}EN_ATTENTE{% endif %}">{{ e.get_statut_display }}</span></td>
+      <td>{% if e.metriques.bout_en_bout %}{{ e.metriques.bout_en_bout.f1|floatformat:2 }}{% else %}—{% endif %}</td>
+      <td>{% if e.duree_ms %}{{ e.duree_ms|floatformat:0 }} ms{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if en_cours %}<script>setTimeout(function () { window.location.reload(); }, 3000);</script>{% endif %}{% endblock %}

@@ -75,6 +75,7 @@ NOMS_AFFICHAGE = {
     "3des": "lentilles", "adess": "lentilles", "عدس": "lentilles", "7ommos": "pois chiches",
     "hommos": "pois chiches", "حمص": "pois chiches", "loubia": "haricots", "لوبيا": "haricots",
     "foul": "fèves", "فول": "fèves", "لبلابي": "lablabi", "lablebi": "lablabi", "جلبانة": "petits pois",
+    "jelbana": "petits pois", "tabouna": "pain",      # corrigés grâce au laboratoire IA
     "kosksi": "couscous", "kousksi": "couscous", "kseksi": "couscous", "كسكسي": "couscous",
     "khobz": "pain", "5obz": "pain", "خبز": "pain", "ma9rouna": "pâtes", "makrouna": "pâtes",
     "makarouna": "pâtes", "مقرونة": "pâtes", "rouz": "riz", "رز": "riz", "batata": "pommes de terre",
@@ -164,4 +165,4 @@ def remplacement_pour(aliment, categorie):
 
 def donnees_js():
     """Données pour l'aperçu en direct dans le formulaire (json_script)."""
-    return {"mots": {c: [normaliser(m) for m in ms] for c, ms in MOTS_CLES.items()}, "facteurs": FACTEURS_CO2}
+    return {"mots": {c: [normaliser(m) for m in ms] for c, ms in MOTS_CLES.items()}, "facteurs": FACTEURS_CO2.en_dict()}

@@ -47,11 +47,12 @@ class FonctionsCitoyennesTest(BaseTest):
 
     def test_menu_selon_le_role(self):
         self.client.force_login(self.citoyen)
-        self.assertContains(self.client.get(reverse("users:profil")), reverse("repas:liste"))
+        lien = f'href="{reverse("repas:liste")}"'
+        self.assertContains(self.client.get(reverse("users:profil")), lien)
         for u in (self.admin, self.nutri):
             self.client.force_login(u)
             with self.subTest(role=u.role):
-                self.assertNotContains(self.client.get(reverse("users:profil")), reverse("repas:liste"))
+                self.assertNotContains(self.client.get(reverse("users:profil")), lien)
 
 
 class ProfilProfessionnelTest(BaseTest):

@@ -1,0 +1,649 @@
+{
+ "description": "Jeu de test annoté du module repas : phrase (français, tounsi en lettres latines ou arabes) -> aliments attendus et leur catégorie. Les plats composés sont décomposés en ingrédients principaux (consigne donnée à l'IA). Sert au calcul de la précision, du rappel, du F1 et de la matrice de confusion.",
+ "phrases": [
+  {
+   "id": 1,
+   "langue": "fr",
+   "texte": "Couscous à l'agneau avec des légumes",
+   "attendu": [
+    {
+     "aliment": "couscous",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "agneau",
+     "categorie": "VIANDE_ROUGE"
+    },
+    {
+     "aliment": "légumes",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "langue": "tounsi",
+   "texte": "kosksi b l3allouch w slata",
+   "attendu": [
+    {
+     "aliment": "couscous",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "agneau",
+     "categorie": "VIANDE_ROUGE"
+    },
+    {
+     "aliment": "salade",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "langue": "tounsi",
+   "texte": "lablabi w khobz",
+   "attendu": [
+    {
+     "aliment": "lablabi",
+     "categorie": "LEGUMINEUSE"
+    },
+    {
+     "aliment": "pain",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "langue": "tounsi",
+   "texte": "3ejja b merguez",
+   "attendu": [
+    {
+     "aliment": "merguez",
+     "categorie": "VIANDE_ROUGE"
+    },
+    {
+     "aliment": "œufs",
+     "categorie": "LAITIER"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "langue": "fr",
+   "texte": "Spaghetti au thon et sauce tomate",
+   "attendu": [
+    {
+     "aliment": "spaghetti",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "thon",
+     "categorie": "POISSON"
+    },
+    {
+     "aliment": "tomate",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "langue": "tounsi",
+   "texte": "ma9rouna bel djej",
+   "attendu": [
+    {
+     "aliment": "pâtes",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "poulet",
+     "categorie": "VOLAILLE"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "langue": "fr",
+   "texte": "Omelette au fromage et pain",
+   "attendu": [
+    {
+     "aliment": "omelette",
+     "categorie": "LAITIER"
+    },
+    {
+     "aliment": "fromage",
+     "categorie": "LAITIER"
+    },
+    {
+     "aliment": "pain",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "langue": "fr",
+   "texte": "Lentilles et riz",
+   "attendu": [
+    {
+     "aliment": "lentilles",
+     "categorie": "LEGUMINEUSE"
+    },
+    {
+     "aliment": "riz",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "langue": "tounsi",
+   "texte": "rouz w 7out",
+   "attendu": [
+    {
+     "aliment": "riz",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "poisson",
+     "categorie": "POISSON"
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "langue": "tounsi",
+   "texte": "chorba bel 3allouch",
+   "attendu": [
+    {
+     "aliment": "chorba",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "agneau",
+     "categorie": "VIANDE_ROUGE"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "langue": "fr",
+   "texte": "brik à l'oeuf et au thon",
+   "attendu": [
+    {
+     "aliment": "brick",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "œuf",
+     "categorie": "LAITIER"
+    },
+    {
+     "aliment": "thon",
+     "categorie": "POISSON"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "langue": "tounsi",
+   "texte": "yaourt w banane",
+   "attendu": [
+    {
+     "aliment": "yaourt",
+     "categorie": "LAITIER"
+    },
+    {
+     "aliment": "banane",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "langue": "fr",
+   "texte": "Steak frites",
+   "attendu": [
+    {
+     "aliment": "steak",
+     "categorie": "VIANDE_ROUGE"
+    },
+    {
+     "aliment": "frites",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 14,
+   "langue": "fr",
+   "texte": "Burger et frites",
+   "attendu": [
+    {
+     "aliment": "burger",
+     "categorie": "VIANDE_ROUGE"
+    },
+    {
+     "aliment": "frites",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 15,
+   "langue": "fr",
+   "texte": "Pizza margherita",
+   "attendu": [
+    {
+     "aliment": "pizza",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "tomate",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "fromage",
+     "categorie": "LAITIER"
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "langue": "fr",
+   "texte": "Chakchouka",
+   "attendu": [
+    {
+     "aliment": "poivrons",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "tomates",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "œufs",
+     "categorie": "LAITIER"
+    }
+   ]
+  },
+  {
+   "id": 17,
+   "langue": "fr",
+   "texte": "Salade tunisienne au thon",
+   "attendu": [
+    {
+     "aliment": "salade",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "thon",
+     "categorie": "POISSON"
+    }
+   ]
+  },
+  {
+   "id": 18,
+   "langue": "fr",
+   "texte": "Poulet rôti avec pommes de terre",
+   "attendu": [
+    {
+     "aliment": "poulet",
+     "categorie": "VOLAILLE"
+    },
+    {
+     "aliment": "pommes de terre",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 19,
+   "langue": "tounsi",
+   "texte": "foul bel kamoun",
+   "attendu": [
+    {
+     "aliment": "fèves",
+     "categorie": "LEGUMINEUSE"
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "langue": "tounsi",
+   "texte": "3des w khobz tabouna",
+   "attendu": [
+    {
+     "aliment": "lentilles",
+     "categorie": "LEGUMINEUSE"
+    },
+    {
+     "aliment": "pain",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "langue": "arabe",
+   "texte": "سلاطة و حوت",
+   "attendu": [
+    {
+     "aliment": "salade",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "poisson",
+     "categorie": "POISSON"
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "langue": "arabe",
+   "texte": "كسكسي بالعلوش",
+   "attendu": [
+    {
+     "aliment": "couscous",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "agneau",
+     "categorie": "VIANDE_ROUGE"
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "langue": "arabe",
+   "texte": "عدس و رز",
+   "attendu": [
+    {
+     "aliment": "lentilles",
+     "categorie": "LEGUMINEUSE"
+    },
+    {
+     "aliment": "riz",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 24,
+   "langue": "arabe",
+   "texte": "لبلابي",
+   "attendu": [
+    {
+     "aliment": "lablabi",
+     "categorie": "LEGUMINEUSE"
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "langue": "arabe",
+   "texte": "مقرونة بالدجاج",
+   "attendu": [
+    {
+     "aliment": "pâtes",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "poulet",
+     "categorie": "VOLAILLE"
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "langue": "fr",
+   "texte": "Café au lait et deux dattes",
+   "attendu": [
+    {
+     "aliment": "lait",
+     "categorie": "LAITIER"
+    },
+    {
+     "aliment": "dattes",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "langue": "tounsi",
+   "texte": "bsissa bel 7lib",
+   "attendu": [
+    {
+     "aliment": "bsissa",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "lait",
+     "categorie": "LAITIER"
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "langue": "fr",
+   "texte": "Sardines grillées et salade",
+   "attendu": [
+    {
+     "aliment": "sardines",
+     "categorie": "POISSON"
+    },
+    {
+     "aliment": "salade",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 29,
+   "langue": "fr",
+   "texte": "Tajine au poulet et au fromage",
+   "attendu": [
+    {
+     "aliment": "poulet",
+     "categorie": "VOLAILLE"
+    },
+    {
+     "aliment": "fromage",
+     "categorie": "LAITIER"
+    },
+    {
+     "aliment": "œufs",
+     "categorie": "LAITIER"
+    }
+   ]
+  },
+  {
+   "id": 30,
+   "langue": "fr",
+   "texte": "Houmous et carottes",
+   "attendu": [
+    {
+     "aliment": "houmous",
+     "categorie": "LEGUMINEUSE"
+    },
+    {
+     "aliment": "carottes",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 31,
+   "langue": "fr",
+   "texte": "Tofu sauté aux légumes et riz",
+   "attendu": [
+    {
+     "aliment": "tofu",
+     "categorie": "LEGUMINEUSE"
+    },
+    {
+     "aliment": "légumes",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "riz",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 32,
+   "langue": "tounsi",
+   "texte": "chawarma djej",
+   "attendu": [
+    {
+     "aliment": "poulet",
+     "categorie": "VOLAILLE"
+    },
+    {
+     "aliment": "pain",
+     "categorie": "FECULENT"
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "langue": "fr",
+   "texte": "Kafteji",
+   "attendu": [
+    {
+     "aliment": "pommes de terre",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "poivrons",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "œufs",
+     "categorie": "LAITIER"
+    }
+   ]
+  },
+  {
+   "id": 34,
+   "langue": "tounsi",
+   "texte": "makrouna bel 3allouch w jben",
+   "attendu": [
+    {
+     "aliment": "pâtes",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "agneau",
+     "categorie": "VIANDE_ROUGE"
+    },
+    {
+     "aliment": "fromage",
+     "categorie": "LAITIER"
+    }
+   ]
+  },
+  {
+   "id": 35,
+   "langue": "fr",
+   "texte": "Pain, beurre et jus d'orange",
+   "attendu": [
+    {
+     "aliment": "pain",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "beurre",
+     "categorie": "LAITIER"
+    },
+    {
+     "aliment": "orange",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 36,
+   "langue": "fr",
+   "texte": "Salade de fruits : pomme, banane, fraise",
+   "attendu": [
+    {
+     "aliment": "pomme",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "banane",
+     "categorie": "FRUIT_LEGUME"
+    },
+    {
+     "aliment": "fraise",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 37,
+   "langue": "tounsi",
+   "texte": "loubia bel la7m",
+   "attendu": [
+    {
+     "aliment": "haricots",
+     "categorie": "LEGUMINEUSE"
+    },
+    {
+     "aliment": "viande",
+     "categorie": "VIANDE_ROUGE"
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "langue": "fr",
+   "texte": "Jelbana",
+   "attendu": [
+    {
+     "aliment": "petits pois",
+     "categorie": "LEGUMINEUSE"
+    }
+   ]
+  },
+  {
+   "id": 39,
+   "langue": "fr",
+   "texte": "Dorade grillée avec riz et salade",
+   "attendu": [
+    {
+     "aliment": "dorade",
+     "categorie": "POISSON"
+    },
+    {
+     "aliment": "riz",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "salade",
+     "categorie": "FRUIT_LEGUME"
+    }
+   ]
+  },
+  {
+   "id": 40,
+   "langue": "tounsi",
+   "texte": "nwasser bel djej",
+   "attendu": [
+    {
+     "aliment": "nwasser",
+     "categorie": "FECULENT"
+    },
+    {
+     "aliment": "poulet",
+     "categorie": "VOLAILLE"
+    }
+   ]
+  }
+ ]
+}

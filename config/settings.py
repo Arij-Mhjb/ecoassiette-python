@@ -192,6 +192,9 @@ CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 CELERY_TASK_TIME_LIMIT = 60
 # Exécution synchrone forcée (tests)
 IA_SYNCHRONE = env_bool("IA_SYNCHRONE", False)
+# Laboratoire IA : pause entre deux appels Gemini (quota de l'offre gratuite) et nombre de phrases évaluées
+GEMINI_PAUSE_S = float(os.getenv("GEMINI_PAUSE_S", "4"))
+LABO_LIMITE_GEMINI = int(os.getenv("LABO_LIMITE_GEMINI", "40"))
 
 # --- Journalisation (silencieuse pendant les tests)
 TESTING = "test" in sys.argv

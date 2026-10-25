@@ -53,6 +53,8 @@ ICONES = {
     "eye": '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
     "power": '<path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04"/>',
     "lightbulb": '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+    "moon": '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
     "map-pin": '<path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
 }
 
@@ -71,3 +73,12 @@ def icon(nom, taille=18, classe=""):
         'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{}</svg>',
         f" {classe}" if classe else "", taille, taille, mark_safe(trace),
     )
+
+
+@register.filter
+def pct(valeur):
+    """0.923 -> « 92 % » (affichage des métriques)."""
+    try:
+        return f"{round(float(valeur) * 100)} %"
+    except (TypeError, ValueError):
+        return "—"
