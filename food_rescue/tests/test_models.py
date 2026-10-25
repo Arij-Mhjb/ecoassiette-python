@@ -4,12 +4,17 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
 
-from food_rescue.models import ReservationSurplus
+from food_rescue.models import ProfilBeneficiaire, ReservationSurplus
 
 from .base import FoodRescueTestCase
 
 
 class ModelesFoodRescueTest(FoodRescueTestCase):
+    def test_profil_beneficiaire_valide(self):
+        profil = self.beneficiaire.profil_beneficiaire_food_rescue
+        self.assertTrue(profil.est_valide)
+        self.assertEqual(profil.type_beneficiaire, ProfilBeneficiaire.Type.ETUDIANT)
+
     def test_annonce_future_est_reservable(self):
         annonce = self.creer_annonce()
         self.assertTrue(annonce.est_reservable)
