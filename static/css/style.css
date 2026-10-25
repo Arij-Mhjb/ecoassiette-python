@@ -381,6 +381,21 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 ::placeholder { color: #7a877f; }
 [aria-invalid="true"] { border-color: var(--danger) !important; background-color: var(--danger-soft) !important; }
 .help { font-size: .84rem; color: var(--muted); margin-top: .35rem; }
+
+/* Analyse environnementale d'un repas */
+.impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.impact-kpi { padding: 1rem; border-radius: 12px; background: #edf7ef; }
+.impact-kpi strong { display: block; margin-top: .25rem; font-size: 1.35rem; color: var(--primary-dark); }
+.alternative-card { margin-top: 1rem; padding: 1rem; border-left: 4px solid var(--primary); background: #f7fbf7; border-radius: 0 10px 10px 0; }
+.alternative-arrow { font-weight: 700; color: var(--primary-dark); }
+.assistant-intro { max-width: 820px; margin-inline: auto; }
+.extraction-list { display: grid; gap: 1rem; margin-block: 1rem; }
+.extraction-row { display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: .8rem; padding: 1rem; border: 1px solid var(--border); border-radius: 12px; }
+.extraction-row legend { padding-inline: .4rem; font-weight: 700; }
+.suggestion-vegetale { grid-column: 1 / -1; padding: .8rem; border-left: 4px solid var(--primary); background: #edf7ef; border-radius: 0 8px 8px 0; }
+.suggestion-vegetale p { margin: 0 0 .35rem; }
+.comparison-box { margin-block: 1rem; padding: 1rem; background: #f7fbf7; border: 1px solid var(--border); border-radius: 12px; }
+@media (max-width: 720px) { .extraction-row { grid-template-columns: 1fr; } }
 .help ul { margin: .25rem 0 0; padding-left: 1.2rem; }
 .errors { color: var(--danger); font-size: .88rem; font-weight: 600; margin: .35rem 0 0; padding-left: 1.1rem; }
 .req { color: var(--danger); }

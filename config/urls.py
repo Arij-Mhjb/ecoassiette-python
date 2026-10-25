@@ -14,6 +14,7 @@ urlpatterns = [
     path("comptes/", include("users.urls")),
     path("api/", include("users.api.urls")),
     path("repas/", include("repas.urls")),
+    path("impact/", include("impact.urls")),
 ]
 
 if settings.DEBUG:

@@ -60,9 +60,16 @@ class RepasDetailView(MesRepasMixin, DetailView):
     context_object_name = "repas"
 
     def get_context_data(self, **kwargs):
+        from impact.services import analyser_repas
+
         ctx = super().get_context_data(**kwargs)
         ctx["lignes"] = [(e, suggestion_pour(e)) for e in self.object.elements.all()]
         ctx["a_suggestions"] = any(s for _, s in ctx["lignes"])
+        ctx["analyse_impact"] = analyser_repas(self.object, self.request.user)
+        ctx["analyse_impact"]["adoptees"] = set(
+            self.object.alternatives_adoptees.filter(utilisateur=self.request.user)
+            .values_list("alternative_id", flat=True)
+        )
         return ctx
 
 
@@ -143,7 +150,6 @@ def ia_texte(request):
     except ErreurIA:
         return JsonResponse({"erreur": "Aucun aliment reconnu. Essayez par exemple : « kosksi b l3allouch w slata »."},
                             status=422)
-
 
 # ---------------------------------------------------- CREATE + UPDATE
 class RepasFormMixin:

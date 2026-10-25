@@ -56,4 +56,5 @@
   {% if repas.niveau_co2 == "faible" %}<p class="astuce astuce-ok">{% icon "check-circle" %}<span>Bravo, ce repas est déjà très sobre en carbone.</span></p>{% endif %}
 </section>
 {% endif %}
+{% include "impact/_analyse_repas.html" with analyse=analyse_impact %}
 {% endblock %}

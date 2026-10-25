@@ -1,0 +1,43 @@
+<section class="card" aria-labelledby="titre-impact">
+  <h2 id="titre-impact">Impact environnemental estimé</h2>
+  {% if analyse.a_des_donnees %}
+    <p class="muted">Estimation calculée à partir des catégories et quantités enregistrées.</p>
+    <div class="impact-grid">
+      <div class="impact-kpi"><span>Empreinte carbone</span><strong>{{ analyse.totaux.co2 }} kg CO₂e</strong></div>
+      <div class="impact-kpi"><span>Empreinte eau</span><strong>{{ analyse.totaux.eau }} litres</strong></div>
+      <div class="impact-kpi"><span>Utilisation des terres</span><strong>{{ analyse.totaux.terres }} m²</strong></div>
+      <div class="impact-kpi"><span>Risque de déforestation</span><strong>{{ analyse.risque_deforestation }}</strong></div>
+    </div>
+
+    {% if analyse.alternatives %}
+      <h3>Alternatives végétales adaptées</h3>
+      <p>En adoptant ces alternatives, vous pourriez éviter environ
+        <strong>{{ analyse.economies.co2 }} kg CO₂e</strong>, économiser
+        <strong>{{ analyse.economies.eau }} litres d'eau</strong> et réduire l'utilisation des terres de
+        <strong>{{ analyse.economies.terres }} m²</strong>.
+      </p>
+      {% for alt in analyse.alternatives %}
+        <article class="alternative-card">
+          <h4>{{ alt.aliment|capfirst }} <span class="alternative-arrow" aria-hidden="true">→</span>
+            <span class="sr-only">remplacé par</span> {{ alt.remplacement|capfirst }}</h4>
+          {% if alt.idee %}<p>{{ alt.idee }}</p>{% endif %}
+          <p class="small muted">Pour {{ alt.quantite_g }} g : {{ alt.gains.co2 }} kg CO₂e,
+            {{ alt.gains.eau }} L d'eau et {{ alt.gains.terres }} m² de terres évités.</p>
+          {% if alt.id in analyse.adoptees %}
+            <p class="message message-success">Alternative adoptée et ajoutée à votre bilan.</p>
+          {% else %}
+            <form method="post" action="{% url 'impact:adopter' repas.pk alt.id %}">
+              {% csrf_token %}
+              <button class="btn btn-small" type="submit">J'ai adopté cette alternative</button>
+            </form>
+          {% endif %}
+        </article>
+      {% endfor %}
+    {% else %}
+      <p class="message message-success">Ce repas ne contient pas d'aliment animal pour lequel une alternative est nécessaire.</p>
+    {% endif %}
+    <p class="small muted">Ces valeurs sont des estimations moyennes, pas des mesures exactes. Les sources sont consultables dans l'administration.</p>
+  {% else %}
+    <p>Aucun facteur environnemental n'est encore configuré.</p>
+  {% endif %}
+</section>
