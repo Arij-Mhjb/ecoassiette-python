@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "users.apps.UsersConfig",
     "repas",
     "impact",
+    "food_rescue.apps.FoodRescueConfig",
 ]
 
 MIDDLEWARE = [
@@ -210,5 +211,6 @@ LOGGING = {
     "loggers": {
         "users": {"handlers": ["console"], "level": "CRITICAL" if TESTING else os.getenv("LOG_LEVEL", "INFO")},
         "repas": {"handlers": ["console"], "level": "CRITICAL" if TESTING else os.getenv("LOG_LEVEL", "INFO")},
+        "food_rescue": {"handlers": ["console"], "level": "CRITICAL" if TESTING else os.getenv("LOG_LEVEL", "INFO")},
     },
 }

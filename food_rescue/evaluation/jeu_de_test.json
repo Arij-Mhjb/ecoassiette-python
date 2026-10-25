@@ -1,0 +1,23 @@
+[
+  {"titre": "Cagette de tomates et courgettes", "description": "Légumes du marché", "categorie": "FRUITS_LEGUMES"},
+  {"titre": "Pommes et oranges", "description": "Fruits frais", "categorie": "FRUITS_LEGUMES"},
+  {"titre": "Carottes", "description": "Légumes à cuisiner", "categorie": "FRUITS_LEGUMES"},
+  {"titre": "Pain complet", "description": "Pain de la journée", "categorie": "BOULANGERIE"},
+  {"titre": "Baguettes", "description": "Trois baguettes emballées", "categorie": "BOULANGERIE"},
+  {"titre": "Croissants", "description": "Pâtisserie du matin", "categorie": "BOULANGERIE"},
+  {"titre": "Couscous végétal", "description": "Semoule, pois chiches et légumes", "categorie": "PLAT_PREPARE"},
+  {"titre": "Lablabi", "description": "Plat préparé ce midi", "categorie": "PLAT_PREPARE"},
+  {"titre": "Soupe maison", "description": "Quatre portions", "categorie": "PLAT_PREPARE"},
+  {"titre": "Pizza aux légumes", "description": "Deux portions", "categorie": "PLAT_PREPARE"},
+  {"titre": "Conserves de lentilles", "description": "Épicerie non ouverte", "categorie": "EPICERIE"},
+  {"titre": "Farine et semoule", "description": "Paquets fermés", "categorie": "EPICERIE"},
+  {"titre": "Huile alimentaire", "description": "Bouteille non ouverte", "categorie": "EPICERIE"},
+  {"titre": "Yaourts nature", "description": "Produits laitiers réfrigérés", "categorie": "PRODUIT_LAITIER"},
+  {"titre": "Fromage", "description": "Lot conservé au froid", "categorie": "PRODUIT_LAITIER"},
+  {"titre": "Lait", "description": "Six briques non ouvertes", "categorie": "PRODUIT_LAITIER"},
+  {"titre": "Boîtes alimentaires", "description": "Contenu varié", "categorie": "AUTRE"},
+  {"titre": "Panier surprise", "description": "Produits divers", "categorie": "AUTRE"},
+  {"titre": "Préparation du restaurant", "description": "Riz et légumes cuisinés", "categorie": "PLAT_PREPARE"},
+  {"titre": "Bananes mûres", "description": "Fruits à récupérer rapidement", "categorie": "FRUITS_LEGUMES"}
+]
+
