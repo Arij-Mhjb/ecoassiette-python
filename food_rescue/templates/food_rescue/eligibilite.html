@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Éligibilité Food Rescue{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'food_rescue:liste' %}">{% icon "arrow-left" %}Food Rescue</a>
+<div class="page-head"><div><p class="eyebrow">Accès solidaire</p><h1>Mon éligibilité</h1><p class="muted">Les dons sont réservés aux étudiants et aux associations validés.</p></div></div>
+
+{% if eligibilite %}
+<section class="card" aria-labelledby="t-statut">
+  <h2 id="t-statut">Statut de ma demande</h2>
+  <p><span class="badge statut-{{ eligibilite.statut }}">{{ eligibilite.get_statut_display }}</span></p>
+  <dl class="detail-list">
+    <div><dt>Profil</dt><dd>{{ eligibilite.get_type_beneficiaire_display }}</dd></div>
+    <div><dt>Établissement / association</dt><dd>{{ eligibilite.organisme }}</dd></div>
+    <div><dt>Soumis le</dt><dd>{{ eligibilite.soumis_le|date:"d/m/Y à H:i" }}</dd></div>
+  </dl>
+  {% if eligibilite.statut == "VALIDEE" %}<p class="alert alert-success">Votre profil est validé : vous pouvez réserver les surplus disponibles.</p>{% endif %}
+  {% if eligibilite.statut == "EN_ATTENTE" %}<p class="alert alert-info">Un administrateur doit vérifier votre demande avant toute réservation.</p>{% endif %}
+  {% if eligibilite.statut == "REFUSEE" %}<p class="alert alert-error">Demande refusée{% if eligibilite.motif_refus %} : {{ eligibilite.motif_refus }}{% endif %}. Vous pouvez corriger puis renvoyer le formulaire.</p>{% endif %}
+</section>
+{% endif %}
+
+{% if not eligibilite or eligibilite.statut == "REFUSEE" %}
+<section class="card narrow" aria-labelledby="t-demande">
+  <h2 id="t-demande">{% if eligibilite %}Corriger ma demande{% else %}Demander l'accès bénéficiaire{% endif %}</h2>
+  <form method="post">{% csrf_token %}{% include "includes/form.html" with form=form %}<button class="btn" type="submit">Envoyer pour validation</button></form>
+</section>
+{% endif %}
+{% endblock %}

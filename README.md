@@ -5,7 +5,7 @@ Ce dépôt contient le **module Utilisateurs & profils** (app Django `users`) : 
 rôles, profil alimentaire, analyse IA du profil, gestion des comptes (CRUD), API REST.
 
 - Django 5.2 · DRF · PostgreSQL (Render) / SQLite (local) · WhiteNoise · Celery (optionnel)
-- **323 tests**, couverture globale **91 %** (branches incluses) · audit axe-core historique sans violation sur les pages couvertes
+- **327 tests**, couverture globale **91 %** (branches incluses) · audit axe-core historique sans violation sur les pages couvertes
 
 ---
 
@@ -228,7 +228,8 @@ static/            css, js (menu, analyse IA)
 
 L'application Django `food_rescue` transforme un surplus en don traçable : publication, analyse IA,
 recommandation, réservation, acceptation, code de collecte et double confirmation. L'adresse précise
-reste masquée jusqu'à l'acceptation de la demande.
+reste masquée jusqu'à l'acceptation de la demande. Tout membre peut donner, mais seuls les profils
+**Étudiant** ou **Association** validés par un administrateur peuvent réserver.
 
 ### Parcours de démonstration complet
 
@@ -243,12 +244,22 @@ Tous les comptes de démonstration utilisent `EcoDemo2026!` :
 
 1. Se connecter avec `amine`, ouvrir **Food Rescue**, puis publier un surplus avec ou sans photo.
 2. Constater l'analyse asynchrone : Gemini si `GEMINI_API_KEY` est définie, sinon moteur local gratuit.
-3. Se connecter avec `yasmine`, ouvrir l'annonce et envoyer une demande de réservation.
+3. Se connecter avec `yasmine` (profil étudiant validé), ouvrir l'annonce et envoyer une réservation.
 4. Revenir avec `amine`, accepter la demande et noter le code de collecte.
 5. Confirmer la remise côté donateur, puis la récupération côté bénéficiaire avec le code.
-6. Consulter **Mon impact Food Rescue** : la collecte et le CO₂ évité sont comptabilisés.
+6. Consulter **Mon impact Food Rescue** : la collecte, le CO₂ évité et les points du donateur sont comptabilisés.
 
-La commande de seed ajoute aussi quatre scénarios prêts à présenter : disponible, urgent, réservé et collecté.
+La commande de seed ajoute quatre scénarios prêts à présenter (disponible, urgent, réservé et collecté),
+deux étudiants validés et une association validée.
+
+### Éligibilité sociale et points solidaires
+
+- Un membre non validé peut consulter et publier, mais le serveur bloque toute réservation directe.
+- L'étudiant ou l'association dépose une demande depuis `/food-rescue/eligibilite/`.
+- L'administrateur valide ou refuse le profil depuis l'administration Django.
+- L'éligibilité est revérifiée à la réservation et avant l'acceptation par le donateur.
+- Après la double confirmation, le donateur reçoit `50 + 10 × kg CO₂e évités`, plafonné à 200 points.
+- Le crédit utilise le portefeuille `impact.TransactionPoints` existant et ne peut être effectué qu'une fois.
 
 ### IA gratuite et résiliente
 
@@ -280,5 +291,6 @@ pas être présentés comme une validation scientifique générale.
 - `AnalyseSurplusIA` : résultat structuré, source, erreur et latence.
 - `ReservationSurplus` : une demande par bénéficiaire et par annonce.
 - `CollecteSurplus` : double confirmation donateur/bénéficiaire.
+- `ProfilBeneficiaire` : type étudiant/association et validation administrative.
 - Toutes les écritures utilisent POST + CSRF ; les requêtes sont filtrées par propriétaire et testées
   contre l'accès direct par URL.

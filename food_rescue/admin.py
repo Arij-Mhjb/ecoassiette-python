@@ -1,6 +1,7 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.utils import timezone
 
-from .models import AnalyseSurplusIA, AnnonceSurplus, CollecteSurplus, ReservationSurplus
+from .models import AnalyseSurplusIA, AnnonceSurplus, CollecteSurplus, ProfilBeneficiaire, ReservationSurplus
 
 
 @admin.register(AnnonceSurplus)
@@ -28,6 +29,35 @@ class AnalyseSurplusIAAdmin(admin.ModelAdmin):
 
 @admin.register(CollecteSurplus)
 class CollecteSurplusAdmin(admin.ModelAdmin):
-    list_display = ("reservation", "confirmee_par_donateur", "confirmee_par_beneficiaire", "confirmee_le")
-    readonly_fields = ("reservation", "confirmee_par_donateur", "confirmee_par_beneficiaire", "confirmee_le")
+    list_display = ("reservation", "confirmee_par_donateur", "confirmee_par_beneficiaire", "points_attribues", "confirmee_le")
+    readonly_fields = ("reservation", "confirmee_par_donateur", "confirmee_par_beneficiaire", "points_attribues", "confirmee_le")
+
+
+@admin.register(ProfilBeneficiaire)
+class ProfilBeneficiaireAdmin(admin.ModelAdmin):
+    list_display = ("utilisateur", "type_beneficiaire", "organisme", "statut", "soumis_le", "verifie_le")
+    list_filter = ("type_beneficiaire", "statut", "soumis_le")
+    search_fields = ("utilisateur__username", "utilisateur__email", "organisme", "reference_justificatif")
+    readonly_fields = ("utilisateur", "type_beneficiaire", "organisme", "reference_justificatif", "soumis_le", "modifie_le", "verifie_par", "verifie_le")
+    fields = readonly_fields + ("statut", "motif_refus")
+    actions = ("valider_eligibilite", "refuser_eligibilite")
+
+    @admin.action(description="Valider les profils sélectionnés")
+    def valider_eligibilite(self, request, queryset):
+        nombre = queryset.update(
+            statut=ProfilBeneficiaire.Statut.VALIDEE,
+            motif_refus="",
+            verifie_par=request.user,
+            verifie_le=timezone.now(),
+        )
+        self.message_user(request, f"{nombre} profil(s) validé(s).", messages.SUCCESS)
+
+    @admin.action(description="Refuser les profils sélectionnés")
+    def refuser_eligibilite(self, request, queryset):
+        nombre = queryset.update(
+            statut=ProfilBeneficiaire.Statut.REFUSEE,
+            verifie_par=request.user,
+            verifie_le=timezone.now(),
+        )
+        self.message_user(request, f"{nombre} profil(s) refusé(s).", messages.WARNING)
 

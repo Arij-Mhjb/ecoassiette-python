@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 
-from .models import AnnonceSurplus, ReservationSurplus
+from .models import AnnonceSurplus, ProfilBeneficiaire, ReservationSurplus
 
 
 class AnnonceSurplusForm(forms.ModelForm):
@@ -63,4 +63,25 @@ class ReservationSurplusForm(forms.ModelForm):
         if self.annonce and valeur > self.annonce.disponible_jusquau:
             raise forms.ValidationError("La collecte doit avoir lieu avant la fin de disponibilité.")
         return valeur
+
+
+class ProfilBeneficiaireForm(forms.ModelForm):
+    attestation = forms.BooleanField(
+        label="J'atteste que les informations fournies sont exactes",
+        help_text="Une fausse déclaration peut entraîner la suspension de l'accès aux dons.",
+    )
+
+    class Meta:
+        model = ProfilBeneficiaire
+        fields = ["type_beneficiaire", "organisme", "reference_justificatif"]
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.statut = ProfilBeneficiaire.Statut.EN_ATTENTE
+        instance.motif_refus = ""
+        instance.verifie_par = None
+        instance.verifie_le = None
+        if commit:
+            instance.save()
+        return instance
 
