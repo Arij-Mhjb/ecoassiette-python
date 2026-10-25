@@ -7,7 +7,7 @@ Sécurité du module utilisateurs :
 import re
 from datetime import timedelta
 
-from django.contrib.auth.signals import user_logged_in, user_login_failed
+from django.contrib.auth.signals import user_logged_in, user_logged_out, user_login_failed
 from django.contrib.sessions.models import Session
 from django.dispatch import receiver
 from django.utils import timezone
@@ -90,6 +90,8 @@ def enregistrer_echec(sender, credentials, request=None, **kwargs):
         ip=masquer_ip(ip_client(request)),
         navigateur=resume_navigateur(request.META.get("HTTP_USER_AGENT") if request else ""),
     )
+    journaliser(request, JournalAudit.Action.CONNEXION_ECHOUEE, cible=ident,
+                details="identifiant ou mot de passe incorrect", acteur=None)
     if minutes_de_blocage(ident) and not JournalAudit.objects.filter(
             action=JournalAudit.Action.CONNEXION_BLOQUEE, cible=ident, cree_le__gte=timezone.now() - FENETRE).exists():
         journaliser(request, JournalAudit.Action.CONNEXION_BLOQUEE, cible=ident,
@@ -106,6 +108,14 @@ def enregistrer_succes(sender, request, user, **kwargs):
         navigateur=resume_navigateur(request.META.get("HTTP_USER_AGENT")),
         session_key=getattr(request.session, "session_key", "") or "",
     )
+    journaliser(request, JournalAudit.Action.CONNEXION, cible=user.username,
+                details=resume_navigateur(request.META.get("HTTP_USER_AGENT")), acteur=user)
+
+
+@receiver(user_logged_out)
+def enregistrer_deconnexion(sender, request, user, **kwargs):
+    if request is not None and user is not None and user.pk and Utilisateur.objects.filter(pk=user.pk).exists():
+        journaliser(request, JournalAudit.Action.DECONNEXION, cible=user.username, acteur=user)
 
 
 def deconnecter_autres_appareils(request):

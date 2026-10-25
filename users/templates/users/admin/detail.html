@@ -42,4 +42,33 @@
     </dl>
   </section>
 </div>
+
+{% if activite is not None %}
+<section class="card" aria-labelledby="t-act" style="margin-top:1.25rem">
+  <div class="row-between">
+    <h2 id="t-act"><span class="h-ico h-ico-violet">{% icon "clock" %}</span>Activité récente</h2>
+    <a class="btn btn-small btn-ghost" href="{% url 'users:admin_journal' %}?u={{ cible.username|urlencode }}">{% icon "eye" 16 %}Voir tout son journal</a>
+  </div>
+  {% if activite %}
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Activité récente du compte (défilable)">
+  <table class="table compact">
+    <caption class="sr-only">10 dernières actions liées à ce compte</caption>
+    <thead><tr><th scope="col">Date</th><th scope="col">Action</th><th scope="col">Détails</th><th scope="col">IP</th></tr></thead>
+    <tbody>
+    {% for e in activite %}
+      <tr>
+        <th scope="row" style="white-space:nowrap">{{ e.cree_le|date:"d/m/Y H:i" }}</th>
+        <td><span class="action-tag action-{{ e.action|lower }}">{{ e.get_action_display }}</span>{% if e.acteur_nom and e.acteur_nom != cible.username %} <span class="small muted">par @{{ e.acteur_nom }}</span>{% endif %}</td>
+        <td class="small">{{ e.details|default:e.cible|default:"—" }}</td>
+        <td><code>{{ e.ip|default:"—" }}</code></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Aucune activité enregistrée pour ce compte.</p>
+  {% endif %}
+</section>
+{% endif %}
 {% endblock %}

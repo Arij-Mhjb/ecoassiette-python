@@ -4,16 +4,47 @@
 <div class="page-head">
   <p class="eyebrow">{% icon "shield" 14 %}Administration</p>
   <h1>Journal d'audit</h1>
-  <p class="muted">Toutes les actions sensibles : qui a fait quoi, sur quel compte, et quand. Les entrées ne peuvent être ni modifiées ni supprimées.</p>
+  <p class="muted">L'activité de <strong>tous les comptes</strong> (citoyens, nutritionnistes et administrateurs) : connexions, modifications de profil, repas, et actions d'administration. Les entrées ne peuvent être ni modifiées ni supprimées.</p>
 </div>
 {% include "users/admin/_onglets.html" %}
 
+<dl class="stat-tiles" aria-label="Dernières 24 heures">
+  <div class="tile"><dt>Actions (24 h)</dt><dd>{{ kpi_actions }}</dd></div>
+  <div class="tile"><dt>Comptes actifs (24 h)</dt><dd>{{ kpi_actifs }}</dd></div>
+  <div class="tile"><dt>Connexions (24 h)</dt><dd>{{ kpi_connexions }}</dd></div>
+  <div class="tile"><dt>Connexions échouées (24 h)</dt><dd>{{ kpi_echecs }}</dd></div>
+</dl>
+
+{% if cible_utilisateur %}
+<div class="bandeau bandeau-info" role="status"><span class="h-ico h-ico-blue">{% icon "user" %}</span>
+  <p>Activité de <strong>{{ cible_utilisateur.get_full_name|default:cible_utilisateur.username }}</strong> (@{{ cible_utilisateur.username }} · {{ cible_utilisateur.get_role_display }}).</p>
+  <a class="btn btn-small btn-ghost" href="{% url 'users:admin_journal' %}">{% icon "x" 16 %}Tous les utilisateurs</a></div>
+{% elif u %}
+<div class="bandeau bandeau-attente" role="status"><span class="h-ico h-ico-amber">{% icon "alert" %}</span>
+  <p>Aucun compte « {{ u }} ».</p><a class="btn btn-small btn-ghost" href="{% url 'users:admin_journal' %}">Tous les utilisateurs</a></div>
+{% endif %}
+
 <form method="get" class="filters" role="search" aria-label="Filtrer le journal">
+  {% if u %}<input type="hidden" name="u" value="{{ u }}">{% endif %}
+  <div class="field">
+    <label for="j-type">Type</label>
+    <select id="j-type" name="type">
+      <option value="">Tout</option>
+      {% for val, lib in categories %}<option value="{{ val }}" {% if val == categorie_active %}selected{% endif %}>{{ lib }}</option>{% endfor %}
+    </select>
+  </div>
   <div class="field">
     <label for="j-action">Action</label>
     <select id="j-action" name="action">
       <option value="">Toutes les actions</option>
       {% for val, lib in actions %}<option value="{{ val }}" {% if val == action_active %}selected{% endif %}>{{ lib }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="j-role">Rôle de l'auteur</label>
+    <select id="j-role" name="role">
+      <option value="">Tous les rôles</option>
+      {% for val, lib in roles %}<option value="{{ val }}" {% if val == role_active %}selected{% endif %}>{{ lib }}</option>{% endfor %}
     </select>
   </div>
   <div class="field">
@@ -26,13 +57,16 @@
 {% if entrees %}
 <div class="table-wrap" tabindex="0" role="region" aria-label="Journal d'audit (défilable)">
 <table class="table">
-  <caption class="sr-only">Journal d'audit</caption>
+  <caption class="sr-only">Journal d'audit de tous les comptes</caption>
   <thead><tr><th scope="col">Date</th><th scope="col">Par</th><th scope="col">Action</th><th scope="col">Cible</th><th scope="col">Détails</th><th scope="col">IP</th></tr></thead>
   <tbody>
   {% for e in entrees %}
     <tr>
       <th scope="row" style="white-space:nowrap">{{ e.cree_le|date:"d/m/Y H:i" }}</th>
-      <td>{% if e.acteur_nom %}@{{ e.acteur_nom }}{% else %}<span class="muted">système</span>{% endif %}</td>
+      <td style="white-space:nowrap">{% if e.acteur %}<a href="{% url 'users:admin_journal' %}?u={{ e.acteur.username|urlencode }}" title="Voir toute son activité">@{{ e.acteur_nom }}</a>
+            <span class="badge badge-{{ e.acteur.role|lower }}">{{ e.acteur.get_role_display }}</span>
+          {% elif e.acteur_nom %}@{{ e.acteur_nom }} <span class="muted small">(supprimé)</span>
+          {% else %}<span class="muted">système / anonyme</span>{% endif %}</td>
       <td><span class="action-tag action-{{ e.action|lower }}">{{ e.get_action_display }}</span></td>
       <td>{{ e.cible|default:"—" }}</td>
       <td class="small">{{ e.details|default:"—" }}</td>

@@ -395,6 +395,36 @@ class JournalAudit(models.Model):
         CONNEXION_BLOQUEE = "CONNEXION_BLOQUEE", "Connexion bloquée (trop d'échecs)"
         DECONNEXION_GLOBALE = "DECONNEXION_GLOBALE", "Déconnexion de tous les appareils"
         EXPORT_DONNEES = "EXPORT_DONNEES", "Export des données personnelles"
+        # activité des utilisateurs (citoyens, nutritionnistes, administrateurs)
+        INSCRIPTION = "INSCRIPTION", "Inscription"
+        EMAIL_CONFIRME = "EMAIL_CONFIRME", "E-mail confirmé"
+        CONNEXION = "CONNEXION", "Connexion"
+        CONNEXION_ECHOUEE = "CONNEXION_ECHOUEE", "Connexion échouée"
+        DECONNEXION = "DECONNEXION", "Déconnexion"
+        INFOS_MODIFIEES = "INFOS_MODIFIEES", "Informations personnelles modifiées"
+        PROFIL_MODIFIE = "PROFIL_MODIFIE", "Profil alimentaire modifié"
+        MDP_MODIFIE = "MDP_MODIFIE", "Mot de passe modifié"
+        MDP_REINITIALISE = "MDP_REINITIALISE", "Mot de passe réinitialisé"
+        DEMANDE_ENVOYEE = "DEMANDE_ENVOYEE", "Demande nutritionniste envoyée"
+        ANALYSE_IA = "ANALYSE_IA", "Analyse IA du profil lancée"
+        REPAS_AJOUTE = "REPAS_AJOUTE", "Repas ajouté"
+        REPAS_MODIFIE = "REPAS_MODIFIE", "Repas modifié"
+        REPAS_SUPPRIME = "REPAS_SUPPRIME", "Repas supprimé"
+        ALIMENT_REMPLACE = "ALIMENT_REMPLACE", "Aliment remplacé (alternative)"
+
+    # regroupement pour le filtre « Type » du journal
+    CATEGORIES = {
+        "connexions": ("Connexions", ["CONNEXION", "CONNEXION_ECHOUEE", "DECONNEXION", "CONNEXION_BLOQUEE",
+                                      "DECONNEXION_GLOBALE"]),
+        "activite": ("Activité des utilisateurs", ["INSCRIPTION", "EMAIL_CONFIRME", "INFOS_MODIFIEES", "PROFIL_MODIFIE",
+                                                   "MDP_MODIFIE", "MDP_REINITIALISE", "DEMANDE_ENVOYEE", "ANALYSE_IA",
+                                                   "REPAS_AJOUTE", "REPAS_MODIFIE", "REPAS_SUPPRIME", "ALIMENT_REMPLACE",
+                                                   "EXPORT_DONNEES", "AUTO_SUPPRESSION", "INVITATION_ACCEPTEE"]),
+        "administration": ("Actions d'administration", ["COMPTE_CREE", "COMPTE_MODIFIE", "COMPTE_SUPPRIME",
+                                                        "COMPTE_ACTIVE", "COMPTE_DESACTIVE", "DEMANDE_ACCEPTEE",
+                                                        "DEMANDE_REFUSEE", "INVITATION_ENVOYEE", "INVITATION_RENVOYEE",
+                                                        "INVITATION_ANNULEE", "RECOMMANDATION"]),
+    }
 
     acteur = models.ForeignKey(Utilisateur, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     acteur_nom = models.CharField(max_length=150, blank=True)     # conservé même si le compte est supprimé
