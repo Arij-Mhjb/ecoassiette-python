@@ -53,3 +53,46 @@
     if (e.key === "Escape" && menu.open) { menu.open = false; menu.querySelector("summary").focus(); }
   });
 })();
+
+/* Application installable (PWA) : service worker + bouton « Installer l'application ». */
+(function () {
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(function () {}); });
+  }
+  let invite = null;
+  const boutons = document.querySelectorAll("[data-installer]");
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault(); invite = e;
+    boutons.forEach(function (b) { b.hidden = false; });
+  });
+  boutons.forEach(function (b) {
+    b.addEventListener("click", async function () {
+      if (!invite) return;
+      invite.prompt();
+      await invite.userChoice;
+      invite = null;
+      boutons.forEach(function (x) { x.hidden = true; });
+    });
+  });
+  window.addEventListener("appinstalled", function () { boutons.forEach(function (x) { x.hidden = true; }); });
+})();
+
+/* Thème clair / sombre : bouton lune-soleil, choix mémorisé (sinon réglage du système). */
+(function () {
+  const b = document.querySelector(".theme-toggle");
+  if (!b) return;
+  const racine = document.documentElement;
+  function maj() {
+    const sombre = racine.getAttribute("data-theme") === "dark";
+    b.setAttribute("aria-pressed", String(sombre));
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", sombre ? "#0c1411" : "#0b3b2c");
+  }
+  b.addEventListener("click", function () {
+    const sombre = racine.getAttribute("data-theme") !== "dark";
+    racine.setAttribute("data-theme", sombre ? "dark" : "light");
+    try { localStorage.setItem("theme", sombre ? "dark" : "light"); } catch (e) {}
+    maj();
+  });
+  maj();
+})();
