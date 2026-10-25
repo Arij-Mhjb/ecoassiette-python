@@ -72,6 +72,10 @@ class AlternativeAdoptee(models.Model):
     alternative = models.ForeignKey(
         AlternativeVegetale, on_delete=models.PROTECT, related_name="adoptions"
     )
+    produit_utilise = models.ForeignKey(
+        "ProduitRecompense", on_delete=models.PROTECT, related_name="utilisations_recettes",
+        blank=True, null=True, verbose_name="produit végétal utilisé",
+    )
     aliment_original = models.CharField(max_length=100)
     remplacement = models.CharField(max_length=100)
     co2_evite = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
@@ -112,6 +116,30 @@ class ExtractionRecetteIA(models.Model):
         return f"Extraction du repas {self.repas_id} ({self.source})"
 
 
+class BrouillonRecette(models.Model):
+    """État temporaire d'une recette analysée, sans effet sur le bilan utilisateur."""
+
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="brouillons_recettes"
+    )
+    type_repas = models.CharField(max_length=10)
+    date = models.DateField()
+    note = models.CharField(max_length=200, blank=True)
+    texte_original = models.TextField(max_length=5000)
+    source = models.CharField(max_length=8, choices=ExtractionRecetteIA.Source.choices)
+    ingredients = models.JSONField(default=list)
+    cree_le = models.DateTimeField(auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-modifie_le"]
+        verbose_name = "brouillon de recette"
+        verbose_name_plural = "brouillons de recettes"
+
+    def __str__(self):
+        return self.note or f"Brouillon du {self.date:%d/%m/%Y}"
+
+
 class Sponsor(models.Model):
     nom = models.CharField(max_length=120, unique=True)
     site_web = models.URLField(blank=True)
@@ -141,6 +169,15 @@ class ProduitRecompense(models.Model):
     cout_points = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     stock = models.PositiveIntegerField(default=0)
     produit_vegetal = models.BooleanField(default=True)
+    mots_cles_recommandation = models.CharField(
+        "mots-clés de recommandation",
+        max_length=300,
+        blank=True,
+        help_text=(
+            "Ingrédients à remplacer, séparés par des virgules. "
+            "Exemple : viande hachée, steak, burger."
+        ),
+    )
     url_source = models.URLField(
         blank=True, help_text="Page officielle du produit à vérifier avant publication."
     )

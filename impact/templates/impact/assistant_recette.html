@@ -6,6 +6,29 @@
   <p class="muted">Décrivez ce que vous allez cuisiner. L'IA extrait les ingrédients et propose des substitutions végétales.</p>
 </div>
 
+{% if brouillons %}
+<section class="card drafts-card" aria-labelledby="titre-brouillons">
+  <div class="row-between">
+    <div><p class="eyebrow">Travail en cours</p><h2 id="titre-brouillons">Mes brouillons de recettes</h2></div>
+    <span class="small muted">{{ brouillons|length }} brouillon{{ brouillons|length|pluralize }}</span>
+  </div>
+  <div class="draft-list">
+    {% for brouillon_item in brouillons %}
+    <article class="draft-item">
+      <div>
+        <strong>{{ brouillon_item.note|default:"Recette sans nom" }}</strong>
+        <p class="small muted">{{ brouillon_item.date|date:"d/m/Y" }} · {{ brouillon_item.ingredients|length }} ingrédient{{ brouillon_item.ingredients|length|pluralize }} · modifié le {{ brouillon_item.modifie_le|date:"d/m/Y à H:i" }}</p>
+      </div>
+      <div class="draft-actions">
+        <a class="btn btn-small" href="{% url 'impact:reprendre_brouillon' brouillon_item.pk %}">Reprendre</a>
+        <form method="post" action="{% url 'impact:supprimer_brouillon' brouillon_item.pk %}">{% csrf_token %}<button class="btn btn-small btn-ghost" type="submit">Supprimer</button></form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% if not apercu %}
 <section class="card pantry-card" aria-labelledby="titre-garde-manger">
   <h2 id="titre-garde-manger">Que puis-je cuisiner avec ce que j'ai ?</h2>
@@ -60,9 +83,15 @@
     {% csrf_token %}
     <input type="hidden" name="type_repas" value="{{ form.type_repas.value }}">
     <input type="hidden" name="date" value="{{ form.date.value }}">
-    <input type="hidden" name="note" value="{{ form.note.value|default:'' }}">
+    <div class="field recipe-name-field">
+      <label for="id_note_apercu">Nom du plat</label>
+      <input id="id_note_apercu" type="text" name="note" maxlength="200" value="{{ form.note.value|default:'' }}" placeholder="Ex. Burger végétal maison">
+      <p class="help">Vous pouvez corriger le nom après avoir choisi une alternative.</p>
+      {% if form.note.errors %}<div class="field-errors">{{ form.note.errors }}</div>{% endif %}
+    </div>
     <textarea hidden name="texte">{{ form.texte.value }}</textarea>
     <input type="hidden" name="source" value="{{ apercu.source }}">
+    {% if apercu.brouillon %}<input type="hidden" name="brouillon_id" value="{{ apercu.brouillon.pk }}">{% endif %}
     {{ apercu.formset.management_form }}
     {% if apercu.formset.non_form_errors %}<div class="alert alert-error" role="alert">{{ apercu.formset.non_form_errors }}</div>{% endif %}
     <div class="extraction-list">
@@ -71,14 +100,81 @@
         <legend>Ingrédient {{ forloop.counter }}</legend>
         {% for hidden in ligne.form.hidden_fields %}{{ hidden }}{% endfor %}
         {% for field in ligne.form.visible_fields %}
-          {% if field.name != "utiliser_alternative" and field.name != "DELETE" %}{% include "includes/champ.html" %}{% endif %}
+          {% if field.name != "utiliser_alternative" and field.name != "produit_alternatif_id" and field.name != "DELETE" %}{% include "includes/champ.html" %}{% endif %}
         {% endfor %}
         {% if ligne.alternative %}
           <div class="suggestion-vegetale">
             <p><strong>{{ ligne.form.aliment.value|capfirst }} → {{ ligne.alternative.remplacement|capfirst }}</strong></p>
             <p class="small">{{ ligne.alternative.idee }}</p>
-            <label>{{ ligne.form.utiliser_alternative }} Utiliser cette alternative dans le repas validé</label>
           </div>
+        {% endif %}
+        {% if ligne.produits_recommandes %}
+          <div class="product-recommendations" aria-label="Produits végétaux recommandés">
+            <div class="recommendation-heading">
+              <div>
+                <span class="recommendation-ai">Recommandation IA</span>
+                <h4>Alternative prête à acheter</h4>
+              </div>
+              <p class="small muted">Produits végétaux disponibles correspondant à l'ingrédient détecté.</p>
+            </div>
+            <div class="recommendation-list">
+              {% for recommandation in ligne.produits_recommandes %}
+                {% with produit=recommandation.produit %}
+                <article class="recommended-product">
+                  {% if produit.image %}<img src="{{ produit.image.url }}" alt="{{ produit.nom }}">{% endif %}
+                  <div class="recommended-product-body">
+                    <p class="small muted">{{ produit.sponsor.nom }}</p>
+                    <h5>{{ produit.nom }}</h5>
+                    <p class="small">{{ recommandation.raison|capfirst }}.</p>
+                    <p><strong>{{ produit.prix_remise|floatformat:2 }} €</strong>
+                      <span class="small muted">au lieu de {{ produit.prix_public|floatformat:2 }} € · −{{ produit.remise_pourcent }} %</span>
+                    </p>
+                    <div class="recommended-product-actions">
+                      {% if ligne.alternative %}
+                        <label class="product-choice">
+                          <input type="radio" name="{{ ligne.form.produit_alternatif_id.html_name }}" value="{{ produit.pk }}"{% if ligne.form.produit_alternatif_id.value|stringformat:'s' == produit.pk|stringformat:'s' %} checked{% endif %}>
+                          Utiliser ce produit comme alternative
+                        </label>
+                      {% endif %}
+                      {% if produit.url_source %}
+                        <a class="btn btn-small" href="{{ produit.url_source }}" target="_blank" rel="noopener noreferrer">Voir ce produit</a>
+                      {% endif %}
+                      <a class="btn btn-small btn-ghost" href="{% url 'impact:portefeuille' %}#produit-{{ produit.pk }}">Obtenir avec {{ produit.cout_points }} points</a>
+                    </div>
+                  </div>
+                </article>
+                {% endwith %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+        {% if ligne.recette_maison %}
+          <article class="homemade-alternative">
+            <div class="homemade-heading">
+              <div>
+                <span class="recommendation-ai">Recette proposée par l’IA</span>
+                <h4>{{ ligne.recette_maison.nom }}</h4>
+              </div>
+              <label class="product-choice homemade-choice">
+                {{ ligne.form.utiliser_alternative }} Préparer et utiliser cette alternative maison
+              </label>
+            </div>
+            <div class="homemade-columns">
+              <div>
+                <h5>Ingrédients pour cette portion</h5>
+                <ul>
+                  {% for ingredient in ligne.recette_maison.ingredients %}
+                    <li><strong>{{ ingredient.quantite_g }} g</strong> de {{ ingredient.nom }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <div>
+                <h5>Préparation</h5>
+                <ol>{% for etape in ligne.recette_maison.etapes %}<li>{{ etape }}</li>{% endfor %}</ol>
+              </div>
+            </div>
+            <a class="btn btn-small btn-ghost video-tutorial-link" href="{{ ligne.recette_maison.video_url }}" target="_blank" rel="noopener noreferrer">Voir des tutoriels vidéo pour cette recette</a>
+          </article>
         {% endif %}
         <div class="field-check"><label>{{ ligne.form.DELETE }} Retirer cet ingrédient</label></div>
       </fieldset>
@@ -96,6 +192,7 @@
     {% endif %}
     <div class="form-actions">
       <button class="btn" type="submit">Valider et ajouter à mes repas</button>
+      <button class="btn btn-ghost" type="submit" name="action" value="enregistrer_brouillon">Enregistrer le brouillon</button>
       <a class="btn btn-ghost" href="{% url 'impact:assistant_recette' %}">Recommencer</a>
     </div>
   </form>
@@ -110,6 +207,18 @@
     bouton.setAttribute("aria-busy", "true");
     bouton.textContent = "Analyse IA en cours…";
     document.getElementById("statut-analyse").textContent = "Extraction des ingrédients et recherche d'alternatives végétales…";
+  });
+  document.querySelectorAll(".extraction-row").forEach(function (ligne) {
+    const alternativeSimple = ligne.querySelector('input[name$="-utiliser_alternative"]');
+    const produits = ligne.querySelectorAll('input[name$="-produit_alternatif_id"]');
+    produits.forEach(function (produit) {
+      produit.addEventListener("change", function () {
+        if (produit.checked && alternativeSimple) alternativeSimple.checked = false;
+      });
+    });
+    if (alternativeSimple) alternativeSimple.addEventListener("change", function () {
+      if (alternativeSimple.checked) produits.forEach(function (produit) { produit.checked = false; });
+    });
   });
 </script>
 {% endblock %}

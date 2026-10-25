@@ -14,11 +14,14 @@ from users.ai import ErreurIA
 
 from .forms import GardeMangerForm, IngredientExtraitFormSet, PreuveRepasForm, RecetteAssistantForm
 from .models import (
-    AlternativeAdoptee, CommandeRecompense, ExtractionRecetteIA, PreuveRepas,
+    AlternativeAdoptee, BrouillonRecette, CommandeRecompense, ExtractionRecetteIA, PreuveRepas,
     ProduitRecompense, TransactionPoints,
 )
 from .recipe_ai import extraire_recette, proposer_recettes_garde_manger
-from .services import analyser_ingredients, analyser_repas, proposer_alternative, solde_points
+from .services import (
+    analyser_ingredients, analyser_repas, proposer_alternative, proposer_recette_alternative,
+    recommander_produits, solde_points,
+)
 
 
 @login_required
@@ -52,8 +55,40 @@ def _lignes_apercu(formset, utilisateur):
             alternative = proposer_alternative(
                 donnees.get("aliment", ""), donnees.get("categorie", ""), utilisateur
             )
-        lignes.append({"form": formulaire, "alternative": alternative})
+        produits_recommandes = recommander_produits(
+            donnees.get("aliment", ""), alternative
+        ) if donnees and not donnees.get("DELETE") else []
+        recette_maison = proposer_recette_alternative(
+            donnees.get("aliment", ""), alternative, donnees.get("quantite_g", 100)
+        ) if donnees and not donnees.get("DELETE") and alternative else None
+        lignes.append({
+            "form": formulaire,
+            "alternative": alternative,
+            "produits_recommandes": produits_recommandes,
+            "recette_maison": recette_maison,
+        })
     return lignes
+
+
+def _ingredients_formset(formset):
+    return [
+        {
+            "aliment": f.cleaned_data["aliment"],
+            "categorie": f.cleaned_data["categorie"],
+            "quantite_g": f.cleaned_data["quantite_g"],
+            "utiliser_alternative": bool(f.cleaned_data.get("utiliser_alternative")),
+            "produit_alternatif_id": f.cleaned_data.get("produit_alternatif_id"),
+        }
+        for f in formset.forms if f.is_valid() and not f.cleaned_data.get("DELETE")
+    ]
+
+
+def _contexte_assistant(request, **supplement):
+    contexte = {
+        "brouillons": BrouillonRecette.objects.filter(utilisateur=request.user)[:10],
+    }
+    contexte.update(supplement)
+    return contexte
 
 
 @login_required
@@ -74,6 +109,7 @@ def assistant_recette(request):
             return render(request, "impact/assistant_recette.html", {
                 "form": form, "apercu": None, "garde_form": garde_form,
                 "recettes_garde_manger": recettes_garde_manger, "source_garde": source_garde,
+                "brouillons": BrouillonRecette.objects.filter(utilisateur=request.user)[:10],
             })
         form = RecetteAssistantForm(request.POST)
         if form.is_valid():
@@ -84,28 +120,75 @@ def assistant_recette(request):
             else:
                 formset = IngredientExtraitFormSet(initial=ingredients, prefix="ingredients")
                 analyse = analyser_ingredients(ingredients, request.user)
+                brouillon = BrouillonRecette.objects.create(
+                    utilisateur=request.user,
+                    type_repas=form.cleaned_data["type_repas"],
+                    date=form.cleaned_data["date"],
+                    note=form.cleaned_data["note"],
+                    texte_original=form.cleaned_data["texte"],
+                    source=source,
+                    ingredients=ingredients,
+                )
                 apercu = {
                     "formset": formset,
                     "lignes": _lignes_apercu(formset, request.user),
                     "analyse": analyse,
                     "source": source,
                     "erreur_ia": erreur,
+                    "brouillon": brouillon,
                 }
     else:
         form = RecetteAssistantForm()
     return render(request, "impact/assistant_recette.html", {
         "form": form, "apercu": apercu, "garde_form": garde_form,
         "recettes_garde_manger": recettes_garde_manger,
+        "brouillons": BrouillonRecette.objects.filter(utilisateur=request.user)[:10],
     })
 
 
 @login_required
+def reprendre_brouillon(request, brouillon_id):
+    brouillon = get_object_or_404(BrouillonRecette, pk=brouillon_id, utilisateur=request.user)
+    form = RecetteAssistantForm(initial={
+        "type_repas": brouillon.type_repas,
+        "date": brouillon.date,
+        "note": brouillon.note,
+        "texte": brouillon.texte_original,
+    })
+    formset = IngredientExtraitFormSet(initial=brouillon.ingredients, prefix="ingredients")
+    analyse = analyser_ingredients(brouillon.ingredients, request.user) if brouillon.ingredients else None
+    apercu = {
+        "formset": formset,
+        "lignes": _lignes_apercu(formset, request.user),
+        "analyse": analyse,
+        "source": brouillon.source,
+        "brouillon": brouillon,
+    }
+    return render(request, "impact/assistant_recette.html", _contexte_assistant(
+        request, form=form, apercu=apercu, garde_form=GardeMangerForm(),
+        recettes_garde_manger=None,
+    ))
+
+
+@login_required
+@require_POST
+def supprimer_brouillon(request, brouillon_id):
+    brouillon = get_object_or_404(BrouillonRecette, pk=brouillon_id, utilisateur=request.user)
+    brouillon.delete()
+    messages.success(request, "Brouillon supprimé.")
+    return redirect("impact:assistant_recette")
+
+
+@login_required
 def portefeuille(request):
-    produits = ProduitRecompense.objects.filter(
-        statut=ProduitRecompense.Statut.PUBLIE, stock__gt=0, sponsor__actif=True
-    ).select_related("sponsor")
+    solde = solde_points(request.user)
+    produits = list(ProduitRecompense.objects.filter(
+        statut=ProduitRecompense.Statut.PUBLIE, sponsor__actif=True
+    ).select_related("sponsor"))
+    for produit in produits:
+        produit.points_manquants = max(0, produit.cout_points - solde)
     return render(request, "impact/portefeuille.html", {
-        "solde": solde_points(request.user), "produits": produits,
+        "solde": solde, "produits": produits,
         "preuves": PreuveRepas.objects.filter(utilisateur=request.user)[:10],
         "transactions": TransactionPoints.objects.filter(utilisateur=request.user)[:15],
         "commandes": CommandeRecompense.objects.filter(utilisateur=request.user).select_related("produit")[:10],
@@ -162,6 +245,11 @@ def acheter_produit(request, produit_id):
 def valider_recette(request):
     form = RecetteAssistantForm(request.POST)
     formset = IngredientExtraitFormSet(request.POST, prefix="ingredients")
+    brouillon = None
+    if request.POST.get("brouillon_id"):
+        brouillon = get_object_or_404(
+            BrouillonRecette, pk=request.POST["brouillon_id"], utilisateur=request.user
+        )
     if not (form.is_valid() and formset.is_valid()):
         lignes = _lignes_apercu(formset, request.user)
         ingredients_valides = [
@@ -170,12 +258,27 @@ def valider_recette(request):
         analyse = analyser_ingredients(ingredients_valides, request.user) if ingredients_valides else None
         return render(request, "impact/assistant_recette.html", {
             "form": form,
-            "apercu": {"formset": formset, "lignes": lignes, "analyse": analyse, "source": request.POST.get("source", "LOCAL")},
+            "apercu": {"formset": formset, "lignes": lignes, "analyse": analyse, "source": request.POST.get("source", "LOCAL"), "brouillon": brouillon},
+            "brouillons": BrouillonRecette.objects.filter(utilisateur=request.user)[:10],
         }, status=400)
 
     source = request.POST.get("source")
     if source not in ExtractionRecetteIA.Source.values:
         source = ExtractionRecetteIA.Source.LOCAL
+
+    ingredients_valides = _ingredients_formset(formset)
+    if request.POST.get("action") == "enregistrer_brouillon":
+        if brouillon is None:
+            brouillon = BrouillonRecette(utilisateur=request.user)
+        brouillon.type_repas = form.cleaned_data["type_repas"]
+        brouillon.date = form.cleaned_data["date"]
+        brouillon.note = form.cleaned_data["note"]
+        brouillon.texte_original = form.cleaned_data["texte"]
+        brouillon.source = source
+        brouillon.ingredients = ingredients_valides
+        brouillon.save()
+        messages.success(request, "Brouillon enregistré. Vous pourrez reprendre l'analyse plus tard.")
+        return redirect("impact:reprendre_brouillon", brouillon_id=brouillon.pk)
 
     with transaction.atomic():
         repas = Repas.objects.create(
@@ -191,7 +294,18 @@ def valider_recette(request):
                 continue
             aliment, categorie = d["aliment"], d["categorie"]
             alternative = proposer_alternative(aliment, categorie, request.user)
-            if d.get("utiliser_alternative") and alternative:
+            produit_utilise = None
+            produit_id = d.get("produit_alternatif_id")
+            if produit_id and alternative:
+                produit_utilise = next(
+                    (
+                        recommandation["produit"]
+                        for recommandation in recommander_produits(aliment, alternative)
+                        if recommandation["produit"].pk == produit_id
+                    ),
+                    None,
+                )
+            if (d.get("utiliser_alternative") or produit_utilise) and alternative:
                 analyse_ligne = analyser_ingredients([{
                     "aliment": aliment, "categorie": categorie, "quantite_g": d["quantite_g"],
                 }], request.user)
@@ -199,24 +313,49 @@ def valider_recette(request):
                     (a for a in analyse_ligne["alternatives"] if a["id"] == alternative.pk), None
                 )
                 if proposition:
-                    adoptions.append((alternative, aliment, proposition))
-                    aliment = alternative.remplacement
+                    remplacement = produit_utilise.nom if produit_utilise else alternative.remplacement
+                    adoptions.append((alternative, aliment, remplacement, proposition, produit_utilise))
+                    aliment = remplacement
                     categorie = alternative.facteur_remplacement.categorie
             ElementRepas.objects.create(
                 repas=repas, aliment=aliment, categorie=categorie, quantite_g=d["quantite_g"]
             )
+        noms_generiques = {
+            "", "Recette analysée par IA", "Poêlée végétale du garde-manger",
+            "Bowl végétal anti-gaspillage",
+        }
+        if repas.note.strip() in noms_generiques and adoptions:
+            origines = " ".join(original.casefold() for _, original, _, _, _ in adoptions)
+            produit_burger = any(
+                produit and "burger" in produit.nom.casefold()
+                for _, _, _, _, produit in adoptions
+            )
+            if "cheeseburger" in origines:
+                repas.note = "Cheeseburger veggie"
+            elif "hamburger" in origines or produit_burger:
+                repas.note = "Hamburger veggie"
+            elif "burger" in origines:
+                repas.note = "Burger veggie"
+            elif "steak" in origines:
+                repas.note = "Steak veggie"
+            else:
+                repas.note = f"Repas végétal aux {adoptions[0][2]}"[:200]
+            repas.save(update_fields=["note"])
         ExtractionRecetteIA.objects.create(
             utilisateur=request.user, repas=repas,
             texte_original=form.cleaned_data["texte"], source=source,
         )
-        for alternative, original, proposition in adoptions:
+        for alternative, original, remplacement, proposition, produit_utilise in adoptions:
             AlternativeAdoptee.objects.create(
                 utilisateur=request.user, repas=repas, alternative=alternative,
-                aliment_original=original, remplacement=alternative.remplacement,
+                aliment_original=original, remplacement=remplacement,
+                produit_utilise=produit_utilise,
                 co2_evite=proposition["gains"]["co2"],
                 eau_economisee=proposition["gains"]["eau"],
                 terres_preservees=proposition["gains"]["terres"],
             )
+        if brouillon:
+            brouillon.delete()
     messages.success(request, "Recette vérifiée et ajoutée à vos repas.")
     return redirect("repas:detail", pk=repas.pk)
 
