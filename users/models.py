@@ -322,3 +322,93 @@ class DemandeNutritionniste(models.Model):
         self.statut, self.traitee_par, self.traitee_le = self.Statut.REFUSEE, admin, timezone.now()
         self.motif_refus = motif
         self.save()
+
+
+# ================================================== recommandations nutritionniste -> citoyen
+class Recommandation(models.Model):
+    class Theme(models.TextChoices):
+        ALIMENTATION = "ALIMENTATION", "Alimentation"
+        OBJECTIF = "OBJECTIF", "Objectif CO₂"
+        RECETTE = "RECETTE", "Idée de recette"
+        AUTRE = "AUTRE", "Autre"
+
+    class Avis(models.TextChoices):
+        UTILE = "UTILE", "Utile"
+        PAS_UTILE = "PAS_UTILE", "Pas utile"
+
+    auteur = models.ForeignKey(Utilisateur, on_delete=models.SET_NULL, null=True, related_name="recommandations_ecrites")
+    citoyen = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name="recommandations_recues")
+    theme = models.CharField("thème", max_length=15, choices=Theme.choices, default=Theme.ALIMENTATION)
+    titre = models.CharField(max_length=120)
+    contenu = models.TextField("conseil", max_length=1500)
+    cree_le = models.DateTimeField(default=timezone.now)
+    lue_le = models.DateTimeField(null=True, blank=True)
+    avis = models.CharField(max_length=10, choices=Avis.choices, blank=True)
+
+    class Meta:
+        verbose_name = "recommandation"
+        verbose_name_plural = "recommandations"
+        ordering = ["-cree_le"]
+
+    def __str__(self):
+        return f"{self.titre} — pour {self.citoyen}"
+
+
+# ============================================================ sécurité de connexion
+class HistoriqueConnexion(models.Model):
+    """Chaque tentative de connexion (réussie ou non). Sert au blocage anti brute-force et à l'historique."""
+    utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, null=True, blank=True, related_name="connexions")
+    identifiant = models.CharField(max_length=254, db_index=True)       # tel que saisi (normalisé)
+    succes = models.BooleanField(default=False)
+    ip = models.CharField("adresse IP (masquée)", max_length=45, blank=True)
+    navigateur = models.CharField(max_length=80, blank=True)
+    session_key = models.CharField(max_length=40, blank=True)
+    cree_le = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = "connexion"
+        verbose_name_plural = "historique des connexions"
+        ordering = ["-cree_le"]
+
+    def __str__(self):
+        return f"{'✓' if self.succes else '✗'} {self.identifiant} — {self.cree_le:%d/%m/%Y %H:%M}"
+
+
+# ================================================================== journal d'audit
+class JournalAudit(models.Model):
+    """Trace inaltérable des actions sensibles (qui, quoi, sur qui, quand)."""
+
+    class Action(models.TextChoices):
+        COMPTE_CREE = "COMPTE_CREE", "Compte créé"
+        COMPTE_MODIFIE = "COMPTE_MODIFIE", "Compte modifié"
+        COMPTE_SUPPRIME = "COMPTE_SUPPRIME", "Compte supprimé"
+        COMPTE_ACTIVE = "COMPTE_ACTIVE", "Compte activé"
+        COMPTE_DESACTIVE = "COMPTE_DESACTIVE", "Compte désactivé"
+        SUPPRESSION_PAR_UTILISATEUR = "AUTO_SUPPRESSION", "Compte supprimé par son titulaire"
+        DEMANDE_ACCEPTEE = "DEMANDE_ACCEPTEE", "Demande nutritionniste acceptée"
+        DEMANDE_REFUSEE = "DEMANDE_REFUSEE", "Demande nutritionniste refusée"
+        INVITATION_ENVOYEE = "INVITATION_ENVOYEE", "Invitation envoyée"
+        INVITATION_RENVOYEE = "INVITATION_RENVOYEE", "Invitation renvoyée"
+        INVITATION_ANNULEE = "INVITATION_ANNULEE", "Invitation annulée"
+        INVITATION_ACCEPTEE = "INVITATION_ACCEPTEE", "Invitation acceptée"
+        RECOMMANDATION = "RECOMMANDATION", "Recommandation envoyée"
+        CONNEXION_BLOQUEE = "CONNEXION_BLOQUEE", "Connexion bloquée (trop d'échecs)"
+        DECONNEXION_GLOBALE = "DECONNEXION_GLOBALE", "Déconnexion de tous les appareils"
+        EXPORT_DONNEES = "EXPORT_DONNEES", "Export des données personnelles"
+
+    acteur = models.ForeignKey(Utilisateur, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    acteur_nom = models.CharField(max_length=150, blank=True)     # conservé même si le compte est supprimé
+    action = models.CharField(max_length=25, choices=Action.choices, db_index=True)
+    cible = models.CharField(max_length=200, blank=True)
+    details = models.CharField(max_length=300, blank=True)
+    ip = models.CharField(max_length=45, blank=True)
+    cree_le = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = "entrée du journal d'audit"
+        verbose_name_plural = "journal d'audit"
+        ordering = ["-cree_le"]
+        permissions = [("voir_journal", "Peut consulter le journal d'audit")]
+
+    def __str__(self):
+        return f"{self.cree_le:%d/%m/%Y %H:%M} — {self.acteur_nom or 'système'} : {self.get_action_display()}"

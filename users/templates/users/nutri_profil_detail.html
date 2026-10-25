@@ -28,4 +28,37 @@
   {% include "users/_analyse.html" with r=analyse.resultat a=analyse %}
 </section>
 {% endif %}
+
+<section class="card" aria-labelledby="t-recos">
+  <h2 id="t-recos"><span class="h-ico h-ico-amber">{% icon "lightbulb" %}</span>Recommandations</h2>
+  {% if form_reco %}
+  <form method="post" class="reco-form" novalidate>
+    {% csrf_token %}
+    <p class="muted small">Le citoyen reçoit une notification dans l'application et un e-mail. Il pourra indiquer si le conseil lui a été utile.</p>
+    {% include "includes/form.html" with form=form_reco %}
+    <button type="submit" class="btn">{% icon "mail" %}Envoyer la recommandation</button>
+  </form>
+  {% endif %}
+  {% if recommandations %}
+  <ul class="recos recos-compactes">
+    {% for r in recommandations %}
+    <li class="reco-ligne">
+      <div>
+        <p class="reco-meta">{{ r.get_theme_display }} · {{ r.auteur.get_full_name|default:"—" }} · {{ r.cree_le|date:"d/m/Y" }}</p>
+        <p class="reco-titre"><strong>{{ r.titre }}</strong></p>
+        <p class="small">{{ r.contenu|truncatechars:220 }}</p>
+      </div>
+      <div class="reco-etat">
+        {% if r.avis == "UTILE" %}<span class="statut statut-ACCEPTEE">Jugé utile</span>
+        {% elif r.avis == "PAS_UTILE" %}<span class="statut statut-REFUSEE">Jugé pas utile</span>
+        {% elif r.lue_le %}<span class="statut statut-ANNULEE">Lu</span>
+        {% else %}<span class="statut statut-EN_ATTENTE">Non lu</span>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif not form_reco %}
+  <p class="muted">Aucune recommandation pour ce citoyen.</p>
+  {% endif %}
+</section>
 {% endblock %}

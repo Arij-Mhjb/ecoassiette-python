@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import DemandeNutritionniste, Invitation, AnalyseProfilIA, ProfilAlimentaire, Utilisateur
+from .models import DemandeNutritionniste, HistoriqueConnexion, Invitation, JournalAudit, Recommandation, AnalyseProfilIA, ProfilAlimentaire, Utilisateur
 
 
 class ProfilInline(admin.StackedInline):
@@ -93,3 +93,40 @@ class InvitationAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False   # une invitation se crée depuis /comptes/gestion/invitations/ (envoi de l'e-mail)
+
+
+class LectureSeuleAdmin(admin.ModelAdmin):
+    """Traces de sécurité : consultables, jamais modifiables ni supprimables (même par le super-administrateur)."""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(JournalAudit)
+class JournalAuditAdmin(LectureSeuleAdmin):
+    list_display = ("cree_le", "acteur_nom", "action", "cible", "details", "ip")
+    list_filter = ("action",)
+    search_fields = ("acteur_nom", "cible", "details")
+    date_hierarchy = "cree_le"
+
+
+@admin.register(HistoriqueConnexion)
+class HistoriqueConnexionAdmin(LectureSeuleAdmin):
+    list_display = ("cree_le", "identifiant", "succes", "navigateur", "ip")
+    list_filter = ("succes",)
+    search_fields = ("identifiant",)
+    date_hierarchy = "cree_le"
+    exclude = ("session_key",)
+
+
+@admin.register(Recommandation)
+class RecommandationAdmin(admin.ModelAdmin):
+    list_display = ("titre", "auteur", "citoyen", "theme", "cree_le", "lue_le", "avis")
+    list_filter = ("theme", "avis")
+    search_fields = ("titre", "contenu", "citoyen__username", "auteur__username")

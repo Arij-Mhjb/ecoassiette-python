@@ -458,6 +458,30 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .statut-REFUSEE, .statut-ANNULEE { background: #ececec; color: #4a4a4a; }
 .statut-EXPIREE { background: var(--danger-soft); color: var(--danger-dark); }
 
+/* Recommandations */
+.recos { list-style: none; padding: 0; margin: 0; display: grid; gap: 1rem; }
+.reco { position: relative; }
+.reco-nouvelle { border-color: #9ec2ab; box-shadow: 0 0 0 3px var(--primary-soft), var(--shadow); }
+.reco-tete { display: flex; gap: .85rem; align-items: flex-start; margin-bottom: .6rem; }
+.reco-tete h2 { margin: .15rem 0 0; }
+.reco-meta { margin: 0; font-size: .82rem; color: var(--muted); font-weight: 600; display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.reco-contenu { margin: 0 0 1rem; }
+.reco-avis { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; padding-top: .9rem; border-top: 1px solid var(--line); margin: 0; }
+.reco-avis-boutons { display: flex; gap: .5rem; }
+.reco-form { padding-bottom: 1.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--line); }
+.recos-compactes { gap: 0; }
+.reco-ligne { display: flex; justify-content: space-between; gap: 1rem; padding: .9rem 0; border-bottom: 1px solid var(--line); }
+.reco-ligne:last-child { border-bottom: 0; }
+.reco-ligne p { margin: .1rem 0; }
+.reco-etat { flex: none; }
+
+/* Journal d'audit */
+.action-tag { display: inline-block; padding: .12rem .55rem; border-radius: 8px; font-size: .78rem; font-weight: 700; background: #eef1ee; color: var(--text-2); white-space: nowrap; }
+.action-compte_supprime, .action-auto_suppression, .action-connexion_bloquee, .action-demande_refusee, .action-compte_desactive { background: var(--danger-soft); color: var(--danger-dark); }
+.action-demande_acceptee, .action-invitation_acceptee, .action-compte_cree, .action-compte_active { background: var(--ok-soft); color: #1f4d29; }
+.action-invitation_envoyee, .action-invitation_renvoyee, .action-recommandation { background: var(--info-soft); color: #1d3b73; }
+.action-export_donnees, .action-deconnexion_globale { background: #efeafd; color: #4a2fa8; }
+
 /* =====================================================================
    Profil
    ===================================================================== */

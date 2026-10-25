@@ -29,11 +29,20 @@ ICONES = {
     "calendar": '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     "globe": '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/>',
     "trend": '<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
+    "swap": '<path d="m16 3 4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16"/>',
+    "mail": '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+    "badge": '<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/>',
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 }
 
 # mot-clé dans « app_label.model » -> (icône, teinte)
 REGLES = [
+    ("demande", "badge", "amber"),
+    ("journal", "clock", "slate"),
+    ("historiqueconnexion", "shield", "orange"),
+    ("recommandation", "sparkles", "amber"),
+    ("invitation", "mail", "teal"),
+    ("remplacement", "swap", "green"),
     ("analyse", "sparkles", "violet"),
     ("profil", "leaf", "green"),
     ("utilisateur", "users", "blue"),

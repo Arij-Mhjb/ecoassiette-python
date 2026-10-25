@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Sécurité du compte{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'users:profil' %}">{% icon "arrow-left" 16 %}Mon profil</a>
+<div class="page-head">
+  <p class="eyebrow">{% icon "shield" 14 %}Mon compte</p>
+  <h1>Sécurité et données personnelles</h1>
+</div>
+
+{% if echecs_recents %}
+<div class="bandeau bandeau-attente" role="status"><span class="h-ico h-ico-amber">{% icon "alert" %}</span>
+  <p><strong>{{ echecs_recents }} tentative{{ echecs_recents|pluralize }} de connexion échouée{{ echecs_recents|pluralize }} ces 7 derniers jours.</strong>
+  Si ce n'était pas vous, changez votre mot de passe et fermez les autres sessions.</p>
+  <a class="btn btn-small" href="{% url 'users:password_change' %}">{% icon "lock" 16 %}Changer mon mot de passe</a></div>
+{% endif %}
+
+<div class="grid-2" style="align-items:start">
+  <section class="card" aria-labelledby="t-sessions">
+    <h2 id="t-sessions"><span class="h-ico">{% icon "power" %}</span>Sessions ouvertes</h2>
+    <p class="muted small">Ordinateur oublié, téléphone perdu ? Fermez toutes les sessions sauf celle-ci.</p>
+    <form method="post" action="{% url 'users:deconnexion_globale' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn">{% icon "log-out" %}Déconnecter mes autres appareils</button>
+    </form>
+    <p class="small muted" style="margin:1rem 0 0">Protection active : après 5 échecs en 15 minutes, la connexion à votre compte est bloquée 15 minutes.</p>
+  </section>
+  <section class="card" aria-labelledby="t-donnees">
+    <h2 id="t-donnees"><span class="h-ico h-ico-blue">{% icon "box" %}</span>Mes données (RGPD)</h2>
+    <p class="muted small">Téléchargez toutes vos données : compte, profil alimentaire, repas, analyses IA, conseils reçus et connexions,
+      dans un fichier JSON réutilisable (droit d'accès et à la portabilité).</p>
+    <div class="form-actions" style="margin-top:0">
+      <a class="btn" href="{% url 'users:export_donnees' %}" download>{% icon "arrow" %}Télécharger mes données</a>
+      <a class="btn btn-danger" href="{% url 'users:supprimer_compte' %}">{% icon "trash" %}Supprimer mon compte</a>
+    </div>
+  </section>
+</div>
+
+<h2 class="section-titre" style="margin-top:2rem"><span class="h-ico h-ico-violet">{% icon "clock" %}</span>Historique des connexions</h2>
+{% if connexions %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Historique des connexions (défilable)">
+<table class="table">
+  <caption class="sr-only">15 dernières tentatives de connexion à mon compte</caption>
+  <thead><tr><th scope="col">Date</th><th scope="col">Résultat</th><th scope="col">Appareil</th><th scope="col">Adresse IP</th></tr></thead>
+  <tbody>
+  {% for c in connexions %}
+    <tr>
+      <th scope="row">{{ c.cree_le|date:"d/m/Y à H:i" }}</th>
+      <td>{% if c.succes %}<span class="statut statut-ACCEPTEE">Réussie</span>{% else %}<span class="statut statut-EXPIREE">Échouée</span>{% endif %}{% if c.session_key and c.session_key == request.session.session_key %} <span class="badge">cet appareil</span>{% endif %}</td>
+      <td>{{ c.navigateur|default:"—" }}</td>
+      <td><code>{{ c.ip|default:"—" }}</code></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="small muted">Les adresses IP sont volontairement tronquées (minimisation des données).</p>
+{% else %}
+<div class="empty">{% icon "clock" 28 %}<p>Aucune connexion enregistrée pour l'instant.</p></div>
+{% endif %}
+{% endblock %}

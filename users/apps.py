@@ -8,6 +8,7 @@ class UsersConfig(AppConfig):
     verbose_name = "Utilisateurs & profils"
 
     def ready(self):
-        from . import signals
+        from . import securite, signals  # noqa: F401  (enregistre les receivers de connexion)
 
-        post_migrate.connect(signals.creer_groupes, sender=self)
+        # sans « sender » : relancé après chaque app, donc les permissions de « repas » existent déjà
+        post_migrate.connect(signals.creer_groupes, dispatch_uid="users.creer_groupes")

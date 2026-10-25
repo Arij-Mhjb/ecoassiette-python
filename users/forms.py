@@ -2,7 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
-from .models import DemandeNutritionniste, Invitation, ProfilAlimentaire
+from .models import DemandeNutritionniste, Invitation, ProfilAlimentaire, Recommandation
+from .securite import minutes_de_blocage
 
 User = get_user_model()
 
@@ -119,6 +120,16 @@ class ConnexionForm(AccessibleFormMixin, AuthenticationForm):
             "(pensez aux spams) ou demandez un nouveau lien."
         ),
     }
+
+    def clean(self):
+        # anti brute-force : vérifié AVANT de tester le mot de passe (même un mot de passe juste est refusé)
+        minutes = minutes_de_blocage(self.cleaned_data.get("username"))
+        if minutes:
+            self.bloque = True
+            raise forms.ValidationError(
+                f"Trop de tentatives échouées : pour protéger ce compte, la connexion est bloquée encore {minutes} min. "
+                "Vous pouvez aussi réinitialiser votre mot de passe.", code="bloque")
+        return super().clean()
 
     def confirm_login_allowed(self, user):
         super().confirm_login_allowed(user)
@@ -301,3 +312,13 @@ class AccepterInvitationForm(AccessibleFormMixin, UserCreationForm):
         if commit:
             user.save()
         return user
+
+
+class RecommandationForm(AccessibleFormMixin, forms.ModelForm):
+    class Meta:
+        model = Recommandation
+        fields = ("theme", "titre", "contenu")
+        widgets = {
+            "titre": forms.TextInput(attrs={"placeholder": "ex. Remplacez l'agneau du couscous une fois sur deux"}),
+            "contenu": forms.Textarea(attrs={"rows": 4, "placeholder": "Votre conseil, concret et adapté à ses goûts…"}),
+        }

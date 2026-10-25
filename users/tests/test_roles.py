@@ -149,3 +149,26 @@ class SuperAdministrateurTest(BaseTest):
         self.assertTrue(Utilisateur.objects.filter(pk=self.admin2.pk).exists())
         r = self.client.post(f"/admin/users/utilisateur/{self.admin2.pk}/change/", {})
         self.assertEqual(r.status_code, 403)
+
+
+class AdminDjangoLectureSeuleTest(BaseTest):
+    """L'admin simple voit tous les modules dans /admin/, en lecture seule pour les données métier."""
+
+    def test_admin_voit_les_modules_en_lecture(self):
+        u = Utilisateur.objects.get(pk=self.admin.pk)
+        for perm in ("repas.view_repas", "repas.view_elementrepas", "repas.view_remplacement",
+                     "users.view_demandenutritionniste", "users.view_invitation"):
+            self.assertTrue(u.has_perm(perm), perm)
+        for perm in ("repas.change_repas", "repas.delete_repas", "users.change_demandenutritionniste"):
+            self.assertFalse(u.has_perm(perm), perm)
+        self.client.force_login(self.admin)
+        r = self.client.get("/admin/")
+        self.assertContains(r, "/admin/repas/repas/")
+        self.assertContains(r, "/admin/users/demandenutritionniste/")
+        self.assertEqual(self.client.get("/admin/repas/repas/").status_code, 200)
+        self.assertEqual(self.client.post("/admin/repas/repas/add/", {}).status_code, 403)
+
+    def test_nutritionniste_et_citoyen_sans_ces_droits(self):
+        for u in (self.nutri, self.citoyen):
+            u = Utilisateur.objects.get(pk=u.pk)
+            self.assertFalse(u.has_perm("repas.view_repas"))

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Mes conseils{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'users:profil' %}">{% icon "arrow-left" 16 %}Mon profil</a>
+<div class="page-head">
+  <p class="eyebrow">{% icon "lightbulb" 14 %}Accompagnement</p>
+  <h1>Mes conseils de nutritionniste</h1>
+  <p class="muted">Des recommandations personnalisées, écrites par un·e nutritionniste à partir de votre profil partagé.</p>
+</div>
+{% if recommandations %}
+<ul class="recos">
+  {% for r in recommandations %}
+  <li class="card reco{% if r.pk in nouvelles %} reco-nouvelle{% endif %}">
+    <div class="reco-tete">
+      <span class="h-ico{% if r.theme == 'OBJECTIF' %} h-ico-blue{% elif r.theme == 'RECETTE' %} h-ico-amber{% elif r.theme == 'AUTRE' %} h-ico-violet{% endif %}">{% if r.theme == "OBJECTIF" %}{% icon "target" %}{% elif r.theme == "RECETTE" %}{% icon "chef-hat" %}{% else %}{% icon "lightbulb" %}{% endif %}</span>
+      <div>
+        <p class="reco-meta">{{ r.get_theme_display }} · {{ r.auteur.get_full_name|default:"Nutritionniste" }} · {{ r.cree_le|date:"d/m/Y" }}{% if r.pk in nouvelles %} <span class="statut statut-EN_ATTENTE">Nouveau</span>{% endif %}</p>
+        <h2 class="h3">{{ r.titre }}</h2>
+      </div>
+    </div>
+    <p class="reco-contenu">{{ r.contenu|linebreaksbr }}</p>
+    <form method="post" action="{% url 'users:avis_recommandation' r.pk %}" class="reco-avis">
+      {% csrf_token %}
+      <span class="small muted" id="avis-{{ r.pk }}">Ce conseil vous a-t-il aidé ?</span>
+      <div role="group" aria-labelledby="avis-{{ r.pk }}" class="reco-avis-boutons">
+        <button type="submit" name="avis" value="UTILE" class="btn btn-small {% if r.avis != 'UTILE' %}btn-ghost{% endif %}" aria-pressed="{% if r.avis == 'UTILE' %}true{% else %}false{% endif %}">{% icon "check" 16 %}Utile</button>
+        <button type="submit" name="avis" value="PAS_UTILE" class="btn btn-small {% if r.avis != 'PAS_UTILE' %}btn-ghost{% endif %}" aria-pressed="{% if r.avis == 'PAS_UTILE' %}true{% else %}false{% endif %}">{% icon "x" 16 %}Pas utile</button>
+      </div>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty">{% icon "lightbulb" 28 %}<p><strong>Aucun conseil pour l'instant.</strong></p>
+  <p>{% if user.profil.profil_public %}Les nutritionnistes peuvent consulter votre profil et vous écrire.{% else %}Votre profil n'est pas partagé : activez le partage dans vos habitudes pour recevoir des conseils.{% endif %}</p>
+  {% if not user.profil.profil_public %}<a class="btn" href="{% url 'users:modifier_profil' %}">{% icon "edit" %}Modifier mes habitudes</a>{% endif %}</div>
+{% endif %}
+{% endblock %}

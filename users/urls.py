@@ -68,4 +68,10 @@ urlpatterns = [
     path("gestion/invitations/<int:pk>/annuler/", views.InvitationActionView.as_view(action="annuler"), name="admin_invitation_annuler"),
     path("invitation/<str:jeton>/", views.invitation_accepter, name="invitation_accepter"),
     path("profil/devenir-nutritionniste/", views.demande_nutritionniste, name="demande_nutritionniste"),
+    path("profil/recommandations/", views.mes_recommandations, name="mes_recommandations"),
+    path("profil/recommandations/<int:pk>/avis/", views.avis_recommandation, name="avis_recommandation"),
+    path("profil/securite/", views.securite, name="securite"),
+    path("profil/securite/deconnexion-globale/", views.deconnexion_globale, name="deconnexion_globale"),
+    path("profil/mes-donnees/", views.export_donnees, name="export_donnees"),
+    path("gestion/journal/", views.JournalView.as_view(), name="admin_journal"),
 ]

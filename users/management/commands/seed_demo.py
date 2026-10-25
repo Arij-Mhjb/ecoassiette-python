@@ -2,7 +2,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from users.models import DemandeNutritionniste, ProfilAlimentaire, Utilisateur
+from users.models import DemandeNutritionniste, ProfilAlimentaire, Recommandation, Utilisateur
 
 MDP = "EcoDemo2026!"
 
@@ -46,6 +46,15 @@ class Command(BaseCommand):
                                                  etablissement="Hôpital Charles-Nicolle — Tunis",
                                                  statut=DemandeNutritionniste.Statut.ACCEPTEE, traitee_par=admin,
                                                  traitee_le=timezone.now())
+        # un conseil de la nutritionniste à Amine (montre la pastille « Conseils » et l'avis utile / pas utile)
+        amine = Utilisateur.objects.get(username="amine")
+        if not Recommandation.objects.filter(citoyen=amine).exists():
+            Recommandation.objects.create(
+                auteur=sarra, citoyen=amine, theme=Recommandation.Theme.ALIMENTATION,
+                titre="Le couscous, version pois chiches",
+                contenu="Votre couscous à l'agneau pèse lourd sur votre bilan. Une fois sur deux, remplacez l'agneau "
+                        "par des pois chiches et des légumes rôtis : même plaisir, environ 8 kg de CO₂ en moins.")
+            self.stdout.write("+ recommandation de démo (nutri_sarra -> amine)")
         # une demande de statut nutritionniste en attente, pour montrer la validation pendant la démo
         leila = Utilisateur.objects.get(username="leila")
         if leila.role == Utilisateur.Role.CITOYEN and not leila.demandes_nutritionniste.exists():

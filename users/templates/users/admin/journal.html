@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit{% endblock %}
+{% block content %}
+<div class="page-head">
+  <p class="eyebrow">{% icon "shield" 14 %}Administration</p>
+  <h1>Journal d'audit</h1>
+  <p class="muted">Toutes les actions sensibles : qui a fait quoi, sur quel compte, et quand. Les entrées ne peuvent être ni modifiées ni supprimées.</p>
+</div>
+{% include "users/admin/_onglets.html" %}
+
+<form method="get" class="filters" role="search" aria-label="Filtrer le journal">
+  <div class="field">
+    <label for="j-action">Action</label>
+    <select id="j-action" name="action">
+      <option value="">Toutes les actions</option>
+      {% for val, lib in actions %}<option value="{{ val }}" {% if val == action_active %}selected{% endif %}>{{ lib }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="j-q">Rechercher</label>
+    <input type="search" id="j-q" name="q" value="{{ q }}" placeholder="Utilisateur, e-mail, détail…">
+  </div>
+  <button type="submit" class="btn btn-small">{% icon "filter" 16 %}Filtrer</button>
+</form>
+
+{% if entrees %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Journal d'audit (défilable)">
+<table class="table">
+  <caption class="sr-only">Journal d'audit</caption>
+  <thead><tr><th scope="col">Date</th><th scope="col">Par</th><th scope="col">Action</th><th scope="col">Cible</th><th scope="col">Détails</th><th scope="col">IP</th></tr></thead>
+  <tbody>
+  {% for e in entrees %}
+    <tr>
+      <th scope="row" style="white-space:nowrap">{{ e.cree_le|date:"d/m/Y H:i" }}</th>
+      <td>{% if e.acteur_nom %}@{{ e.acteur_nom }}{% else %}<span class="muted">système</span>{% endif %}</td>
+      <td><span class="action-tag action-{{ e.action|lower }}">{{ e.get_action_display }}</span></td>
+      <td>{{ e.cible|default:"—" }}</td>
+      <td class="small">{{ e.details|default:"—" }}</td>
+      <td><code>{{ e.ip|default:"—" }}</code></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% include "users/_pagination.html" %}
+{% else %}
+<div class="empty">{% icon "clock" 28 %}<p>Aucune entrée ne correspond.</p></div>
+{% endif %}
+{% endblock %}

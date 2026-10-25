@@ -1,0 +1,10 @@
+{% include "users/emails/_layout_debut.html" %}
+<h1 style="font:bold 22px Arial,sans-serif;margin:0 0 16px">Bonjour {{ user.first_name|default:user.username }},</h1>
+<p>{{ r.auteur.get_full_name|default:"Votre nutritionniste" }} vous a envoyé un conseil personnalisé :</p>
+<div style="background:#f1f9f4;border-left:4px solid #146c43;border-radius:10px;padding:14px 18px;margin:18px 0">
+<p style="margin:0 0 6px;font-size:13px;color:#56675e;text-transform:uppercase;letter-spacing:.06em">{{ r.get_theme_display }}</p>
+<p style="margin:0 0 8px;font-weight:bold">{{ r.titre }}</p>
+<p style="margin:0;white-space:pre-line">{{ r.contenu }}</p>
+</div>
+<p style="margin:28px 0"><a href="{{ lien }}" style="display:inline-block;background:#146c43;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 24px;border-radius:12px">Voir et donner mon avis</a></p>
+{% include "users/emails/_layout_fin.html" %}

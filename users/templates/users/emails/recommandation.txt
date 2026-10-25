@@ -1,0 +1,10 @@
+Bonjour {{ user.first_name|default:user.username }},
+
+{{ r.auteur.get_full_name|default:"Votre nutritionniste" }} vous a envoyé un conseil personnalisé ({{ r.get_theme_display }}) :
+
+{{ r.titre }}
+{{ r.contenu }}
+
+Voir et donner mon avis : {{ lien }}
+
+L'équipe EcoAssiette

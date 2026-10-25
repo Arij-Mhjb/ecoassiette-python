@@ -85,3 +85,9 @@ def notifier_demande_traitee(request, demande):
         "user": demande.utilisateur, "d": demande,
         "lien": request.build_absolute_uri(reverse("users:nutri_profils" if gabarit == "demande_acceptee" else "users:profil")),
     })
+
+
+def notifier_recommandation(request, reco):
+    return envoyer(f"Nouveau conseil de votre nutritionniste : {reco.titre} — EcoAssiette", "recommandation",
+                   reco.citoyen.email, {"user": reco.citoyen, "r": reco,
+                                        "lien": request.build_absolute_uri(reverse("users:mes_recommandations"))})

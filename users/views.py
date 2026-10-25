@@ -20,15 +20,18 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView
 
 from .forms import (
+    RecommandationForm,
     AccepterInvitationForm, AdminUtilisateurCreationForm, AdminUtilisateurForm, ConnexionForm,
     DemandeNutritionnisteForm, FiltreUtilisateursForm, InfosPersonnellesForm, InscriptionForm, InvitationForm,
     ProfilAlimentaireForm, RefusDemandeForm, RenvoyerConfirmationForm, SuppressionCompteForm,
 )
 from .emails import (
+    notifier_recommandation,
     envoyer_confirmation, envoyer_invitation, jeton_confirmation, lien_invitation, notifier_admins_demande,
     notifier_changement_mdp, notifier_demande_traitee,
 )
-from .models import AnalyseProfilIA, DemandeNutritionniste, Invitation, ProfilAlimentaire
+from .models import AnalyseProfilIA, DemandeNutritionniste, Invitation, JournalAudit, ProfilAlimentaire, Recommandation
+from .securite import deconnecter_autres_appareils, journaliser
 from .permissions import PermissionOu403Mixin, citoyen_requis
 from .tasks import lancer_analyse
 
@@ -214,6 +217,7 @@ def supprimer_compte(request):
     form = SuppressionCompteForm(request.user, request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = request.user
+        journaliser(request, JournalAudit.Action.SUPPRESSION_PAR_UTILISATEUR, cible=user.username)
         logout(request)
         user.delete()
         messages.success(request, "Votre compte et vos données ont été supprimés.")
@@ -328,7 +332,28 @@ class ProfilPublicDetailView(ProfilsVisiblesMixin, DetailView):
     def get_context_data(self, **kw):
         ctx = super().get_context_data(**kw)
         ctx["analyse"] = self.object.analyses.filter(statut=AnalyseProfilIA.Statut.TERMINE).first()
+        ctx["recommandations"] = self.object.utilisateur.recommandations_recues.select_related("auteur")[:20]
+        if self.request.user.role == User.Role.NUTRITIONNISTE:
+            ctx.setdefault("form_reco", RecommandationForm())
         return ctx
+
+    def post(self, request, *args, **kwargs):
+        """La nutritionniste écrit une recommandation au citoyen (profil partagé uniquement)."""
+        self.object = self.get_object()
+        if request.user.role != User.Role.NUTRITIONNISTE or not request.user.has_perm("users.add_recommandation"):
+            raise PermissionDenied("Seul un nutritionniste peut écrire une recommandation.")
+        form = RecommandationForm(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form_reco=form))
+        reco = form.save(commit=False)
+        reco.auteur, reco.citoyen = request.user, self.object.utilisateur
+        reco.save()
+        journaliser(request, JournalAudit.Action.RECOMMANDATION, cible=reco.citoyen.username, details=reco.titre)
+        if notifier_recommandation(request, reco):
+            messages.success(request, f"Recommandation envoyée à {reco.citoyen} (notification + e-mail).")
+        else:
+            messages.warning(request, "Recommandation enregistrée, mais l'e-mail n'a pas pu être envoyé.")
+        return redirect("users:nutri_profil_detail", pk=self.object.pk)
 
 
 # ===================================================== administration : CRUD comptes
@@ -393,8 +418,10 @@ class UtilisateurCreateView(AdminRequisMixin, CreateView):
         return kw
 
     def form_valid(self, form):
+        reponse = super().form_valid(form)
+        journaliser(self.request, JournalAudit.Action.COMPTE_CREE, cible=self.object.username, details=f"rôle {self.object.get_role_display()}")
         messages.success(self.request, "Compte créé.")
-        return super().form_valid(form)
+        return reponse
 
     def get_success_url(self):
         return reverse("users:admin_detail", args=[self.object.pk])
@@ -416,8 +443,11 @@ class UtilisateurUpdateView(AdminRequisMixin, CibleGerableMixin, UpdateView):
         return ctx
 
     def form_valid(self, form):
+        champs = ", ".join(form.changed_data) or "aucun changement"
+        reponse = super().form_valid(form)
+        journaliser(self.request, JournalAudit.Action.COMPTE_MODIFIE, cible=self.object.username, details=f"champs : {champs}")
         messages.success(self.request, "Compte mis à jour.")
-        return super().form_valid(form)
+        return reponse
 
     def get_success_url(self):
         return reverse("users:admin_detail", args=[self.object.pk])
@@ -433,6 +463,7 @@ class UtilisateurDeleteView(AdminRequisMixin, CibleGerableMixin, DeleteView):
         if self.get_object().pk == self.request.user.pk:
             messages.error(self.request, "Vous ne pouvez pas supprimer votre propre compte depuis l'administration.")
             return redirect("users:admin_detail", pk=self.request.user.pk)
+        journaliser(self.request, JournalAudit.Action.COMPTE_SUPPRIME, cible=self.object.username, details=self.object.get_role_display())
         messages.success(self.request, "Compte supprimé.")
         return super().form_valid(form)
 
@@ -448,6 +479,7 @@ class UtilisateurBasculerActifView(AdminRequisMixin, CibleGerableMixin, DetailVi
         else:
             cible.is_active = not cible.is_active
             cible.save(update_fields=["is_active"])
+            journaliser(request, JournalAudit.Action.COMPTE_ACTIVE if cible.is_active else JournalAudit.Action.COMPTE_DESACTIVE, cible=cible.username)
             messages.success(request, f"Compte {'activé' if cible.is_active else 'désactivé'} : {cible}.")
         return redirect(request.POST.get("next") or "users:admin_liste")
 
@@ -478,6 +510,7 @@ class TraiterDemandeView(AdminRequisMixin, DetailView):
             return redirect("users:admin_demandes")
         if self.action == "accepter":
             demande.accepter(request.user)
+            journaliser(request, JournalAudit.Action.DEMANDE_ACCEPTEE, cible=demande.utilisateur.username, details=f"n° {demande.numero_ordre}")
             messages.success(request, f"{demande.utilisateur} est maintenant nutritionniste.")
         else:
             form = RefusDemandeForm(request.POST)
@@ -485,6 +518,7 @@ class TraiterDemandeView(AdminRequisMixin, DetailView):
                 messages.error(request, "Indiquez un motif de refus : il sera communiqué au demandeur.")
                 return redirect("users:admin_demandes")
             demande.refuser(request.user, form.cleaned_data["motif"])
+            journaliser(request, JournalAudit.Action.DEMANDE_REFUSEE, cible=demande.utilisateur.username, details=demande.motif_refus)
             messages.success(request, f"Demande de {demande.utilisateur} refusée.")
         if not notifier_demande_traitee(request, demande):
             messages.warning(request, "L'e-mail de notification n'a pas pu être envoyé.")
@@ -512,6 +546,7 @@ class InvitationsView(AdminRequisMixin, TemplateView):
         inv.invite_par = request.user
         jeton = inv.nouveau_jeton()
         inv.save()
+        journaliser(request, JournalAudit.Action.INVITATION_ENVOYEE, cible=inv.email)
         _envoyer_invitation(request, inv, jeton)
         return redirect("users:admin_invitations")
 
@@ -536,10 +571,12 @@ class InvitationActionView(AdminRequisMixin, DetailView):
         elif self.action == "annuler":
             inv.statut = Invitation.Statut.ANNULEE
             inv.save(update_fields=["statut"])
+            journaliser(request, JournalAudit.Action.INVITATION_ANNULEE, cible=inv.email)
             messages.success(request, f"Invitation de {inv.email} annulée : le lien ne fonctionne plus.")
         else:  # renvoyer : nouveau lien (l'ancien devient invalide) et nouvelle échéance
             jeton = inv.nouveau_jeton()
             inv.save(update_fields=["jeton_hash", "expire_le"])
+            journaliser(request, JournalAudit.Action.INVITATION_RENVOYEE, cible=inv.email)
             _envoyer_invitation(request, inv, jeton)
         return redirect("users:admin_invitations")
 
@@ -564,6 +601,7 @@ def invitation_accepter(request, jeton):
             user = form.save()
             inv.statut, inv.utilisateur, inv.acceptee_le = Invitation.Statut.ACCEPTEE, user, timezone.now()
             inv.save(update_fields=["statut", "utilisateur", "acceptee_le"])
+        journaliser(request, JournalAudit.Action.INVITATION_ACCEPTEE, cible=inv.email, details=f"compte @{user.username}", acteur=user)
         login(request, user, backend="users.backends.EmailOuUsernameBackend")
         messages.success(request, f"Bienvenue {user.first_name} ! Votre compte nutritionniste est prêt.")
         return redirect("users:nutri_profils")
@@ -617,3 +655,116 @@ def erreur_404(request, exception=None):
 
 def erreur_500(request):
     return render(request, "errors/500.html", status=500)
+
+
+# ================================================= recommandations reçues (citoyen)
+@citoyen_requis
+def mes_recommandations(request):
+    recos = list(request.user.recommandations_recues.select_related("auteur"))
+    non_lues = [r.pk for r in recos if not r.lue_le]
+    if non_lues:                                     # affichées -> marquées comme lues
+        Recommandation.objects.filter(pk__in=non_lues).update(lue_le=timezone.now())
+    return render(request, "users/recommandations.html", {"recommandations": recos, "nouvelles": set(non_lues)})
+
+
+@citoyen_requis
+@require_POST
+def avis_recommandation(request, pk):
+    reco = get_object_or_404(Recommandation, pk=pk, citoyen=request.user)
+    avis = request.POST.get("avis")
+    if avis in Recommandation.Avis.values:
+        reco.avis = avis
+        reco.save(update_fields=["avis"])
+        messages.success(request, "Merci pour votre avis : il aide votre nutritionniste à mieux vous conseiller.")
+    return redirect("users:mes_recommandations")
+
+
+# ======================================================= sécurité & données personnelles
+@login_required
+def securite(request):
+    return render(request, "users/securite.html", {
+        "connexions": request.user.connexions.all()[:15],
+        "echecs_recents": request.user.connexions.filter(succes=False, cree_le__gte=timezone.now() - timezone.timedelta(days=7)).count(),
+    })
+
+
+@login_required
+@require_POST
+def deconnexion_globale(request):
+    n = deconnecter_autres_appareils(request)
+    journaliser(request, JournalAudit.Action.DECONNEXION_GLOBALE, cible=request.user.username, details=f"{n} session(s) fermée(s)")
+    messages.success(request, f"{n} autre(s) session(s) fermée(s). Vous restez connecté(e) sur cet appareil." if n
+                     else "Aucune autre session ouverte : vous n'êtes connecté(e) que sur cet appareil.")
+    return redirect("users:securite")
+
+
+def _date(d):
+    return d.isoformat() if d else None
+
+
+@login_required
+def export_donnees(request):
+    """RGPD (art. 15 et 20) : toutes les données personnelles, dans un format structuré et lisible par machine."""
+    u = request.user
+    p = u.profil
+    donnees = {
+        "export": {"genere_le": _date(timezone.now()), "application": "EcoAssiette",
+                   "format": "JSON — droit d'accès et à la portabilité (RGPD, articles 15 et 20)"},
+        "compte": {"nom_utilisateur": u.username, "prenom": u.first_name, "nom": u.last_name, "email": u.email,
+                   "email_confirme": u.email_verifie, "telephone": u.telephone, "role": u.get_role_display(),
+                   "inscrit_le": _date(u.date_joined), "derniere_connexion": _date(u.last_login)},
+        "profil_alimentaire": {"regime": p.get_regime_display(), "aliments_aimes": p.liste_aimes,
+                               "aliments_evites": p.liste_evites, "taille_foyer": p.taille_foyer,
+                               "niveau_activite": p.get_niveau_activite_display(),
+                               "temps_cuisine": p.get_temps_cuisine_display(), "ville": p.ville,
+                               "objectif_co2_hebdo_kg": float(p.objectif_co2_hebdo) if p.objectif_co2_hebdo else None,
+                               "empreinte_estimee_hebdo_kg": float(p.emission_estimee_hebdo),
+                               "partage_avec_nutritionnistes": p.profil_public},
+        "analyses_ia": [{"date": _date(a.cree_le), "statut": a.get_statut_display(), "source": a.get_source_display(),
+                         "resultat": a.resultat} for a in p.analyses.all()],
+        "repas": [{"date": _date(r.date), "type": r.get_type_repas_display(), "note": r.note, "co2_kg": r.co2_kg,
+                   "aliments": [{"aliment": e.aliment, "categorie": e.get_categorie_display(), "quantite_g": e.quantite_g,
+                                 "co2_kg": e.co2_kg} for e in r.elements.all()]}
+                  for r in u.repas.prefetch_related("elements").order_by("-date")],
+        "remplacements": [{"date": _date(r.cree_le), "avant": r.ancien_aliment, "apres": r.nouvel_aliment,
+                           "co2_evite_kg": r.gain_kg} for r in u.remplacements.all()],
+        "recommandations_recues": [{"date": _date(r.cree_le), "de": str(r.auteur) if r.auteur else None,
+                                    "theme": r.get_theme_display(), "titre": r.titre, "contenu": r.contenu,
+                                    "avis": r.get_avis_display() if r.avis else None}
+                                   for r in u.recommandations_recues.select_related("auteur")],
+        "demandes_nutritionniste": [{"date": _date(d.cree_le), "numero_ordre": d.numero_ordre,
+                                     "etablissement": d.etablissement, "statut": d.get_statut_display()}
+                                    for d in u.demandes_nutritionniste.all()],
+        "historique_connexions": [{"date": _date(c.cree_le), "reussie": c.succes, "ip_masquee": c.ip,
+                                   "navigateur": c.navigateur} for c in u.connexions.all()[:100]],
+    }
+    journaliser(request, JournalAudit.Action.EXPORT_DONNEES, cible=u.username)
+    reponse = JsonResponse(donnees, json_dumps_params={"ensure_ascii": False, "indent": 2})
+    reponse["Content-Disposition"] = f'attachment; filename="ecoassiette-mes-donnees-{u.username}-{timezone.localdate():%Y%m%d}.json"'
+    return reponse
+
+
+# ============================================================== journal d'audit (admin)
+class JournalView(PermissionOu403Mixin, ListView):
+    permission_required = "users.voir_journal"
+    template_name = "users/admin/journal.html"
+    context_object_name = "entrees"
+    paginate_by = 25
+
+    def get_queryset(self):
+        qs = JournalAudit.objects.all()
+        action = self.request.GET.get("action")
+        if action in JournalAudit.Action.values:
+            qs = qs.filter(action=action)
+        q = (self.request.GET.get("q") or "").strip()
+        if q:
+            qs = qs.filter(Q(acteur_nom__icontains=q) | Q(cible__icontains=q) | Q(details__icontains=q))
+        return qs
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        params = self.request.GET.copy()
+        params.pop("page", None)
+        ctx.update(actions=JournalAudit.Action.choices, action_active=self.request.GET.get("action", ""),
+                   q=self.request.GET.get("q", ""), params=params.urlencode())
+        return ctx
