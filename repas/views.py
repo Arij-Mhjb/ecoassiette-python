@@ -4,8 +4,7 @@ import logging
 from django.conf import settings
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
+from users.permissions import CitoyenRequisMixin, citoyen_requis
 from django.db import transaction
 from django.db.models import Count, Sum
 from django.http import JsonResponse
@@ -25,7 +24,7 @@ from .models import FACTEURS_CO2, ElementRepas, Remplacement, Repas
 logger = logging.getLogger(__name__)
 
 
-class MesRepasMixin(LoginRequiredMixin):
+class MesRepasMixin(CitoyenRequisMixin):
     """Chaque utilisateur ne voit QUE ses propres repas."""
 
     def get_queryset(self):
@@ -82,7 +81,7 @@ def suggestion_pour(element):
             "gain_mois": round(gain * 52 / 12, 1), "gain_an": round(gain * 52)}
 
 
-@login_required
+@citoyen_requis
 @require_POST
 def remplacer(request, pk, element_pk):
     element = get_object_or_404(ElementRepas, pk=element_pk, repas__pk=pk, repas__utilisateur=request.user)
@@ -107,7 +106,7 @@ TYPES_IMAGES = {"image/jpeg", "image/png", "image/webp"}
 TAILLE_MAX_PHOTO = 8 * 1024 * 1024
 
 
-@login_required
+@citoyen_requis
 @require_POST
 def ia_photo(request):
     photo = request.FILES.get("photo")
@@ -128,7 +127,7 @@ def ia_photo(request):
         return JsonResponse({"erreur": message}, status=503)
 
 
-@login_required
+@citoyen_requis
 @require_POST
 def ia_texte(request):
     try:
@@ -176,7 +175,7 @@ class RepasFormMixin:
         return self.render_to_response(self.get_context_data(form=form, formset=formset))
 
 
-class RepasCreateView(LoginRequiredMixin, RepasFormMixin, CreateView):
+class RepasCreateView(CitoyenRequisMixin, RepasFormMixin, CreateView):
     est_modification = False
     message_succes = "Repas ajouté."
     extra_context = {"titre": "Ajouter un repas"}

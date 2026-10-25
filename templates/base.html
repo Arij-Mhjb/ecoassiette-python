@@ -25,7 +25,9 @@
       <nav id="menu-principal" class="main-nav" aria-label="Navigation principale">
         <ul>
           {% if user.is_authenticated %}
+            {% if user.role == "CITOYEN" %}
             <li><a href="{% url 'repas:liste' %}" {% if request.resolver_match.app_name == 'repas' %}aria-current="page"{% endif %}>{% icon "utensils" %}Mes repas</a></li>
+            {% endif %}
             <li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>{% icon "leaf" %}Mon profil</a></li>
             {% if perms.users.view_profilalimentaire %}
               <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' or request.resolver_match.url_name == 'nutri_profil_detail' %}aria-current="page"{% endif %}>{% icon "users" %}Profils citoyens</a></li>

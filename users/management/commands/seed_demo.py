@@ -1,5 +1,6 @@
 """python manage.py seed_demo  — crée des comptes de démonstration (idempotent)."""
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from users.models import DemandeNutritionniste, ProfilAlimentaire, Utilisateur
 
@@ -38,6 +39,13 @@ class Command(BaseCommand):
             if profil:
                 ProfilAlimentaire.objects.filter(utilisateur=u).update(**profil)
             self.stdout.write(f"{'+' if cree else '='} {username} ({role})")
+        # la nutritionniste démo a un statut vérifié (n° d'ordre visible sur son profil)
+        sarra, admin = Utilisateur.objects.get(username="nutri_sarra"), Utilisateur.objects.get(username="admin_eco")
+        if not sarra.demandes_nutritionniste.exists():
+            DemandeNutritionniste.objects.create(utilisateur=sarra, numero_ordre="DN-2016-0213",
+                                                 etablissement="Hôpital Charles-Nicolle — Tunis",
+                                                 statut=DemandeNutritionniste.Statut.ACCEPTEE, traitee_par=admin,
+                                                 traitee_le=timezone.now())
         # une demande de statut nutritionniste en attente, pour montrer la validation pendant la démo
         leila = Utilisateur.objects.get(username="leila")
         if leila.role == Utilisateur.Role.CITOYEN and not leila.demandes_nutritionniste.exists():

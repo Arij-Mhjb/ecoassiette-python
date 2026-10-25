@@ -14,7 +14,9 @@
       <p><span class="badge">{{ user.get_role_display }}</span> · membre depuis {{ user.date_joined|date:"F Y" }}</p>
     </div>
   </div>
-  <a class="btn btn-light" href="{% url 'repas:liste' %}">{% icon "utensils" %}Mes repas & mon bilan</a>
+  {% if user.role == "CITOYEN" %}<a class="btn btn-light" href="{% url 'repas:liste' %}">{% icon "utensils" %}Mes repas & mon bilan</a>
+  {% elif user.role == "NUTRITIONNISTE" %}<a class="btn btn-light" href="{% url 'users:nutri_profils' %}">{% icon "users" %}Profils citoyens</a>
+  {% else %}<a class="btn btn-light" href="{% url 'users:admin_liste' %}">{% icon "shield" %}Gestion des comptes</a>{% endif %}
 </section>
 
 {% if demande and demande.statut == "EN_ATTENTE" %}
@@ -24,12 +26,9 @@
 <div class="bandeau bandeau-refus"><span class="h-ico h-ico-red">{% icon "alert" %}</span>
   <p><strong>Votre demande de statut nutritionniste n'a pas été validée.</strong>{% if demande.motif_refus %} Motif : {{ demande.motif_refus }}{% endif %}</p>
   <a class="btn btn-small btn-ghost" href="{% url 'users:demande_nutritionniste' %}">{% icon "refresh" 16 %}Refaire une demande</a></div>
-{% elif user.role == "NUTRITIONNISTE" %}
-<div class="bandeau bandeau-ok"><span class="h-ico">{% icon "chef-hat" %}</span>
-  <p><strong>Vous êtes nutritionniste.</strong> Consultez les profils que les citoyens partagent avec vous.</p>
-  <a class="btn btn-small" href="{% url 'users:nutri_profils' %}">{% icon "users" 16 %}Profils citoyens</a></div>
 {% endif %}
 
+{% if user.role == "CITOYEN" %}
 <div class="grid-2">
   <section class="card" aria-labelledby="titre-empreinte">
     <h2 id="titre-empreinte"><span class="h-ico">{% icon "leaf" %}</span>Mon empreinte alimentaire</h2>
@@ -82,6 +81,57 @@
     </form>
   </template>
 </section>
+
+{% elif user.role == "NUTRITIONNISTE" %}
+<div class="grid-2">
+  <section class="card" aria-labelledby="titre-pro">
+    <h2 id="titre-pro"><span class="h-ico">{% icon "chef-hat" %}</span>Informations professionnelles</h2>
+    <dl class="details">
+      <div><dt>Rôle</dt><dd>Nutritionniste</dd></div>
+      <div><dt>N° d'ordre</dt><dd>{{ demande_acceptee.numero_ordre|default:"—" }}</dd></div>
+      <div><dt>Lieu d'exercice</dt><dd>{{ demande_acceptee.etablissement|default:"—" }}</dd></div>
+      <div><dt>Statut accordé</dt><dd>{% if demande_acceptee %}le {{ demande_acceptee.traitee_le|date:"d/m/Y" }}{% if demande_acceptee.traitee_par %} par {{ demande_acceptee.traitee_par }}{% endif %} (demande vérifiée)
+        {% elif invitation %}le {{ invitation.acceptee_le|date:"d/m/Y" }}, sur invitation{% if invitation.invite_par %} de {{ invitation.invite_par }}{% endif %}
+        {% else %}par un administrateur{% endif %}</dd></div>
+    </dl>
+  </section>
+  <section class="card" aria-labelledby="titre-activite">
+    <h2 id="titre-activite"><span class="h-ico h-ico-blue">{% icon "chart" %}</span>Mon espace nutritionniste</h2>
+    <dl class="kpis">
+      <div><dt>Profils partagés</dt><dd><strong>{{ nb_profils_partages }}</strong> citoyen{{ nb_profils_partages|pluralize }}</dd></div>
+      <div><dt>Analyses IA consultables</dt><dd><strong>{{ nb_analyses }}</strong> analyse{{ nb_analyses|pluralize }}</dd></div>
+    </dl>
+    <p class="small muted">Vous ne voyez que les profils que les citoyens ont choisi de partager avec les nutritionnistes.</p>
+    <a class="btn" href="{% url 'users:nutri_profils' %}">{% icon "users" %}Voir les profils citoyens</a>
+  </section>
+</div>
+
+{% else %}
+<div class="grid-2">
+  <section class="card" aria-labelledby="titre-admin">
+    <h2 id="titre-admin"><span class="h-ico">{% icon "shield" %}</span>Mon espace administration</h2>
+    <dl class="kpis">
+      <div><dt>Comptes</dt><dd><strong>{{ nb_comptes }}</strong> au total</dd></div>
+      <div><dt>Demandes à valider</dt><dd><strong>{{ nb_demandes_attente|default:0 }}</strong> en attente</dd></div>
+    </dl>
+    <ul class="link-list" style="margin-top:0">
+      <li><a href="{% url 'users:admin_liste' %}">{% icon "users" %}Gestion des comptes</a></li>
+      <li><a href="{% url 'users:admin_demandes' %}">{% icon "chef-hat" %}Demandes nutritionnistes</a></li>
+      <li><a href="{% url 'users:admin_invitations' %}">{% icon "mail" %}Inviter une nutritionniste</a></li>
+      <li><a href="{% url 'users:admin_stats' %}">{% icon "chart" %}Statistiques</a></li>
+    </ul>
+  </section>
+  <section class="card" aria-labelledby="titre-actions">
+    <h2 id="titre-actions"><span class="h-ico h-ico-violet">{% icon "clock" %}</span>Mon activité</h2>
+    <dl class="kpis">
+      <div><dt>Demandes traitées</dt><dd><strong>{{ nb_traitees }}</strong> par moi</dd></div>
+      <div><dt>Invitations envoyées</dt><dd><strong>{{ nb_invitations }}</strong> par moi</dd></div>
+    </dl>
+    <p class="small muted">Le tableau de bord technique Django reste disponible pour la maintenance.</p>
+    <a class="btn btn-ghost" href="{% url 'admin:index' %}">{% icon "box" %}Administration Django</a>
+  </section>
+</div>
+{% endif %}
 
 <section class="card" aria-labelledby="titre-compte">
   <h2 id="titre-compte"><span class="h-ico h-ico-blue">{% icon "user" %}</span>Mon compte</h2>

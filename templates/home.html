@@ -11,7 +11,9 @@
         qui respectent vos goûts et votre quotidien.</p>
       <p class="actions">
         {% if user.is_authenticated %}
-          <a class="btn btn-large btn-light" href="{% url 'repas:liste' %}">Voir mon bilan{% icon "arrow" 18 "i-fleche" %}</a>
+          {% if user.role == "CITOYEN" %}<a class="btn btn-large btn-light" href="{% url 'repas:liste' %}">Voir mon bilan{% icon "arrow" 18 "i-fleche" %}</a>
+          {% elif user.role == "NUTRITIONNISTE" %}<a class="btn btn-large btn-light" href="{% url 'users:nutri_profils' %}">Profils citoyens{% icon "arrow" 18 "i-fleche" %}</a>
+          {% else %}<a class="btn btn-large btn-light" href="{% url 'users:admin_liste' %}">Gestion des comptes{% icon "arrow" 18 "i-fleche" %}</a>{% endif %}
           <a class="btn btn-large btn-outline-light" href="{% url 'users:profil' %}">Accéder à mon profil</a>
         {% else %}
           <a class="btn btn-large btn-light" href="{% url 'users:inscription' %}">Créer mon profil{% icon "arrow" 18 "i-fleche" %}</a>

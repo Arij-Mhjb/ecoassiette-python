@@ -29,7 +29,7 @@ from .emails import (
     notifier_changement_mdp, notifier_demande_traitee,
 )
 from .models import AnalyseProfilIA, DemandeNutritionniste, Invitation, ProfilAlimentaire
-from .permissions import PermissionOu403Mixin
+from .permissions import PermissionOu403Mixin, citoyen_requis
 from .tasks import lancer_analyse
 
 User = get_user_model()
@@ -139,8 +139,21 @@ class DeconnexionView(auth_views.LogoutView):
 def profil(request):
     p = request.user.profil
     derniere = p.analyses.filter(statut=AnalyseProfilIA.Statut.TERMINE).first()
-    demande = request.user.demandes_nutritionniste.first()
-    return render(request, "users/profil.html", {"profil": p, "analyse": derniere, "demande": demande})
+    user = request.user
+    ctx = {"profil": p, "analyse": derniere, "demande": user.demandes_nutritionniste.first()}
+    if user.role == User.Role.NUTRITIONNISTE:      # profil professionnel
+        partages = ProfilAlimentaire.objects.filter(utilisateur__role=User.Role.CITOYEN, utilisateur__is_active=True,
+                                                    profil_public=True)
+        ctx.update(
+            demande_acceptee=user.demandes_nutritionniste.filter(statut=DemandeNutritionniste.Statut.ACCEPTEE).first(),
+            invitation=Invitation.objects.filter(utilisateur=user).select_related("invite_par").first(),
+            nb_profils_partages=partages.count(),
+            nb_analyses=AnalyseProfilIA.objects.filter(profil__in=partages, statut=AnalyseProfilIA.Statut.TERMINE).count(),
+        )
+    elif user.role == User.Role.ADMIN:
+        ctx.update(nb_comptes=User.objects.count(), nb_traitees=user.demandes_traitees.count(),
+                   nb_invitations=user.invitations_envoyees.count())
+    return render(request, "users/profil.html", ctx)
 
 
 @login_required
@@ -181,7 +194,7 @@ def modifier_infos(request):
     })
 
 
-@login_required
+@citoyen_requis
 def modifier_profil(request):
     form = ProfilAlimentaireForm(request.POST or None, instance=request.user.profil)
     if request.method == "POST":
@@ -235,7 +248,7 @@ def _analyse_json(a):
     }
 
 
-@login_required
+@citoyen_requis
 @require_POST
 def analyse_lancer(request):
     p = request.user.profil
@@ -248,14 +261,14 @@ def analyse_lancer(request):
     return JsonResponse(_analyse_json(analyse), status=202)
 
 
-@login_required
+@citoyen_requis
 @require_GET
 def analyse_etat(request, pk):
     analyse = get_object_or_404(AnalyseProfilIA, pk=pk, profil__utilisateur=request.user)
     return JsonResponse(_analyse_json(analyse))
 
 
-@login_required
+@citoyen_requis
 @require_POST
 def appliquer_objectif(request, pk):
     analyse = get_object_or_404(AnalyseProfilIA, pk=pk, profil__utilisateur=request.user,
