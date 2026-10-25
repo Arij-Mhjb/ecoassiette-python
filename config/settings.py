@@ -182,6 +182,11 @@ REST_FRAMEWORK = {
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "60"))
+# Si le modèle principal est surchargé (HTTP 503 « high demand »), on essaie ces modèles dans l'ordre.
+GEMINI_MODELES_SECOURS = [m.strip() for m in os.getenv(
+    "GEMINI_MODELES_SECOURS", "gemini-2.5-flash,gemini-flash-lite-latest,gemini-2.5-flash-lite").split(",") if m.strip()]
+# Délai par modèle : 3 essais tiennent dans les 90 s d'attente de la page
+GEMINI_TIMEOUT_MODELE = int(os.getenv("GEMINI_TIMEOUT_MODELE", "25"))
 
 # --- Traitement asynchrone (Celery + Redis) -------------------------------------------
 # USE_CELERY=True  -> la tâche IA est envoyée à un worker Celery (Redis).

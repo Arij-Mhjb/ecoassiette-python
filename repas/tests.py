@@ -354,7 +354,7 @@ class IaRepasTest(TestCase):
         self.assertEqual(ia.type_selon_heure(dt.datetime(2026, 1, 1, 17, tzinfo=tz)), "COLLATION")
         self.assertEqual(ia.type_selon_heure(dt.datetime(2026, 1, 1, 21, tzinfo=tz)), "DINER")
 
-    @mock.patch("repas.ia.requests.post")
+    @mock.patch("users.ai.requests.post")
     def test_photo_envoie_image_en_base64(self, post):
         post.return_value = reponse_gemini({"type_repas": "DEJEUNER", "aliments": [
             {"aliment": "couscous", "categorie": "FECULENT", "quantite_g": 300}]})
@@ -364,7 +364,7 @@ class IaRepasTest(TestCase):
         self.assertEqual(parts[0]["inlineData"]["mimeType"], "image/jpeg")
         self.assertEqual(parts[0]["inlineData"]["data"], "/9hpbWFnZQ==")
 
-    @mock.patch("repas.ia.requests.post")
+    @mock.patch("users.ai.requests.post")
     def test_texte_repli_local_si_api_en_panne(self, post):
         import requests as rq
         for effet in (rq.Timeout(), rq.ConnectionError(), mock.Mock(**{"raise_for_status.side_effect": rq.HTTPError(response=mock.Mock(status_code=429))})):
@@ -378,11 +378,43 @@ class IaRepasTest(TestCase):
                 self.assertTrue(r["erreur"])
                 self.assertEqual({a["aliment"] for a in r["aliments"]}, {"couscous", "poulet"})
 
-    @mock.patch("repas.ia.requests.post")
+    @mock.patch("users.ai.requests.post")
     def test_texte_reponse_illisible(self, post):
         m = mock.Mock(); m.raise_for_status.return_value = None; m.json.return_value = {}
         post.return_value = m
         self.assertEqual(ia.depuis_texte("lablabi")["source"], "LOCAL")
+
+    @override_settings(GEMINI_API_KEY="cle", GEMINI_MODEL="principal", GEMINI_MODELES_SECOURS=["secours1", "secours2"])
+    @mock.patch("users.ai.requests.post")
+    def test_bascule_vers_modele_de_secours_si_surcharge(self, post):
+        surcharge = mock.Mock(status_code=503, text="high demand")
+        ok = reponse_gemini({"aliments": [{"aliment": "couscous", "categorie": "FECULENT", "quantite_g": 300}]})
+        ok.status_code = 200
+        post.side_effect = [surcharge, ok]
+        r = ia.depuis_photo(b"img", "image/jpeg")
+        self.assertEqual(r["source"], "GEMINI")
+        urls = [c.args[0] for c in post.call_args_list]
+        self.assertIn("principal", urls[0])
+        self.assertIn("secours1", urls[1])
+
+    @override_settings(GEMINI_API_KEY="cle", GEMINI_MODEL="principal", GEMINI_MODELES_SECOURS=["secours1"])
+    @mock.patch("users.ai.requests.post")
+    def test_tous_les_modeles_surcharges(self, post):
+        post.return_value = mock.Mock(status_code=503, text="high demand")
+        with self.assertRaisesMessage(ErreurIA, "surchargé"):
+            ia.depuis_photo(b"img", "image/jpeg")
+        self.assertEqual(post.call_count, 2)
+
+    @override_settings(GEMINI_API_KEY="cle", GEMINI_MODEL="principal", GEMINI_MODELES_SECOURS=["secours1"])
+    @mock.patch("users.ai.requests.post")
+    def test_cle_refusee_pas_de_bascule(self, post):
+        import requests as rq
+        refus = mock.Mock(status_code=403, text="API key not valid")
+        refus.raise_for_status.side_effect = rq.HTTPError(response=refus)
+        post.return_value = refus
+        with self.assertRaisesMessage(ErreurIA, "403"):
+            ia.depuis_photo(b"img", "image/jpeg")
+        self.assertEqual(post.call_count, 1)
 
     @override_settings(GEMINI_API_KEY="")
     def test_sans_cle(self):

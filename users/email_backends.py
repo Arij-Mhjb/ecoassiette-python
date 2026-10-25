@@ -35,10 +35,13 @@ class BrevoBackend(BaseEmailBackend):
                     BREVO_URL, json=payload, timeout=15,
                     headers={"api-key": settings.BREVO_API_KEY, "accept": "application/json"},
                 )
-                r.raise_for_status()
+                if r.status_code >= 400:
+                    # Brevo explique la cause dans le corps de la réponse (clé invalide, IP non autorisée,
+                    # expéditeur non vérifié, compte non activé…) : on la journalise pour les logs Render.
+                    raise requests.HTTPError(f"{r.status_code} — {r.text[:300]}", response=r)
                 envoyes += 1
             except requests.RequestException as e:
-                logger.error("Échec d'envoi Brevo : %s", e)
+                logger.error("Échec d'envoi Brevo (expéditeur %s) : %s", adresse, e)
                 if not self.fail_silently:
                     raise
         return envoyes

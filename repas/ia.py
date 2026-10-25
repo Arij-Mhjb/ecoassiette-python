@@ -11,15 +11,12 @@ La réponse de Gemini est toujours validée (catégories connues, quantités bor
 on ne fait jamais confiance aveuglément à un modèle génératif.
 """
 import base64
-import json
 import re
 import time
 
-import requests
-from django.conf import settings
 from django.utils import timezone
 
-from users.ai import GEMINI_URL, ErreurIA
+from users.ai import ErreurIA, generer
 
 from .categories import PORTIONS, deviner_categorie, normaliser, trouver_aliments
 from .models import FACTEURS_CO2, Repas
@@ -40,30 +37,8 @@ CONSIGNE = (
 
 
 def _appeler_gemini(parts):
-    if not settings.GEMINI_API_KEY:
-        raise ErreurIA("Clé GEMINI_API_KEY absente")
-    try:
-        r = requests.post(
-            GEMINI_URL.format(model=settings.GEMINI_MODEL),
-            headers={"x-goog-api-key": settings.GEMINI_API_KEY, "Content-Type": "application/json"},
-            json={
-                "contents": [{"parts": parts}],
-                "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
-            },
-            timeout=settings.GEMINI_TIMEOUT,
-        )
-        r.raise_for_status()
-        return json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
-    except requests.Timeout as e:
-        raise ErreurIA("Délai dépassé pour l'API Gemini") from e
-    except requests.HTTPError as e:
-        code = e.response.status_code if e.response is not None else "?"
-        detail = str(getattr(e.response, "text", "") or "")[:300].replace("\n", " ")
-        raise ErreurIA(f"API Gemini HTTP {code} : {detail}") from e
-    except requests.RequestException as e:
-        raise ErreurIA(f"Erreur réseau : {e.__class__.__name__}") from e
-    except (KeyError, IndexError, TypeError, ValueError) as e:
-        raise ErreurIA("Réponse Gemini illisible") from e
+    """Gemini avec bascule automatique vers un modèle de secours si le principal est surchargé."""
+    return generer(parts, temperature=0.2)
 
 
 def type_selon_heure(maintenant=None):

@@ -189,32 +189,61 @@ def construire_prompt(d):
     )
 
 
-def appeler_gemini(prompt):
+# Codes qui veulent dire « ce modèle est occupé / indisponible » : on essaie le modèle suivant.
+CODES_MODELE_SUIVANT = {404, 429, 500, 503, 504}
+
+
+def modeles_gemini():
+    """Modèle principal puis modèles de secours (sans doublon)."""
+    noms = [settings.GEMINI_MODEL] + list(getattr(settings, "GEMINI_MODELES_SECOURS", []))
+    return list(dict.fromkeys(n for n in noms if n))
+
+
+def generer(parts, temperature=0.2):
+    """
+    Appelle Gemini et renvoie le JSON produit. Si un modèle est surchargé (503 « high demand »),
+    sans quota (429), introuvable (404) ou trop lent, on passe automatiquement au modèle de secours suivant.
+    Une clé refusée (400/401/403) arrête tout de suite : changer de modèle n'y changerait rien.
+    """
     if not settings.GEMINI_API_KEY:
         raise ErreurIA("Clé GEMINI_API_KEY absente")
-    try:
-        r = requests.post(
-            GEMINI_URL.format(model=settings.GEMINI_MODEL),
-            headers={"x-goog-api-key": settings.GEMINI_API_KEY, "Content-Type": "application/json"},
-            json={
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"responseMimeType": "application/json", "temperature": 0.4},
-            },
-            timeout=settings.GEMINI_TIMEOUT,
-        )
-        r.raise_for_status()
-        texte = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-        return json.loads(texte)
-    except requests.Timeout as e:
-        raise ErreurIA("Délai dépassé pour l'API Gemini") from e
-    except requests.HTTPError as e:
-        detail = (e.response.text if e.response is not None else "")[:200].replace("\n", " ")
-        code = e.response.status_code if e.response is not None else "?"
-        raise ErreurIA(f"API Gemini HTTP {code} : {detail}") from e
-    except requests.RequestException as e:
-        raise ErreurIA(f"Erreur réseau/API Gemini : {e.__class__.__name__}") from e
-    except (KeyError, IndexError, TypeError, ValueError) as e:
-        raise ErreurIA("Réponse Gemini illisible") from e
+    erreurs = []
+    for modele in modeles_gemini():
+        try:
+            r = requests.post(
+                GEMINI_URL.format(model=modele),
+                headers={"x-goog-api-key": settings.GEMINI_API_KEY, "Content-Type": "application/json"},
+                json={
+                    "contents": [{"parts": parts}],
+                    "generationConfig": {"responseMimeType": "application/json", "temperature": temperature},
+                },
+                timeout=getattr(settings, "GEMINI_TIMEOUT_MODELE", settings.GEMINI_TIMEOUT),
+            )
+        except requests.Timeout:
+            erreurs.append(f"{modele} : délai dépassé")
+            logger.warning("Gemini %s : délai dépassé, modèle suivant", modele)
+            continue
+        except requests.RequestException as e:
+            raise ErreurIA(f"Erreur réseau/API Gemini : {e.__class__.__name__}") from e
+        if r.status_code in CODES_MODELE_SUIVANT:
+            erreurs.append(f"{modele} : HTTP {r.status_code}")
+            logger.warning("Gemini %s indisponible (HTTP %s), modèle suivant", modele, r.status_code)
+            continue
+        try:
+            r.raise_for_status()                      # clé refusée, requête invalide… : inutile d'insister
+        except requests.HTTPError as e:
+            raise ErreurIA(f"API Gemini HTTP {r.status_code} : {str(r.text)[:200]}".replace("\n", " ")) from e
+        try:
+            return json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])
+        except (KeyError, IndexError, TypeError, ValueError) as e:
+            raise ErreurIA("Réponse Gemini illisible") from e
+    if erreurs and all("délai" in e for e in erreurs):
+        raise ErreurIA("Délai dépassé pour l'API Gemini (" + " ; ".join(erreurs) + ")")
+    raise ErreurIA("Gemini surchargé, tous les modèles ont échoué (" + " ; ".join(erreurs) + ")")
+
+
+def appeler_gemini(prompt):
+    return generer([{"text": prompt}], temperature=0.4)
 
 
 def valider_resultat(brut, d):
