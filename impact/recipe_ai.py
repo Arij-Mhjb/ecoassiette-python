@@ -32,6 +32,12 @@ PORTIONS_G = {
 
 def categoriser(nom):
     texte = nom.casefold()
+    # Comprendre le rôle de « burger » : le pain est un féculent, tandis que
+    # le plat/steak burger est traité comme une viande à végétaliser.
+    if any(expression in texte for expression in ("pain burger", "pain hamburger", "burger bun", "bun burger")):
+        return "FECULENT"
+    if any(expression in texte for expression in ("hamburger", "cheeseburger", "burger", "steak haché", "steak hache")):
+        return "VIANDE_ROUGE"
     for categorie, mots in CATEGORIES.items():
         if any(mot in texte for mot in mots):
             return categorie

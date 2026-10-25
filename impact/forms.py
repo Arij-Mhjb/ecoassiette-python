@@ -40,6 +40,7 @@ class IngredientExtraitForm(forms.Form):
     utiliser_alternative = forms.BooleanField(
         label="Utiliser l'alternative végétale", required=False
     )
+    produit_alternatif_id = forms.IntegerField(required=False, min_value=1)
 
 
 IngredientExtraitFormSet = formset_factory(

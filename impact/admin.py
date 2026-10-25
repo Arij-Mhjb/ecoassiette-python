@@ -1,5 +1,9 @@
 from django import forms
 from django.contrib import admin, messages
+from django.shortcuts import redirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
+from urllib.parse import urlsplit
 from django.utils import timezone
 
 from users.ai import ErreurIA, appeler_gemini
@@ -8,6 +12,7 @@ from .models import (
     AlternativeAdoptee, AlternativeVegetale, CommandeRecompense, ExtractionRecetteIA,
     FacteurImpact, PreuveRepas, ProduitRecompense, Sponsor, TransactionPoints,
 )
+from .product_ai import ErreurImportProduit, analyser_url_produit
 from .services import crediter_preuve
 
 
@@ -35,7 +40,7 @@ class AlternativeAdopteeAdmin(admin.ModelAdmin):
     search_fields = ("utilisateur__username", "aliment_original", "remplacement")
     readonly_fields = (
         "utilisateur", "repas", "alternative", "aliment_original", "remplacement",
-        "co2_evite", "eau_economisee", "terres_preservees", "adoptee_le",
+        "produit_utilise", "co2_evite", "eau_economisee", "terres_preservees", "adoptee_le",
     )
 
 
@@ -103,12 +108,86 @@ class ProduitRecompenseForm(forms.ModelForm):
         return donnees
 
 
+class ImportProduitIAForm(forms.Form):
+    url = forms.URLField(
+        label="URL officielle du produit",
+        help_text="Collez la page exacte du produit chez le fabricant ou le sponsor.",
+    )
+    remise_pourcent = forms.IntegerField(
+        label="Remise proposée (%)", min_value=1, max_value=100, initial=50
+    )
+    cout_points = forms.IntegerField(label="Points nécessaires", min_value=1, initial=200)
+
+
 @admin.register(ProduitRecompense)
 class ProduitRecompenseAdmin(admin.ModelAdmin):
     form = ProduitRecompenseForm
+    change_list_template = "admin/impact/produitrecompense/change_list.html"
     list_display = ("nom", "sponsor", "statut", "remise_pourcent", "cout_points", "stock", "propose_par_ia")
     list_filter = ("statut", "produit_vegetal", "propose_par_ia", "sponsor")
-    search_fields = ("nom", "sponsor__nom")
+    search_fields = ("nom", "description", "mots_cles_recommandation", "sponsor__nom")
+
+    def get_urls(self):
+        urls = super().get_urls()
+        personnalisees = [
+            path(
+                "importer-avec-ia/",
+                self.admin_site.admin_view(self.importer_avec_ia),
+                name="impact_produitrecompense_importer_ia",
+            ),
+        ]
+        return personnalisees + urls
+
+    def importer_avec_ia(self, request):
+        if not self.has_add_permission(request):
+            from django.core.exceptions import PermissionDenied
+            raise PermissionDenied
+        form = ImportProduitIAForm(request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            try:
+                donnees = analyser_url_produit(form.cleaned_data["url"])
+            except ErreurImportProduit as exc:
+                form.add_error("url", str(exc))
+            else:
+                if not donnees["produit_vegetal"]:
+                    form.add_error(
+                        "url", "L'IA n'a pas identifié ce produit comme végétal. Vérifiez l'URL."
+                    )
+                else:
+                    domaine = urlsplit(donnees["url_source"]).hostname or ""
+                    sponsor, _ = Sponsor.objects.get_or_create(
+                        nom=donnees["sponsor_nom"],
+                        defaults={"site_web": f"https://{domaine}" if domaine else ""},
+                    )
+                    produit = ProduitRecompense.objects.create(
+                        sponsor=sponsor,
+                        nom=donnees["nom"],
+                        description=donnees["description"],
+                        prix_public=donnees["prix_public"],
+                        remise_pourcent=form.cleaned_data["remise_pourcent"],
+                        cout_points=form.cleaned_data["cout_points"],
+                        stock=0,
+                        produit_vegetal=True,
+                        mots_cles_recommandation=donnees["mots_cles_recommandation"],
+                        url_source=donnees["url_source"],
+                        propose_par_ia=True,
+                        statut=ProduitRecompense.Statut.BROUILLON,
+                    )
+                    self.message_user(
+                        request,
+                        "Produit importé par l'IA. Vérifiez le prix, ajoutez l'image et le stock, puis publiez-le.",
+                        messages.SUCCESS,
+                    )
+                    return redirect(reverse("admin:impact_produitrecompense_change", args=[produit.pk]))
+        contexte = {
+            **self.admin_site.each_context(request),
+            "title": "Importer un produit avec l’IA",
+            "form": form,
+            "opts": self.model._meta,
+        }
+        return TemplateResponse(
+            request, "admin/impact/produitrecompense/importer_ia.html", contexte
+        )
 
 
 @admin.action(description="Approuver les preuves et créditer les points")
@@ -145,8 +224,22 @@ class PreuveRepasAdmin(admin.ModelAdmin):
 
 @admin.register(TransactionPoints)
 class TransactionPointsAdmin(admin.ModelAdmin):
-    list_display = ("utilisateur", "montant", "motif", "creee_le")
-    readonly_fields = ("utilisateur", "montant", "motif", "preuve", "creee_le")
+    list_display = ("utilisateur", "montant", "motif", "origine", "creee_le")
+    list_filter = ("creee_le",)
+    search_fields = ("utilisateur__username", "utilisateur__email", "motif")
+    autocomplete_fields = ("utilisateur",)
+    fields = ("utilisateur", "montant", "motif", "preuve", "creee_le")
+
+    @admin.display(description="Origine")
+    def origine(self, obj):
+        return "Preuve validée" if obj.preuve_id else "Ajustement manuel"
+
+    def get_readonly_fields(self, request, obj=None):
+        # Une transaction issue d'une preuve est une trace d'audit : elle ne doit
+        # jamais être altérée. Les ajustements manuels restent modifiables.
+        if obj and obj.preuve_id:
+            return ("utilisateur", "montant", "motif", "preuve", "creee_le")
+        return ("preuve", "creee_le")
 
 
 @admin.register(CommandeRecompense)
