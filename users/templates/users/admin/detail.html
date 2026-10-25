@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Compte {{ cible.username }}{% endblock %}
 {% block content %}
-<p><a href="{% url 'users:admin_liste' %}">← Tous les comptes</a></p>
+<a class="back-link" href="{% url 'users:admin_liste' %}">{% icon "arrow-left" 16 %}Tous les comptes</a>
 <div class="page-head row-between">
   <div>
     <h1>{{ cible.get_full_name|default:cible.username }}</h1>
@@ -9,18 +9,18 @@
       {% if cible.is_active %}<span class="badge badge-ok">Actif</span>{% else %}<span class="badge badge-off">Désactivé</span>{% endif %}</p>
   </div>
   <div class="form-actions">
-    <a class="btn btn-ghost" href="{% url 'users:admin_modifier' cible.pk %}">Modifier</a>
+    <a class="btn btn-ghost" href="{% url 'users:admin_modifier' cible.pk %}">{% icon "edit" %}Modifier</a>
     {% if cible.pk != user.pk %}
     <form method="post" action="{% url 'users:admin_basculer' cible.pk %}" class="inline-form">
       {% csrf_token %}<input type="hidden" name="next" value="{% url 'users:admin_detail' cible.pk %}">
-      <button type="submit" class="btn btn-ghost">{% if cible.is_active %}Désactiver{% else %}Activer{% endif %}</button>
+      <button type="submit" class="btn btn-ghost">{% icon "power" %}{% if cible.is_active %}Désactiver{% else %}Activer{% endif %}</button>
     </form>
-    <a class="btn btn-danger" href="{% url 'users:admin_supprimer' cible.pk %}">Supprimer</a>
+    <a class="btn btn-danger" href="{% url 'users:admin_supprimer' cible.pk %}">{% icon "trash" %}Supprimer</a>
     {% endif %}
   </div>
 </div>
 <div class="grid-2">
-  <section class="card" aria-labelledby="t-c"><h2 id="t-c">Compte</h2>
+  <section class="card" aria-labelledby="t-c"><h2 id="t-c"><span class="h-ico h-ico-blue">{% icon "user" %}</span>Compte</h2>
     <dl class="details">
       <div><dt>E-mail</dt><dd>{{ cible.email }} {% if cible.email_verifie %}<span class="badge badge-ok">confirmé</span>{% else %}<span class="badge badge-off">non confirmé</span>{% endif %}</dd></div>
       <div><dt>Téléphone</dt><dd>{{ cible.telephone|default:"—" }}</dd></div>
@@ -29,7 +29,7 @@
       <div><dt>Groupes</dt><dd>{{ cible.groups.all|join:", "|default:"—" }}</dd></div>
     </dl>
   </section>
-  <section class="card" aria-labelledby="t-p"><h2 id="t-p">Profil alimentaire</h2>
+  <section class="card" aria-labelledby="t-p"><h2 id="t-p"><span class="h-ico">{% icon "leaf" %}</span>Profil alimentaire</h2>
     <dl class="details">
       <div><dt>Régime</dt><dd>{{ cible.profil.get_regime_display }}</dd></div>
       <div><dt>Empreinte estimée</dt><dd>{{ cible.profil.emission_estimee_hebdo }} kg/sem.</dd></div>

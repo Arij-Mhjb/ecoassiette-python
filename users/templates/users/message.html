@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ titre }}{% endblock %}
+{% block body_class %}page-auth{% endblock %}
 {% block content %}
 <div class="narrow card">
-  <h1>{{ titre }}</h1>
-  <p>{{ texte }}</p>
-  <p><a class="btn" href="{% url 'users:login' %}">Aller à la connexion</a></p>
+  <div class="auth-tete">
+    <span class="auth-ico">{% icon "check-circle" 26 %}</span>
+    <h1>{{ titre }}</h1>
+    <p>{{ texte }}</p>
+  </div>
+  <a class="btn btn-block btn-large" href="{% url 'users:login' %}">Aller à la connexion{% icon "arrow" 18 "i-fleche" %}</a>
 </div>
 {% endblock %}

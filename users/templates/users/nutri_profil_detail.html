@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Profil de {{ profil.utilisateur }}{% endblock %}
 {% block content %}
-<p><a href="{% url 'users:nutri_profils' %}">← Retour aux profils</a></p>
+<a class="back-link" href="{% url 'users:nutri_profils' %}">{% icon "arrow-left" 16 %}Retour aux profils</a>
 <h1>{{ profil.utilisateur.get_full_name|default:profil.utilisateur.username }}</h1>
 <div class="grid-2">
   <section class="card" aria-labelledby="t-hab">
-    <h2 id="t-hab">Habitudes déclarées</h2>
+    <h2 id="t-hab"><span class="h-ico h-ico-amber">{% icon "apple" %}</span>Habitudes déclarées</h2>
     <dl class="details">
       <div><dt>Régime</dt><dd>{{ profil.get_regime_display }}</dd></div>
       <div><dt>Aime</dt><dd>{{ profil.aliments_aimes|default:"—" }}</dd></div>
@@ -16,7 +16,7 @@
     </dl>
   </section>
   <section class="card" aria-labelledby="t-emp">
-    <h2 id="t-emp">Empreinte</h2>
+    <h2 id="t-emp"><span class="h-ico">{% icon "globe" %}</span>Empreinte</h2>
     <dl class="kpis">
       <div><dt>Estimée</dt><dd><strong>{{ profil.emission_estimee_hebdo }}</strong> kg/sem.</dd></div>
       <div><dt>Objectif</dt><dd>{{ profil.objectif_co2_hebdo|default:"—" }}{% if profil.objectif_co2_hebdo %} kg/sem.{% endif %}</dd></div>
@@ -24,7 +24,7 @@
   </section>
 </div>
 {% if analyse %}
-<section class="card" aria-labelledby="t-ia"><h2 id="t-ia">Dernière analyse IA</h2>
+<section class="card" aria-labelledby="t-ia"><h2 id="t-ia"><span class="h-ico h-ico-violet">{% icon "sparkles" %}</span>Dernière analyse IA</h2>
   {% include "users/_analyse.html" with r=analyse.resultat a=analyse %}
 </section>
 {% endif %}

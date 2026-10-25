@@ -1,14 +1,20 @@
 {% extends "base.html" %}
 {% block title %}{{ titre }}{% endblock %}
+{% block body_class %}page-auth{% endblock %}
 {% block content %}
 <div class="narrow card">
-  <h1>{{ titre }}</h1>
-  {% if intro %}<p class="muted">{{ intro }}</p>{% endif %}
+  <div class="auth-tete">
+    {% with t=titre|lower %}
+    <span class="auth-ico">{% if "passe" in t %}{% icon "lock" 26 %}{% elif "lien" in t %}{% icon "mail" 26 %}{% elif "habitudes" in t %}{% icon "leaf" 26 %}{% elif "créer" in t %}{% icon "user-plus" 26 %}{% else %}{% icon "edit" 26 %}{% endif %}</span>
+    {% endwith %}
+    <h1>{{ titre }}</h1>
+    {% if intro %}<p>{{ intro }}</p>{% endif %}
+  </div>
   <form method="post" {% if multipart %}enctype="multipart/form-data"{% endif %}>
     {% csrf_token %}
     {% include "includes/form.html" %}
     <div class="form-actions">
-      <button type="submit" class="btn">Enregistrer</button>
+      <button type="submit" class="btn">{% icon "check" %}Enregistrer</button>
       <a class="btn btn-ghost" href="{% if user.is_authenticated %}{% url 'users:profil' %}{% else %}{% url 'users:login' %}{% endif %}">Annuler</a>
     </div>
   </form>

@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 {% block title %}{{ titre }}{% endblock %}
 {% block content %}
-<div class="card" style="max-width:820px;margin-inline:auto">
+<div class="form-repas-card">
+<a class="back-link" href="{% url 'repas:liste' %}">{% icon "arrow-left" 16 %}Mes repas</a>
+<div class="card">
   <h1>{{ titre }}</h1>
 
   <section class="ia-repas" aria-labelledby="t-ia-repas">
-    <h2 id="t-ia-repas">✨ Remplir avec l'IA</h2>
+    <h2 id="t-ia-repas">{% icon "sparkles" 22 %}Remplir avec l'IA</h2>
     <p class="muted small">Prenez votre assiette en photo, dictez ou décrivez votre repas (français ou tounsi) : les aliments, les quantités et le CO₂ sont remplis pour vous. Vous pouvez tout corriger avant d'enregistrer.</p>
     <div class="ia-actions">
       <input type="file" id="ia-photo" accept="image/*" capture="environment" class="sr-only">
-      <label class="btn btn-ghost ia-bouton" for="ia-photo">📸 Photo de l'assiette</label>
-      <button type="button" class="btn btn-ghost ia-bouton" id="ia-micro" aria-pressed="false">🎙️ Dicter</button>
+      <label class="ia-bouton" for="ia-photo"><span class="ia-bouton-ico">{% icon "camera" 20 %}</span><span>Photo de l'assiette<small>L'IA reconnaît les aliments</small></span></label>
+      <button type="button" class="ia-bouton" id="ia-micro" aria-pressed="false"><span class="ia-bouton-ico">{% icon "mic" 20 %}</span><span>Dicter<small>En tounsi ou en français</small></span></button>
       <label class="sr-only" for="ia-langue">Langue de la dictée</label>
       <select id="ia-langue" class="ia-langue">
         <option value="ar-TN">Tounsi</option>
@@ -20,7 +22,7 @@
     <div class="ia-texte">
       <label for="ia-description" class="sr-only">Description du repas</label>
       <input type="text" id="ia-description" maxlength="500" placeholder="ex. klit kosksi b l3allouch w slata mechouia">
-      <button type="button" class="btn btn-small" id="ia-analyser">Analyser</button>
+      <button type="button" class="btn btn-small" id="ia-analyser">{% icon "sparkles" 16 %}Analyser</button>
     </div>
     <div id="ia-statut" class="ia-statut" role="status" aria-live="polite"></div>
     <img id="ia-apercu" class="ia-apercu" alt="Photo du repas analysée" hidden>
@@ -30,7 +32,7 @@
     {% csrf_token %}
     {% include "includes/form.html" %}
 
-    <h2>Aliments</h2>
+    <h2 class="section-titre"><span class="h-ico h-ico-amber">{% icon "apple" %}</span>Aliments</h2>
     {{ formset.management_form }}
     {% if formset.non_form_errors %}
       <div class="alert alert-error" role="alert">{% for e in formset.non_form_errors %}<p>{{ e }}</p>{% endfor %}</div>
@@ -55,25 +57,16 @@
         {% endwith %}
       </fieldset>
     </template>
-    <button type="button" class="btn btn-small btn-ghost" id="ajouter-aliment">+ Ajouter un aliment</button>
+    <button type="button" class="btn btn-small btn-ghost" id="ajouter-aliment">{% icon "plus" 16 %}Ajouter un aliment</button>
 
     <div class="form-actions">
-      <button type="submit" class="btn">Enregistrer</button>
+      <button type="submit" class="btn">{% icon "check" %}Enregistrer</button>
       <a class="btn btn-ghost" href="{% url 'repas:liste' %}">Annuler</a>
     </div>
   </form>
 </div>
+</div>
 
-<style>
-  .aliment-ligne { display: grid; grid-template-columns: 2fr 2fr 1fr auto; gap: .75rem; align-items: start;
-    border: 1px solid var(--border); border-radius: 10px; padding: .75rem; margin: 0 0 .75rem; }
-  .aliment-ligne .field { margin: 0; }
-  .aliment-ligne .field-check { align-self: center; margin-top: 1.6rem; }
-  .aliment-ligne .co2-live { grid-column: 1 / -1; margin: 0; min-height: 1.4em; }
-  .aliment-ligne.ia-remplie { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); animation: ia-flash .8s ease; }
-  @keyframes ia-flash { from { background: var(--primary-soft); } to { background: transparent; } }
-  @media (max-width: 640px) { .aliment-ligne { grid-template-columns: 1fr; } .aliment-ligne .field-check { margin-top: 0; } }
-</style>
 {{ aide_categories|json_script:"aide-categories" }}
 <script>
 (function () {

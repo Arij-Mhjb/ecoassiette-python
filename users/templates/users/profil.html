@@ -2,23 +2,24 @@
 {% load static %}
 {% block title %}Mon profil{% endblock %}
 {% block content %}
-<div class="page-head">
+<section class="profil-hero" aria-label="Mon identité">
   <div class="identity">
     {% if user.avatar %}
-      <img class="avatar" src="{{ user.avatar.url }}" alt="Photo de profil de {{ user.get_full_name|default:user.username }}" width="64" height="64">
+      <img class="avatar" src="{{ user.avatar.url }}" alt="Photo de profil de {{ user.get_full_name|default:user.username }}" width="72" height="72">
     {% else %}
       <span class="avatar avatar-initiales" aria-hidden="true">{{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>
     {% endif %}
     <div>
       <h1>{{ user.get_full_name|default:user.username }}</h1>
-      <p class="muted">{{ user.get_role_display }} · membre depuis {{ user.date_joined|date:"F Y" }}</p>
+      <p><span class="badge">{{ user.get_role_display }}</span> · membre depuis {{ user.date_joined|date:"F Y" }}</p>
     </div>
   </div>
-</div>
+  <a class="btn btn-light" href="{% url 'repas:liste' %}">{% icon "utensils" %}Mes repas & mon bilan</a>
+</section>
 
 <div class="grid-2">
   <section class="card" aria-labelledby="titre-empreinte">
-    <h2 id="titre-empreinte">Mon empreinte alimentaire</h2>
+    <h2 id="titre-empreinte"><span class="h-ico">{% icon "leaf" %}</span>Mon empreinte alimentaire</h2>
     <dl class="kpis">
       <div><dt>Empreinte estimée</dt><dd><strong>{{ profil.emission_estimee_hebdo }}</strong> kg CO₂e / semaine</dd></div>
       <div><dt>Mon objectif</dt><dd>{% if profil.objectif_co2_hebdo %}<strong>{{ profil.objectif_co2_hebdo }}</strong> kg CO₂e / semaine{% else %}<span class="muted">non défini</span>{% endif %}</dd></div>
@@ -32,8 +33,8 @@
 
   <section class="card" aria-labelledby="titre-habitudes">
     <div class="card-head">
-      <h2 id="titre-habitudes">Mes habitudes</h2>
-      <a class="btn btn-small btn-ghost" href="{% url 'users:modifier_profil' %}">Modifier <span class="sr-only">mes habitudes</span></a>
+      <h2 id="titre-habitudes"><span class="h-ico h-ico-amber">{% icon "apple" %}</span>Mes habitudes</h2>
+      <a class="btn btn-small btn-ghost" href="{% url 'users:modifier_profil' %}">{% icon "edit" 16 %}Modifier <span class="sr-only">mes habitudes</span></a>
     </div>
     <dl class="details">
       <div><dt>Régime</dt><dd>{{ profil.get_regime_display }}</dd></div>
@@ -48,10 +49,10 @@
 
 <section class="card ai-card" aria-labelledby="titre-ia">
   <div class="card-head">
-    <h2 id="titre-ia">Analyse IA de mon profil</h2>
+    <h2 id="titre-ia"><span class="h-ico h-ico-violet">{% icon "sparkles" %}</span>Analyse IA de mon profil</h2>
     <button type="button" class="btn" id="btn-analyse"
             data-url="{% url 'users:analyse_lancer' %}" data-csrf="{{ csrf_token }}">
-      {% if analyse %}Relancer l'analyse{% else %}Analyser mon profil{% endif %}
+      {% icon "sparkles" %}<span class="btn-label">{% if analyse %}Relancer l'analyse{% else %}Analyser mon profil{% endif %}</span>
     </button>
   </div>
   <p class="small muted">L'IA propose un objectif réaliste et des alternatives végétales adaptées à vos goûts. Aucune donnée d'identité n'est envoyée.</p>
@@ -64,22 +65,22 @@
   <template id="tpl-appliquer">
     <form method="post" class="inline-form apply-form">
       <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
-      <button type="submit" class="btn btn-small">Adopter cet objectif</button>
+      <button type="submit" class="btn btn-small">{% icon "target" 16 %}Adopter cet objectif</button>
     </form>
   </template>
 </section>
 
 <section class="card" aria-labelledby="titre-compte">
-  <h2 id="titre-compte">Mon compte</h2>
+  <h2 id="titre-compte"><span class="h-ico h-ico-blue">{% icon "user" %}</span>Mon compte</h2>
   <dl class="details">
     <div><dt>Nom d'utilisateur</dt><dd>{{ user.username }}</dd></div>
     <div><dt>E-mail</dt><dd>{{ user.email }}</dd></div>
     <div><dt>Téléphone</dt><dd>{{ user.telephone|default:"—" }}</dd></div>
   </dl>
   <ul class="link-list">
-    <li><a href="{% url 'users:modifier_infos' %}">Modifier mes informations personnelles</a></li>
-    <li><a href="{% url 'users:password_change' %}">Changer mon mot de passe</a></li>
-    <li><a class="danger-link" href="{% url 'users:supprimer_compte' %}">Supprimer mon compte</a></li>
+    <li><a href="{% url 'users:modifier_infos' %}">{% icon "edit" %}Modifier mes informations personnelles</a></li>
+    <li><a href="{% url 'users:password_change' %}">{% icon "lock" %}Changer mon mot de passe</a></li>
+    <li><a class="danger-link" href="{% url 'users:supprimer_compte' %}">{% icon "trash" %}Supprimer mon compte</a></li>
   </ul>
 </section>
 {% endblock %}

@@ -1,42 +1,80 @@
 {% extends "base.html" %}
 {% block title %}Accueil{% endblock %}
+{% block body_class %}page-home{% endblock %}
 {% block content %}
-<section class="hero" aria-labelledby="titre-accueil">
-  <div>
-    <p class="eyebrow">Alimentation durable</p>
-    <h1 id="titre-accueil">Mangez ce que vous aimez,<br>avec moins de CO₂.</h1>
-    <p class="lead">EcoAssiette mesure l'empreinte carbone de vos habitudes alimentaires et vous propose
-      des alternatives végétales qui respectent vos goûts et votre quotidien.</p>
-    <p class="actions">
-      {% if user.is_authenticated %}
-        <a class="btn" href="{% url 'users:profil' %}">Accéder à mon profil</a>
-      {% else %}
-        <a class="btn" href="{% url 'users:inscription' %}">Créer mon profil</a>
-        <a class="btn btn-ghost" href="{% url 'users:login' %}">J'ai déjà un compte</a>
-      {% endif %}
-    </p>
+<div class="hero-band">
+  <section class="wrap hero" aria-labelledby="titre-accueil">
+    <div>
+      <p class="pill"><b>IA</b> Photo, voix ou texte — en français et en tounsi</p>
+      <h1 id="titre-accueil">Mangez ce que vous aimez, <span class="surligne">avec moins de CO₂.</span></h1>
+      <p class="lead">EcoAssiette mesure l'empreinte carbone de vos repas et vous propose des alternatives végétales
+        qui respectent vos goûts et votre quotidien.</p>
+      <p class="actions">
+        {% if user.is_authenticated %}
+          <a class="btn btn-large btn-light" href="{% url 'repas:liste' %}">Voir mon bilan{% icon "arrow" 18 "i-fleche" %}</a>
+          <a class="btn btn-large btn-outline-light" href="{% url 'users:profil' %}">Accéder à mon profil</a>
+        {% else %}
+          <a class="btn btn-large btn-light" href="{% url 'users:inscription' %}">Créer mon profil{% icon "arrow" 18 "i-fleche" %}</a>
+          <a class="btn btn-large btn-outline-light" href="{% url 'users:login' %}">J'ai déjà un compte</a>
+        {% endif %}
+      </p>
+      <ul class="hero-points">
+        <li>{% icon "check" 16 %}Gratuit</li>
+        <li>{% icon "check" 16 %}Données scientifiques</li>
+        <li>{% icon "check" 16 %}Accessible (WCAG AA)</li>
+      </ul>
+    </div>
+    <figure class="hero-figure">
+      <table class="compare">
+        <caption>Émissions pour 1 kg d'aliment (kg CO₂e)</caption>
+        <tbody>
+          <tr><th scope="row">Bœuf</th><td><span class="bar" style="--v:100%"></span>99,5</td></tr>
+          <tr><th scope="row">Agneau</th><td><span class="bar" style="--v:40%"></span>39,7</td></tr>
+          <tr><th scope="row">Poulet</th><td><span class="bar" style="--v:10%"></span>9,9</td></tr>
+          <tr><th scope="row">Tofu</th><td><span class="bar bar-good" style="--v:3.2%"></span>3,2</td></tr>
+          <tr><th scope="row">Pois chiches</th><td><span class="bar bar-good" style="--v:1%"></span>0,9</td></tr>
+        </tbody>
+      </table>
+      <figcaption class="muted small">Source : Poore &amp; Nemecek, <cite>Science</cite>, 2018.</figcaption>
+      <div class="hero-badge hero-badge-1" aria-hidden="true"><span class="h-ico">{% icon "trend" 16 %}</span><span>−8,8 kg CO₂e<small>agneau → pois chiches</small></span></div>
+      <div class="hero-badge hero-badge-2" aria-hidden="true"><span class="h-ico h-ico-violet">{% icon "sparkles" 16 %}</span><span>Analyse IA<small>en quelques secondes</small></span></div>
+    </figure>
+  </section>
+</div>
+
+<section class="section" aria-labelledby="titre-fonctions">
+  <div class="section-head">
+    <p class="eyebrow">{% icon "leaf" 14 %}Fonctionnalités</p>
+    <h2 id="titre-fonctions">Tout pour réduire votre empreinte, sans effort</h2>
+    <p>Enregistrez un repas en 5 secondes, voyez son impact, et laissez l'IA proposer des remplacements réalistes.</p>
   </div>
-  <figure class="hero-figure">
-    <table class="compare">
-      <caption>Émissions pour 1 kg d'aliment (kg CO₂e)</caption>
-      <tbody>
-        <tr><th scope="row">Bœuf</th><td><span class="bar" style="--v:100%"></span>99,5</td></tr>
-        <tr><th scope="row">Agneau</th><td><span class="bar" style="--v:40%"></span>39,7</td></tr>
-        <tr><th scope="row">Poulet</th><td><span class="bar" style="--v:10%"></span>9,9</td></tr>
-        <tr><th scope="row">Tofu</th><td><span class="bar bar-good" style="--v:3.2%"></span>3,2</td></tr>
-        <tr><th scope="row">Pois chiches</th><td><span class="bar bar-good" style="--v:1%"></span>0,9</td></tr>
-      </tbody>
-    </table>
-    <figcaption class="muted small">Source : Poore &amp; Nemecek, <cite>Science</cite>, 2018.</figcaption>
-  </figure>
+  <ul class="features-grid">
+    <li class="feature"><span class="h-ico">{% icon "camera" 22 %}</span><h3>Photo de l'assiette</h3><p>L'IA reconnaît les aliments et estime les quantités à partir d'une simple photo.</p></li>
+    <li class="feature"><span class="h-ico h-ico-violet">{% icon "mic" 22 %}</span><h3>Dictée en tounsi</h3><p>« klit kosksi b l3allouch » : dites votre repas, il est rempli pour vous.</p></li>
+    <li class="feature"><span class="h-ico h-ico-amber">{% icon "trees" 22 %}</span><h3>Forêt vivante</h3><p>Votre forêt pousse ou dépérit selon vos émissions de la semaine.</p></li>
+    <li class="feature"><span class="h-ico h-ico-blue">{% icon "swap" 22 %}</span><h3>Simulateur « Et si… »</h3><p>Visualisez le CO₂ économisé avant de remplacer un aliment.</p></li>
+  </ul>
 </section>
 
-<section class="features" aria-labelledby="titre-etapes">
-  <h2 id="titre-etapes">Comment ça marche</h2>
+<section class="section" aria-labelledby="titre-etapes">
+  <div class="section-head">
+    <p class="eyebrow">{% icon "zap" 14 %}En 3 étapes</p>
+    <h2 id="titre-etapes">Comment ça marche</h2>
+  </div>
   <ol class="steps">
     <li><h3>Décrivez vos habitudes</h3><p>Régime, plats préférés, aliments que vous évitez, temps de cuisine.</p></li>
     <li><h3>Recevez votre analyse IA</h3><p>Empreinte estimée, objectif réaliste et conseils personnalisés.</p></li>
     <li><h3>Remplacez, pas à pas</h3><p>Des alternatives végétales concrètes, adaptées à la cuisine que vous aimez.</p></li>
   </ol>
 </section>
+
+{% if not user.is_authenticated %}
+<section class="cta-band" aria-labelledby="titre-cta">
+  <div>
+    <h2 id="titre-cta">Prêt à planter votre forêt ?</h2>
+    <p>Créez votre compte en moins d'une minute.</p>
+  </div>
+  <a class="btn btn-large btn-light" href="{% url 'users:inscription' %}">Commencer gratuitement{% icon "arrow" 18 "i-fleche" %}</a>
+</section>
+{% endif %}
 {% endblock %}

@@ -3,17 +3,18 @@
 {% block content %}
 <div class="page-head row-between">
   <div>
+    <p class="eyebrow">{% icon "shield" 14 %}Administration</p>
     <h1>Gestion des comptes</h1>
     <p class="muted">{{ paginator.count }} compte{{ paginator.count|pluralize }}</p>
   </div>
-  <a class="btn" href="{% url 'users:admin_creer' %}">+ Nouveau compte</a>
+  <a class="btn" href="{% url 'users:admin_creer' %}">{% icon "user-plus" %}Nouveau compte</a>
 </div>
 
 <form method="get" class="filters" role="search" aria-label="Rechercher des comptes">
   {% for field in filtre %}
     <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}</div>
   {% endfor %}
-  <button type="submit" class="btn btn-small">Appliquer</button>
+  <button type="submit" class="btn btn-small">{% icon "filter" 16 %}Appliquer</button>
   <a class="btn btn-small btn-ghost" href="{% url 'users:admin_liste' %}">Réinitialiser</a>
 </form>
 
@@ -31,8 +32,8 @@
       <td>{% if u.is_active %}<span class="badge badge-ok">Actif</span>{% else %}<span class="badge badge-off">Désactivé</span>{% endif %}</td>
       <td>{{ u.date_joined|date:"d/m/Y" }}</td>
       <td class="actions-cell">
-        <a href="{% url 'users:admin_modifier' u.pk %}">Modifier<span class="sr-only"> {{ u.username }}</span></a>
-        <a class="danger-link" href="{% url 'users:admin_supprimer' u.pk %}">Supprimer<span class="sr-only"> {{ u.username }}</span></a>
+        <a class="icon-btn" href="{% url 'users:admin_modifier' u.pk %}" title="Modifier">{% icon "edit" %}<span class="sr-only">Modifier {{ u.username }}</span></a>
+        <a class="icon-btn icon-btn-danger" href="{% url 'users:admin_supprimer' u.pk %}" title="Supprimer">{% icon "trash" %}<span class="sr-only">Supprimer {{ u.username }}</span></a>
       </td>
     </tr>
   {% endfor %}
@@ -41,6 +42,6 @@
 </div>
 {% include "users/_pagination.html" %}
 {% else %}
-<p class="empty">Aucun compte ne correspond à la recherche.</p>
+<div class="empty">{% icon "search" 28 %}<p>Aucun compte ne correspond à la recherche.</p></div>
 {% endif %}
 {% endblock %}

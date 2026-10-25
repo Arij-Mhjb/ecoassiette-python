@@ -88,7 +88,7 @@ def remplacer(request, pk, element_pk):
     element = get_object_or_404(ElementRepas, pk=element_pk, repas__pk=pk, repas__utilisateur=request.user)
     s = suggestion_pour(element)
     if not s:
-        messages.info(request, "Cet aliment est déjà peu émetteur 🌿")
+        messages.info(request, "Cet aliment est déjà peu émetteur.")
         return redirect("repas:detail", pk=pk)
     ancien = element.aliment
     with transaction.atomic():
@@ -97,8 +97,8 @@ def remplacer(request, pk, element_pk):
         Remplacement.objects.create(utilisateur=request.user, repas=element.repas, ancien_aliment=ancien,
                                     nouvel_aliment=s["nom"], gain_kg=s["gain"])
     nb = Remplacement.objects.filter(utilisateur=request.user).count()
-    extra = " Badge débloqué : 🌱 Premier pas !" if nb == 1 else (" Badge débloqué : 🥗 Éco-cuisinier !" if nb == 5 else "")
-    messages.success(request, f"« {ancien} » → « {s['nom']} » : −{s['gain']} kg CO₂e 🌍{extra}")
+    extra = " Badge débloqué : Premier pas !" if nb == 1 else (" Badge débloqué : Éco-cuisinier !" if nb == 5 else "")
+    messages.success(request, f"« {ancien} » → « {s['nom']} » : −{s['gain']} kg CO₂e.{extra}")
     return redirect("repas:detail", pk=pk)
 
 

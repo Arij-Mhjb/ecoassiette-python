@@ -1,14 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Créer un compte{% endblock %}
+{% block body_class %}page-auth{% endblock %}
 {% block content %}
 <div class="narrow card">
-  <h1>Créer un compte</h1>
-  <p class="muted">Gratuit. Vous pourrez compléter vos habitudes alimentaires juste après.</p>
+  <div class="auth-tete">
+    <span class="auth-ico">{% icon "sprout" 26 %}</span>
+    <h1>Créer un compte</h1>
+    <p>Gratuit. Vous pourrez compléter vos habitudes alimentaires juste après.</p>
+  </div>
   <form method="post">
     {% csrf_token %}
     {% include "includes/form.html" %}
-    <button type="submit" class="btn btn-block">Créer mon compte</button>
+    <button type="submit" class="btn btn-block btn-large">Créer mon compte{% icon "arrow" 18 "i-fleche" %}</button>
   </form>
-  <p class="center small">Déjà inscrit ? <a href="{% url 'users:login' %}">Se connecter</a></p>
+  <div class="auth-pied"><p>Déjà inscrit ? <a href="{% url 'users:login' %}">Se connecter</a></p></div>
 </div>
 {% endblock %}

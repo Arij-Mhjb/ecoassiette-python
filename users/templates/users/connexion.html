@@ -1,18 +1,25 @@
 {% extends "base.html" %}
 {% block title %}Connexion{% endblock %}
+{% block body_class %}page-auth{% endblock %}
 {% block content %}
 <div class="narrow card">
-  <h1>Connexion</h1>
+  <div class="auth-tete">
+    <span class="auth-ico">{% icon "log-in" 26 %}</span>
+    <h1>Bon retour parmi nous</h1>
+    <p>Connectez-vous pour retrouver votre bilan carbone.</p>
+  </div>
   <form method="post">
     {% csrf_token %}
     {% include "includes/form.html" %}
     <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit" class="btn btn-block">Se connecter</button>
+    <button type="submit" class="btn btn-block btn-large">Se connecter{% icon "arrow" 18 "i-fleche" %}</button>
   </form>
   {% if form.email_non_verifie %}
-  <p class="center"><a class="btn btn-ghost btn-small" href="{% url 'users:renvoyer_confirmation' %}">Renvoyer le lien de confirmation</a></p>
+  <p class="center" style="margin-top:1rem"><a class="btn btn-ghost btn-small" href="{% url 'users:renvoyer_confirmation' %}">{% icon "mail" 16 %}Renvoyer le lien de confirmation</a></p>
   {% endif %}
-  <p class="center small"><a href="{% url 'users:password_reset' %}">Mot de passe oublié ?</a></p>
-  <p class="center small">Pas encore de compte ? <a href="{% url 'users:inscription' %}">Créer un compte</a></p>
+  <div class="auth-pied">
+    <p><a href="{% url 'users:password_reset' %}">Mot de passe oublié ?</a></p>
+    <p>Pas encore de compte ? <a href="{% url 'users:inscription' %}">Créer un compte</a></p>
+  </div>
 </div>
 {% endblock %}

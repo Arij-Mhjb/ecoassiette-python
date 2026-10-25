@@ -89,7 +89,7 @@
         rendre(data);
         const note = data.source === "LOCAL" ? " (service IA indisponible : moteur local utilisé)" : "";
         afficherStatut("Analyse terminée en " + ((Date.now() - debut) / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + " s" + note + ".", "ok");
-        btn.textContent = "Relancer l'analyse";
+        const lbl = btn.querySelector(".btn-label"); if (lbl) lbl.textContent = "Relancer l'analyse"; else btn.textContent = "Relancer l'analyse";
       }
     } catch (e) {
       afficherStatut("Impossible de joindre le serveur (" + e.message + "). Vérifiez votre connexion et réessayez.", "erreur");

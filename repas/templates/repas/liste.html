@@ -3,19 +3,44 @@
 {% block content %}
 <div class="page-head row-between">
   <div>
+    <p class="eyebrow">{% icon "utensils" 14 %}Suivi des repas</p>
     <h1>Mes repas</h1>
     <p class="muted">{{ paginator.count }} repas enregistré{{ paginator.count|pluralize }}</p>
   </div>
-  <a class="btn" href="{% url 'repas:ajouter' %}">+ Ajouter un repas</a>
+  <a class="btn btn-large" href="{% url 'repas:ajouter' %}">{% icon "plus" 18 %}Ajouter un repas</a>
 </div>
 
 <section class="card bilan" aria-labelledby="t-bilan">
   <div class="bilan-tete">
-    <h2 id="t-bilan">Mon bilan des 7 derniers jours</h2>
-    {% if bilan.serie %}<span class="serie" title="Jours de suite sous votre objectif journalier">🔥 Série verte : {{ bilan.serie }} jour{{ bilan.serie|pluralize }}</span>{% endif %}
+    <div>
+      <h2 id="t-bilan">Mon bilan des 7 derniers jours</h2>
+      <p class="muted small" style="margin:0">Mis à jour à chaque repas enregistré.</p>
+    </div>
+    {% if bilan.serie %}<span class="serie" title="Jours de suite sous votre objectif journalier">{% icon "flame" 16 %}Série verte : {{ bilan.serie }} jour{{ bilan.serie|pluralize }}</span>{% endif %}
   </div>
 
+  <dl class="bilan-kpis">
+    <div class="bilan-kpi bilan-kpi-principal{% if bilan.depasse %} alerte{% endif %}">
+      <dt><span class="h-ico">{% icon "globe" %}</span>Émissions de la semaine</dt>
+      <dd>{{ bilan.total }} <small>kg CO₂e</small></dd>
+    </div>
+    <div class="bilan-kpi">
+      <dt><span class="h-ico h-ico-blue">{% icon "utensils" %}</span>Repas enregistrés</dt>
+      <dd>{{ bilan.nb_repas }} <small>sur 7 jours</small></dd>
+    </div>
+    <div class="bilan-kpi">
+      <dt><span class="h-ico h-ico-amber">{% icon "car" %}</span>Équivalent voiture</dt>
+      <dd>{{ bilan.km_voiture }} <small>km</small></dd>
+    </div>
+    <div class="bilan-kpi">
+      <dt><span class="h-ico">{% icon "heart" %}</span>CO₂ évité</dt>
+      <dd>{{ bilan.gain_total }} <small>kg · {{ bilan.nb_remplacements }} remplacement{{ bilan.nb_remplacements|pluralize }}</small></dd>
+    </div>
+  </dl>
+
   <div class="bilan-grille">
+    <div class="bilan-panneau">
+      <h3>{% icon "trees" 18 %}Ma forêt</h3>
     {% with f=bilan.foret %}
     <figure class="foret-wrap">
       <svg class="foret{% if bilan.depasse %} foret-alerte{% endif %}" viewBox="0 0 600 200" role="img" aria-labelledby="foret-titre foret-desc">
@@ -44,27 +69,32 @@
         </g>
         {% endfor %}
       </svg>
-      <figcaption>{{ f.message }}</figcaption>
+      <figcaption>{% icon "sprout" 16 %}{{ f.message }}</figcaption>
     </figure>
     {% endwith %}
+    </div>
 
-    <div class="bilan-chiffres">
-      <p class="bilan-chiffre"><strong>{{ bilan.total }}</strong> kg CO₂e <span class="muted">· {{ bilan.nb_repas }} repas</span></p>
+    <div class="bilan-panneau">
+      <h3>{% icon "scale" 18 %}Ce que ça représente</h3>
+      <ul class="equivalences" aria-label="Équivalences">
+        <li><span class="h-ico h-ico-amber">{% icon "car" %}</span><span><strong>{{ bilan.km_voiture }} km</strong> en voiture</span></li>
+        <li><span class="h-ico">{% icon "trees" %}</span><span><strong>{{ bilan.arbres_semaine }} arbre{{ bilan.arbres_semaine|pluralize }}</strong> pour l'absorber en une semaine</span></li>
+        {% if bilan.gain_total %}<li><span class="h-ico h-ico-violet">{% icon "heart" %}</span><span><strong>{{ bilan.gain_total }} kg</strong> évités grâce à vos remplacements</span></li>{% endif %}
+      </ul>
       {% if bilan.objectif %}
+      <div class="bilan-objectif">
         <div class="progress-wrap">
-          <span class="small" id="lbl-bilan">{{ bilan.pct }} % de {{ bilan.source }} ({{ bilan.objectif }} kg / semaine)</span>
+          <span class="small" id="lbl-bilan"><strong>{{ bilan.pct }} %</strong> de {{ bilan.source }} ({{ bilan.objectif }} kg / semaine)</span>
           <progress class="{% if bilan.depasse %}progress-alerte{% endif %}" max="100" value="{{ bilan.pct_barre }}" aria-labelledby="lbl-bilan"></progress>
         </div>
-        {% if bilan.depasse %}<p class="small alerte-texte">Objectif dépassé cette semaine : essayez une alternative végétale pour vos prochains repas.</p>{% endif %}
+        {% if bilan.depasse %}<p class="small alerte-texte">{% icon "alert" 16 %}Objectif dépassé cette semaine : essayez une alternative végétale pour vos prochains repas.</p>{% endif %}
+      </div>
       {% endif %}
-      <ul class="equivalences" aria-label="Équivalences">
-        <li><span aria-hidden="true">🚗</span> <strong>{{ bilan.km_voiture }} km</strong> en voiture</li>
-        <li><span aria-hidden="true">🌳</span> <strong>{{ bilan.arbres_semaine }} arbre{{ bilan.arbres_semaine|pluralize }}</strong> pour l'absorber en une semaine</li>
-        {% if bilan.gain_total %}<li><span aria-hidden="true">💚</span> <strong>{{ bilan.gain_total }} kg</strong> évités grâce à vos remplacements</li>{% endif %}
-      </ul>
     </div>
   </div>
 
+  <div class="bilan-panneau" style="margin-bottom:1.5rem">
+    <h3>{% icon "chart" 18 %}CO₂ par jour</h3>
   <div class="graphe" role="img" aria-label="CO₂ par jour sur les 7 derniers jours : {% for j in bilan.jours %}{{ j.label }} {{ j.kg }} kg{% if not forloop.last %}, {% endif %}{% endfor %}">
     {% if bilan.ligne_objectif %}<span class="graphe-objectif" style="bottom: {{ bilan.ligne_objectif }}%"><span>objectif/jour {{ bilan.objectif_jour }} kg</span></span>{% endif %}
     {% for j in bilan.jours %}
@@ -76,10 +106,14 @@
     {% endfor %}
   </div>
 
+  </div>
+
+  <p class="badges-titre">Mes badges</p>
   <ul class="badges" aria-label="Badges">
     {% for b in bilan.badges %}
       <li class="badge-eco{% if not b.obtenu %} badge-verrou{% endif %}" title="{{ b.desc }}">
-        <span aria-hidden="true">{{ b.icone }}</span> {{ b.nom }}<span class="sr-only"> : {{ b.desc }} ({% if b.obtenu %}obtenu{% else %}à débloquer{% endif %})</span>
+        <span class="badge-ico">{% if b.obtenu %}{% icon b.icone 18 %}{% else %}{% icon "lock" 16 %}{% endif %}</span>
+        <span>{{ b.nom }}<small>{{ b.desc }}</small><span class="sr-only"> ({% if b.obtenu %}obtenu{% else %}à débloquer{% endif %})</span></span>
       </li>
     {% endfor %}
   </ul>
@@ -93,7 +127,7 @@
       {% for val, lib in types %}<option value="{{ val }}" {% if val == type_actif %}selected{% endif %}>{{ lib }}</option>{% endfor %}
     </select>
   </div>
-  <button type="submit" class="btn btn-small">Filtrer</button>
+  <button type="submit" class="btn btn-small">{% icon "filter" 16 %}Filtrer</button>
 </form>
 
 {% if repas_list %}
@@ -105,12 +139,12 @@
   {% for r in repas_list %}
     <tr>
       <th scope="row"><a href="{% url 'repas:detail' r.pk %}">{{ r }}</a>{% if r.note %}<br><span class="small muted">{{ r.note }}</span>{% endif %}</th>
-      <td>{% for e in r.elements.all %}{{ e.aliment }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td><span class="tags">{% for e in r.elements.all %}<span class="tag">{{ e.aliment }}</span>{% endfor %}</span></td>
       <td>{{ r.total_g|default:0 }} g</td>
       <td><span class="co2 co2-{{ r.niveau_co2 }}">{{ r.co2_kg }} kg</span></td>
       <td class="actions-cell">
-        <a href="{% url 'repas:modifier' r.pk %}">Modifier<span class="sr-only"> {{ r }}</span></a>
-        <a class="danger-link" href="{% url 'repas:supprimer' r.pk %}">Supprimer<span class="sr-only"> {{ r }}</span></a>
+        <a class="icon-btn" href="{% url 'repas:modifier' r.pk %}" title="Modifier">{% icon "edit" %}<span class="sr-only">Modifier {{ r }}</span></a>
+        <a class="icon-btn icon-btn-danger" href="{% url 'repas:supprimer' r.pk %}" title="Supprimer">{% icon "trash" %}<span class="sr-only">Supprimer {{ r }}</span></a>
       </td>
     </tr>
   {% endfor %}
@@ -119,6 +153,6 @@
 </div>
 {% include "users/_pagination.html" %}
 {% else %}
-<p class="empty">Aucun repas pour l'instant. <a href="{% url 'repas:ajouter' %}">Ajoutez votre premier repas</a>.</p>
+<div class="empty">{% icon "utensils" 28 %}<p><strong>Aucun repas pour l'instant.</strong></p><p>Prenez votre assiette en photo ou dictez-la : l'IA s'occupe du reste.</p><a class="btn" href="{% url 'repas:ajouter' %}">{% icon "plus" %}Ajoutez votre premier repas</a></div>
 {% endif %}
 {% endblock %}

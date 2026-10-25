@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Statistiques{% endblock %}
 {% block content %}
-<div class="page-head"><h1>Statistiques du module</h1></div>
+<div class="page-head"><p class="eyebrow">{% icon "chart" 14 %}Administration</p><h1>Statistiques du module</h1></div>
 
 <section aria-labelledby="t-u">
   <h2 id="t-u">Utilisateurs</h2>
@@ -15,14 +15,14 @@
 
 <div class="grid-2">
   <section class="card" aria-labelledby="t-r">
-    <h2 id="t-r">Répartition par rôle</h2>
+    <h2 id="t-r"><span class="h-ico h-ico-blue">{% icon "users" %}</span>Répartition par rôle</h2>
     <table class="table compact">
       <thead><tr><th scope="col">Rôle</th><th scope="col">Comptes</th></tr></thead>
       <tbody>{% for lib, n in par_role %}<tr><th scope="row">{{ lib }}</th><td>{{ n }}</td></tr>{% endfor %}</tbody>
     </table>
   </section>
   <section class="card" aria-labelledby="t-reg">
-    <h2 id="t-reg">Régimes déclarés</h2>
+    <h2 id="t-reg"><span class="h-ico">{% icon "leaf" %}</span>Régimes déclarés</h2>
     <table class="compare">
       <tbody>
       {% for r in regimes %}
@@ -34,7 +34,7 @@
 </div>
 
 <section class="card" aria-labelledby="t-ia">
-  <h2 id="t-ia">Performance de l'IA</h2>
+  <h2 id="t-ia"><span class="h-ico h-ico-violet">{% icon "sparkles" %}</span>Performance de l'IA</h2>
   <dl class="stat-tiles">
     <div class="tile"><dt>Analyses</dt><dd>{{ ia_total }}</dd></div>
     <div class="tile"><dt>Réussies</dt><dd>{{ ia_succes }}</dd></div>

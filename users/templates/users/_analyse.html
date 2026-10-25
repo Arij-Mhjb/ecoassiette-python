@@ -5,7 +5,7 @@
     <div class="ia-kpi"><span class="small muted">Objectif recommandé</span><strong>{{ r.objectif_recommande_kg }} <span class="small">kg/sem.</span></strong>
       {% if a and user == a.profil.utilisateur %}
       <form method="post" action="{% url 'users:appliquer_objectif' a.pk %}" class="inline-form">
-        {% csrf_token %}<button type="submit" class="btn btn-small">Adopter cet objectif</button>
+        {% csrf_token %}<button type="submit" class="btn btn-small">{% icon "target" 16 %}Adopter cet objectif</button>
       </form>
       {% endif %}
     </div>
@@ -14,7 +14,7 @@
   <h3>Alternatives végétales pour vous</h3>
   <ul class="alts">
     {% for alt in r.alternatives %}
-      <li><span class="alt-from">{{ alt.aliment }}</span> <span aria-hidden="true">→</span><span class="sr-only">remplacé par</span> <strong>{{ alt.remplacement }}</strong>
+      <li><span class="alt-from">{{ alt.aliment }}</span> {% icon "arrow" 14 %}<span class="sr-only">remplacé par</span> <strong>{{ alt.remplacement }}</strong>
         {% if alt.idee %}<br><span class="small">{{ alt.idee }}</span>{% endif %}</li>
     {% endfor %}
   </ul>

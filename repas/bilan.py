@@ -51,15 +51,15 @@ def foret(ratio, a_des_repas):
         })
     arbres.sort(key=lambda a: a["y"])          # les arbres du fond sont dessinés en premier
     if not a_des_repas:
-        message = "Ajoutez vos repas : votre forêt réagit à chacun d'eux 🌱"
+        message = "Ajoutez vos repas : votre forêt réagit à chacun d'eux"
     elif ratio <= 0.6:
-        message = "Votre forêt est luxuriante 🌳 Continuez comme ça !"
+        message = "Votre forêt est luxuriante. Continuez comme ça !"
     elif ratio <= 1:
         message = "Votre forêt tient bon : chaque repas végétal la renforce."
     elif ratio <= 1.3:
         message = "Votre forêt souffre : quelques arbres jaunissent."
     else:
-        message = "Alerte : votre forêt dépérit 🍂 Essayez le simulateur « Et si… » sur vos repas."
+        message = "Alerte : votre forêt dépérit. Essayez le simulateur « Et si… » sur vos repas."
     return {"arbres": arbres, "sains": sains, "fatigues": fatigues, "morts": morts, "message": message}
 
 
@@ -80,11 +80,11 @@ def serie_verte(user, objectif, totaux=None):
 
 def badges(nb_repas, nb_remplacements, gain_total, serie):
     regles = [
-        ("🍽️", "Assidu", "7 repas enregistrés", nb_repas >= 7),
-        ("🌱", "Premier pas", "Un premier remplacement végétal", nb_remplacements >= 1),
-        ("🥗", "Éco-cuisinier", "5 remplacements végétaux", nb_remplacements >= 5),
-        ("🌳", "Planteur", "10 kg de CO₂e évités", gain_total >= 10),
-        ("🔥", "Série verte", "3 jours de suite sous l'objectif", serie >= 3),
+        ("utensils", "Assidu", "7 repas enregistrés", nb_repas >= 7),
+        ("sprout", "Premier pas", "Un premier remplacement végétal", nb_remplacements >= 1),
+        ("chef-hat", "Éco-cuisinier", "5 remplacements végétaux", nb_remplacements >= 5),
+        ("trees", "Planteur", "10 kg de CO₂e évités", gain_total >= 10),
+        ("flame", "Série verte", "3 jours de suite sous l'objectif", serie >= 3),
     ]
     return [{"icone": i, "nom": n, "desc": d, "obtenu": ok} for i, n, d, ok in regles]
 

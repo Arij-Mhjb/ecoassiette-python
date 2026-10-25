@@ -4,43 +4,57 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="EcoAssiette — suivez et réduisez l'empreinte carbone de votre alimentation.">
+  <meta name="theme-color" content="#0b3b2c">
   <title>{% block title %}EcoAssiette{% endblock %} · EcoAssiette</title>
   <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+  <link rel="preload" href="{% static 'fonts/plus-jakarta-sans-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <a class="skip-link" href="#contenu">Aller au contenu principal</a>
 
   <header class="site-header">
     <div class="wrap header-inner">
       <a class="brand" href="{% url 'home' %}">
-        <img src="{% static 'img/logo.svg' %}" alt="" width="32" height="32">
-        <span>EcoAssiette</span>
+        <img src="{% static 'img/logo.svg' %}" alt="" width="34" height="34">
+        <span>Eco<b>Assiette</b></span>
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="menu-principal">
-        <span class="sr-only">Ouvrir le menu</span>
-        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span class="sr-only">Ouvrir le menu</span>{% icon "menu" 22 %}
       </button>
       <nav id="menu-principal" class="main-nav" aria-label="Navigation principale">
         <ul>
           {% if user.is_authenticated %}
-            <li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>Mon profil</a></li>
-            <li><a href="{% url 'repas:liste' %}" {% if request.resolver_match.app_name == 'repas' %}aria-current="page"{% endif %}>Mes repas</a></li>
+            <li><a href="{% url 'repas:liste' %}" {% if request.resolver_match.app_name == 'repas' %}aria-current="page"{% endif %}>{% icon "utensils" %}Mes repas</a></li>
+            <li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>{% icon "leaf" %}Mon profil</a></li>
             {% if perms.users.view_profilalimentaire %}
-              <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' %}aria-current="page"{% endif %}>Profils citoyens</a></li>
+              <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' or request.resolver_match.url_name == 'nutri_profil_detail' %}aria-current="page"{% endif %}>{% icon "users" %}Profils citoyens</a></li>
             {% endif %}
             {% if perms.users.gerer_utilisateurs %}
-              <li><a href="{% url 'users:admin_liste' %}" {% if request.resolver_match.url_name == 'admin_liste' %}aria-current="page"{% endif %}>Comptes</a></li>
-              <li><a href="{% url 'users:admin_stats' %}" {% if request.resolver_match.url_name == 'admin_stats' %}aria-current="page"{% endif %}>Statistiques</a></li>
+              <li><a href="{% url 'users:admin_liste' %}" {% if request.resolver_match.url_name == 'admin_liste' %}aria-current="page"{% endif %}>{% icon "shield" %}Comptes</a></li>
+              <li><a href="{% url 'users:admin_stats' %}" {% if request.resolver_match.url_name == 'admin_stats' %}aria-current="page"{% endif %}>{% icon "chart" %}Statistiques</a></li>
             {% endif %}
-            <li>
-              <form method="post" action="{% url 'users:logout' %}" class="inline-form">
-                {% csrf_token %}
-                <button type="submit" class="link-button">Déconnexion <span class="sr-only">({{ user.username }})</span></button>
-              </form>
+            <li class="user-menu-li">
+              <details class="user-menu">
+                <summary>
+                  <span class="avatar avatar-xs avatar-initiales" aria-hidden="true">{{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>
+                  <span class="user-menu-nom">{{ user.first_name|default:user.username }}</span>{% icon "chevron-down" 16 %}
+                  <span class="sr-only">: menu du compte</span>
+                </summary>
+                <div class="user-menu-panel">
+                  <p class="user-menu-tete"><strong>{{ user.get_full_name|default:user.username }}</strong><span>{{ user.email }}</span></p>
+                  <a href="{% url 'users:profil' %}">{% icon "user" %}Mon profil</a>
+                  <a href="{% url 'users:modifier_infos' %}">{% icon "edit" %}Mes informations</a>
+                  <a href="{% url 'users:password_change' %}">{% icon "lock" %}Mot de passe</a>
+                  <form method="post" action="{% url 'users:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="user-menu-sortie">{% icon "log-out" %}Déconnexion <span class="sr-only">({{ user.username }})</span></button>
+                  </form>
+                </div>
+              </details>
             </li>
           {% else %}
-            <li><a href="{% url 'users:login' %}">Connexion</a></li>
+            <li><a href="{% url 'users:login' %}" {% if request.resolver_match.url_name == 'login' %}aria-current="page"{% endif %}>{% icon "log-in" %}Connexion</a></li>
             <li><a class="btn btn-small" href="{% url 'users:inscription' %}">Créer un compte</a></li>
           {% endif %}
         </ul>
@@ -48,21 +62,32 @@
     </div>
   </header>
 
+  {% if messages %}
+    <div class="toasts" role="status" aria-live="polite">
+      {% for m in messages %}
+        <div class="message message-{{ m.tags }}">
+          <span class="message-ico">{% if m.tags == "error" %}{% icon "alert" 20 %}{% elif m.tags == "warning" %}{% icon "info" 20 %}{% else %}{% icon "check-circle" 20 %}{% endif %}</span>
+          <p>{{ m }}</p>
+          <button type="button" class="message-fermer" aria-label="Fermer la notification">{% icon "x" 16 %}</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <main id="contenu" class="wrap" tabindex="-1">
-    {% if messages %}
-      <div class="messages" role="status" aria-live="polite">
-        {% for m in messages %}
-          <p class="message message-{{ m.tags }}">{{ m }}</p>
-        {% endfor %}
-      </div>
-    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
   <footer class="site-footer">
-    <div class="wrap">
-      <p>EcoAssiette — projet Django, 5TWIN · Esprit {% now "Y" %}</p>
-      <p class="muted">Facteurs d'émission : Poore &amp; Nemecek (2018), Scarborough et al. (2014).</p>
+    <div class="wrap footer-inner">
+      <div>
+        <p class="brand brand-footer"><img src="{% static 'img/logo.svg' %}" alt="" width="28" height="28"><span>Eco<b>Assiette</b></span></p>
+        <p class="muted small">Mangez ce que vous aimez, avec moins de CO₂.</p>
+      </div>
+      <div class="footer-meta small">
+        <p>Projet Django · 5TWIN · Esprit {% now "Y" %}</p>
+        <p class="muted">Facteurs d'émission : Poore &amp; Nemecek (2018), Scarborough et al. (2014).</p>
+      </div>
     </div>
   </footer>
   <script src="{% static 'js/app.js' %}" defer></script>

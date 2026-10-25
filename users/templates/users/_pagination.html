@@ -1,9 +1,9 @@
 {% if is_paginated %}
 <nav class="pagination" aria-label="Pagination">
   <ul>
-    {% if page_obj.has_previous %}<li><a href="?{% if params %}{{ params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Précédent</a></li>{% endif %}
+    {% if page_obj.has_previous %}<li><a href="?{% if params %}{{ params }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">{% icon "arrow-left" 16 %}Précédent</a></li>{% endif %}
     <li><span aria-current="page">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span></li>
-    {% if page_obj.has_next %}<li><a href="?{% if params %}{{ params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Suivant</a></li>{% endif %}
+    {% if page_obj.has_next %}<li><a href="?{% if params %}{{ params }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Suivant{% icon "arrow" 16 %}</a></li>{% endif %}
   </ul>
 </nav>
 {% endif %}

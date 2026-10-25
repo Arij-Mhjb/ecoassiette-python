@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Lien invalide{% endblock %}
+{% block body_class %}page-auth{% endblock %}
 {% block content %}
-<div class="narrow card card-danger">
-  <h1>Lien invalide ou expiré</h1>
-  <p>Ce lien de confirmation n'est plus valable (il expire après 24 heures et ne sert qu'une fois).</p>
-  <p><a class="btn" href="{% url 'users:renvoyer_confirmation' %}">Recevoir un nouveau lien</a></p>
+<div class="narrow card">
+  <div class="auth-tete">
+    <span class="auth-ico auth-ico-red">{% icon "alert" 26 %}</span>
+    <h1>Lien invalide ou expiré</h1>
+    <p>Ce lien de confirmation n'est plus valable (il expire après 24 heures et ne sert qu'une fois).</p>
+  </div>
+  <a class="btn btn-block btn-large" href="{% url 'users:renvoyer_confirmation' %}">{% icon "mail" 18 %}Recevoir un nouveau lien</a>
 </div>
 {% endblock %}
