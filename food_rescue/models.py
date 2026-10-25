@@ -139,6 +139,10 @@ class ReservationSurplus(models.Model):
     def clean(self):
         if self.annonce_id and self.beneficiaire_id == self.annonce.donateur_id:
             raise ValidationError("Vous ne pouvez pas réserver votre propre surplus.")
+        if self.beneficiaire_id and not ProfilBeneficiaire.objects.filter(
+            utilisateur_id=self.beneficiaire_id, statut=ProfilBeneficiaire.Statut.VALIDEE
+        ).exists():
+            raise ValidationError("Seuls les étudiants et associations validés peuvent réserver un surplus.")
         if self.heure_collecte and self.annonce_id and self.heure_collecte > self.annonce.disponible_jusquau:
             raise ValidationError({"heure_collecte": "La collecte doit précéder la fin de disponibilité."})
 
@@ -150,8 +154,54 @@ class CollecteSurplus(models.Model):
     confirmee_par_donateur = models.BooleanField(default=False)
     confirmee_par_beneficiaire = models.BooleanField(default=False)
     confirmee_le = models.DateTimeField(null=True, blank=True)
+    points_attribues = models.PositiveIntegerField(default=0)
 
     @property
     def est_confirmee(self):
         return self.confirmee_par_donateur and self.confirmee_par_beneficiaire
+
+
+class ProfilBeneficiaire(models.Model):
+    class Type(models.TextChoices):
+        ETUDIANT = "ETUDIANT", "Étudiant"
+        ASSOCIATION = "ASSOCIATION", "Association"
+
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "EN_ATTENTE", "En attente de validation"
+        VALIDEE = "VALIDEE", "Validé"
+        REFUSEE = "REFUSEE", "Refusé"
+
+    utilisateur = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profil_beneficiaire_food_rescue"
+    )
+    type_beneficiaire = models.CharField(max_length=12, choices=Type.choices)
+    organisme = models.CharField(
+        "établissement ou association", max_length=160,
+        help_text="Nom de l'établissement d'études ou de l'association.",
+    )
+    reference_justificatif = models.CharField(
+        "référence du justificatif", max_length=120,
+        help_text="Ex. numéro de carte étudiant ou matricule de l'association. Ne déposez pas de document sensible.",
+    )
+    statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.EN_ATTENTE)
+    motif_refus = models.CharField(max_length=300, blank=True)
+    verifie_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="profils_beneficiaires_verifies",
+    )
+    soumis_le = models.DateTimeField(auto_now_add=True)
+    modifie_le = models.DateTimeField(auto_now=True)
+    verifie_le = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["statut", "-soumis_le"]
+        verbose_name = "éligibilité Food Rescue"
+        verbose_name_plural = "éligibilités Food Rescue"
+
+    def __str__(self):
+        return f"{self.utilisateur} — {self.get_type_beneficiaire_display()} ({self.get_statut_display()})"
+
+    @property
+    def est_valide(self):
+        return self.statut == self.Statut.VALIDEE
 

@@ -11,9 +11,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from .forms import AnnonceSurplusForm, ReservationSurplusForm
-from .models import AnalyseSurplusIA, AnnonceSurplus, CollecteSurplus, ReservationSurplus
-from .services import annonces_recommandees
+from impact.services import solde_points
+
+from .forms import AnnonceSurplusForm, ProfilBeneficiaireForm, ReservationSurplusForm
+from .models import AnalyseSurplusIA, AnnonceSurplus, CollecteSurplus, ProfilBeneficiaire, ReservationSurplus
+from .services import annonces_recommandees, crediter_donateur
 from .tasks import lancer
 
 
@@ -40,11 +42,13 @@ class AnnonceListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         contexte = super().get_context_data(**kwargs)
+        eligibilite = ProfilBeneficiaire.objects.filter(utilisateur=self.request.user).first()
         contexte.update({
             "categories": AnnonceSurplus.Categorie.choices,
             "categorie_active": self.request.GET.get("categorie", ""),
             "recherche": self.request.GET.get("q", ""),
             "recommandations": annonces_recommandees(self.request.user, limite=3),
+            "eligibilite": eligibilite,
         })
         return contexte
 
@@ -117,8 +121,15 @@ class AnnonceDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         contexte = super().get_context_data(**kwargs)
         deja = self.object.reservations.filter(beneficiaire=self.request.user).first()
+        eligibilite = ProfilBeneficiaire.objects.filter(utilisateur=self.request.user).first()
+        peut_reserver = bool(eligibilite and eligibilite.est_valide)
         contexte["ma_reservation"] = deja
-        contexte["form_reservation"] = None if deja or self.object.donateur_id == self.request.user.id else ReservationSurplusForm(annonce=self.object)
+        contexte["eligibilite"] = eligibilite
+        contexte["peut_reserver"] = peut_reserver
+        contexte["form_reservation"] = (
+            None if deja or self.object.donateur_id == self.request.user.id or not peut_reserver
+            else ReservationSurplusForm(annonce=self.object)
+        )
         contexte["reservations"] = self.object.reservations.all() if self.object.donateur_id == self.request.user.id else []
         contexte["adresse_visible"] = (
             self.object.donateur_id == self.request.user.id
@@ -130,6 +141,11 @@ class AnnonceDetailView(LoginRequiredMixin, DetailView):
 @login_required
 @require_POST
 def reserver(request, pk):
+    if not ProfilBeneficiaire.objects.filter(
+        utilisateur=request.user, statut=ProfilBeneficiaire.Statut.VALIDEE
+    ).exists():
+        messages.error(request, "La réservation est réservée aux étudiants et associations dont le profil est validé.")
+        return redirect("food_rescue:eligibilite")
     with transaction.atomic():
         annonce = get_object_or_404(AnnonceSurplus.objects.select_for_update(), pk=pk)
         if annonce.donateur_id == request.user.id:
@@ -165,6 +181,11 @@ def traiter_reservation(request, pk, action):
             annonce__donateur=request.user, statut=ReservationSurplus.Statut.EN_ATTENTE,
         )
         if action == "accepter":
+            if not ProfilBeneficiaire.objects.filter(
+                utilisateur=reservation.beneficiaire, statut=ProfilBeneficiaire.Statut.VALIDEE
+            ).exists():
+                messages.error(request, "Ce bénéficiaire n'est plus éligible. La demande ne peut pas être acceptée.")
+                return redirect("food_rescue:detail", pk=reservation.annonce_id)
             reservation.statut = ReservationSurplus.Statut.ACCEPTEE
             reservation.annonce.statut = AnnonceSurplus.Statut.RESERVEE
             reservation.annonce.save(update_fields=["statut"])
@@ -187,29 +208,36 @@ def traiter_reservation(request, pk, action):
 @login_required
 @require_POST
 def confirmer_collecte(request, pk):
-    reservation = get_object_or_404(
-        ReservationSurplus.objects.select_related("annonce"), pk=pk, statut=ReservationSurplus.Statut.ACCEPTEE
-    )
-    collecte, _ = CollecteSurplus.objects.get_or_create(reservation=reservation)
-    if request.user.id == reservation.annonce.donateur_id:
-        collecte.confirmee_par_donateur = True
-    elif request.user.id == reservation.beneficiaire_id:
-        if request.POST.get("code", "").strip().upper() != reservation.code_collecte:
-            messages.error(request, "Code de collecte incorrect.")
-            return redirect("food_rescue:detail", pk=reservation.annonce_id)
-        collecte.confirmee_par_beneficiaire = True
-    else:
-        raise PermissionDenied
-    if collecte.est_confirmee:
-        collecte.confirmee_le = timezone.now()
-        reservation.statut = ReservationSurplus.Statut.COLLECTEE
-        reservation.annonce.statut = AnnonceSurplus.Statut.COLLECTEE
-        reservation.save(update_fields=["statut"])
-        reservation.annonce.save(update_fields=["statut"])
-        messages.success(request, "Collecte confirmée par les deux parties. Merci d'avoir évité ce gaspillage !")
-    else:
-        messages.info(request, "Confirmation enregistrée. En attente de l'autre partie.")
-    collecte.save()
+    with transaction.atomic():
+        reservation = get_object_or_404(
+            ReservationSurplus.objects.select_for_update().select_related("annonce"),
+            pk=pk, statut=ReservationSurplus.Statut.ACCEPTEE,
+        )
+        collecte, _ = CollecteSurplus.objects.get_or_create(reservation=reservation)
+        if request.user.id == reservation.annonce.donateur_id:
+            collecte.confirmee_par_donateur = True
+        elif request.user.id == reservation.beneficiaire_id:
+            if request.POST.get("code", "").strip().upper() != reservation.code_collecte:
+                messages.error(request, "Code de collecte incorrect.")
+                return redirect("food_rescue:detail", pk=reservation.annonce_id)
+            collecte.confirmee_par_beneficiaire = True
+        else:
+            raise PermissionDenied
+        collecte.save()
+        if collecte.est_confirmee:
+            collecte.confirmee_le = timezone.now()
+            collecte.save(update_fields=["confirmee_le"])
+            reservation.statut = ReservationSurplus.Statut.COLLECTEE
+            reservation.annonce.statut = AnnonceSurplus.Statut.COLLECTEE
+            reservation.save(update_fields=["statut"])
+            reservation.annonce.save(update_fields=["statut"])
+            _, points = crediter_donateur(collecte)
+            messages.success(
+                request,
+                f"Collecte confirmée par les deux parties. Le donateur reçoit {points} points solidaires !",
+            )
+        else:
+            messages.info(request, "Confirmation enregistrée. En attente de l'autre partie.")
     return redirect("food_rescue:detail", pk=reservation.annonce_id)
 
 
@@ -233,6 +261,27 @@ def tableau_bord(request):
     return render(request, "food_rescue/tableau_bord.html", {
         "dons": dons.count(), "collectes": dons.filter(statut="COLLECTEE").count(),
         "recus": recus.count(), "impact": impact,
+        "points": solde_points(request.user),
+        "eligibilite": ProfilBeneficiaire.objects.filter(utilisateur=request.user).first(),
         "mes_reservations": ReservationSurplus.objects.filter(beneficiaire=request.user).select_related("annonce")[:10],
     })
+
+
+@login_required
+def eligibilite(request):
+    profil = ProfilBeneficiaire.objects.filter(utilisateur=request.user).first()
+    if request.method == "POST":
+        if profil and profil.est_valide:
+            messages.info(request, "Votre éligibilité est déjà validée.")
+            return redirect("food_rescue:eligibilite")
+        form = ProfilBeneficiaireForm(request.POST, instance=profil)
+        if form.is_valid():
+            profil = form.save(commit=False)
+            profil.utilisateur = request.user
+            profil.save()
+            messages.success(request, "Demande envoyée. Un administrateur doit maintenant la valider.")
+            return redirect("food_rescue:eligibilite")
+    else:
+        form = ProfilBeneficiaireForm(instance=profil)
+    return render(request, "food_rescue/eligibilite.html", {"form": form, "eligibilite": profil})
 

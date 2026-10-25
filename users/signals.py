@@ -38,6 +38,7 @@ GROUPES = {
             "food_rescue.delete_annoncesurplus", "food_rescue.moderer_surplus",
             "food_rescue.view_reservationsurplus", "food_rescue.change_reservationsurplus",
             "food_rescue.view_collectesurplus", "food_rescue.view_analysesurplusia",
+            "food_rescue.view_profilbeneficiaire", "food_rescue.change_profilbeneficiaire",
         ],
     ),
 }

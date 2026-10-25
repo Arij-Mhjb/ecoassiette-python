@@ -1,7 +1,10 @@
+from django.db import transaction
 from django.db.models import Case, IntegerField, Value, When
 from django.utils import timezone
 
-from .models import AnnonceSurplus
+from impact.models import TransactionPoints
+
+from .models import AnnonceSurplus, CollecteSurplus, ProfilBeneficiaire
 
 
 URGENCE_POIDS = {"CRITIQUE": 40, "ELEVEE": 30, "MOYENNE": 20, "FAIBLE": 10, "": 0}
@@ -9,6 +12,10 @@ URGENCE_POIDS = {"CRITIQUE": 40, "ELEVEE": 30, "MOYENNE": 20, "FAIBLE": 10, "": 
 
 def annonces_recommandees(utilisateur, limite=6):
     """Classement explicable, gratuit et déterministe des surplus disponibles."""
+    if not ProfilBeneficiaire.objects.filter(
+        utilisateur=utilisateur, statut=ProfilBeneficiaire.Statut.VALIDEE
+    ).exists():
+        return []
     profil = getattr(utilisateur, "profil", None)
     ville = (getattr(profil, "ville", "") or "").strip()
     evites = set(getattr(profil, "liste_evites", []) or [])
@@ -38,4 +45,24 @@ def annonces_recommandees(utilisateur, limite=6):
         if len(resultats) >= limite:
             break
     return resultats
+
+
+def crediter_donateur(collecte):
+    """Crédite une collecte confirmée exactement une fois."""
+    with transaction.atomic():
+        collecte = CollecteSurplus.objects.select_for_update().select_related(
+            "reservation__annonce__donateur"
+        ).get(pk=collecte.pk)
+        if not collecte.est_confirmee or collecte.points_attribues:
+            return False, collecte.points_attribues
+        annonce = collecte.reservation.annonce
+        points = 50 + min(150, int(annonce.co2_evite_estime * 10))
+        TransactionPoints.objects.create(
+            utilisateur=annonce.donateur,
+            montant=points,
+            motif=f"Don Food Rescue collecté — {annonce.titre} (collecte #{collecte.pk})",
+        )
+        collecte.points_attribues = points
+        collecte.save(update_fields=["points_attribues"])
+        return True, points
 

@@ -7,6 +7,7 @@ app_name = "food_rescue"
 urlpatterns = [
     path("", views.AnnonceListView.as_view(), name="liste"),
     path("tableau-de-bord/", views.tableau_bord, name="tableau_bord"),
+    path("eligibilite/", views.eligibilite, name="eligibilite"),
     path("mes-annonces/", views.MesAnnoncesView.as_view(), name="mes_annonces"),
     path("publier/", views.AnnonceCreateView.as_view(), name="creer"),
     path("<int:pk>/", views.AnnonceDetailView.as_view(), name="detail"),

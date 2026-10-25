@@ -6,7 +6,8 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from food_rescue.ai import analyser_localement
-from food_rescue.models import AnalyseSurplusIA, AnnonceSurplus, CollecteSurplus, ReservationSurplus
+from food_rescue.models import AnalyseSurplusIA, AnnonceSurplus, CollecteSurplus, ProfilBeneficiaire, ReservationSurplus
+from food_rescue.services import crediter_donateur
 from users.models import Utilisateur
 
 
@@ -17,7 +18,25 @@ class Command(BaseCommand):
         if not Utilisateur.objects.filter(username="amine").exists():
             call_command("seed_demo")
         utilisateurs = {nom: Utilisateur.objects.get(username=nom) for nom in ("amine", "yasmine", "karim", "leila")}
+        admin = Utilisateur.objects.get(username="admin_eco")
         maintenant = timezone.now()
+        profils = [
+            ("amine", "ETUDIANT", "Université de Tunis", "ETU-DEMO-1001"),
+            ("yasmine", "ETUDIANT", "ESPRIT", "ETU-DEMO-1002"),
+            ("karim", "ASSOCIATION", "Association Main Solidaire", "ASSO-DEMO-2001"),
+        ]
+        for nom, type_beneficiaire, organisme, reference in profils:
+            ProfilBeneficiaire.objects.update_or_create(
+                utilisateur=utilisateurs[nom],
+                defaults={
+                    "type_beneficiaire": type_beneficiaire,
+                    "organisme": organisme,
+                    "reference_justificatif": reference,
+                    "statut": ProfilBeneficiaire.Statut.VALIDEE,
+                    "verifie_par": admin,
+                    "verifie_le": maintenant,
+                },
+            )
         donnees = [
             ("Cagette de légumes du marché", "Tomates, courgettes et carottes fraîches non utilisées.", "FRUITS_LEGUMES", 4, "KG", "AMBIANTE", "Tunis", 18, "DISPONIBLE", "amine"),
             ("Six portions de couscous végétal", "Couscous aux pois chiches, semoule et légumes préparé ce matin.", "PLAT_PREPARE", 6, "PORTION", "REFRIGERE", "Tunis", 5, "DISPONIBLE", "yasmine"),
@@ -58,9 +77,12 @@ class Command(BaseCommand):
             annonce=collectee, beneficiaire=utilisateurs["karim"],
             defaults={"heure_collecte": maintenant + timedelta(hours=1), "message": "Collecte avec sac isotherme.", "statut": "COLLECTEE", "traitee_le": maintenant},
         )
-        CollecteSurplus.objects.update_or_create(
+        collecte, _ = CollecteSurplus.objects.update_or_create(
             reservation=reservation_finie,
             defaults={"confirmee_par_donateur": True, "confirmee_par_beneficiaire": True, "confirmee_le": maintenant},
         )
-        self.stdout.write(self.style.SUCCESS("Scénario Food Rescue prêt : 4 annonces, 2 réservations et 1 collecte."))
+        _, points = crediter_donateur(collecte)
+        self.stdout.write(self.style.SUCCESS(
+            f"Scénario Food Rescue prêt : 4 annonces, 3 bénéficiaires validés, 2 réservations, 1 collecte et {points} points."
+        ))
 

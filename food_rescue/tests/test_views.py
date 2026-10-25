@@ -4,7 +4,9 @@ from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from food_rescue.models import AnalyseSurplusIA, CollecteSurplus, ReservationSurplus
+from food_rescue.models import AnalyseSurplusIA, CollecteSurplus, ProfilBeneficiaire, ReservationSurplus
+from impact.models import TransactionPoints
+from impact.services import solde_points
 
 from .base import FoodRescueTestCase
 
@@ -81,6 +83,28 @@ class VuesFoodRescueTest(FoodRescueTestCase):
         self.assertEqual(annonce.statut, "RESERVEE")
         self.assertTrue(CollecteSurplus.objects.filter(reservation=reservation).exists())
 
+    def test_reservation_interdite_sans_eligibilite_validee(self):
+        annonce = self.creer_annonce()
+        self.client.force_login(self.autre)
+        reponse = self.client.post(reverse("food_rescue:reserver", args=[annonce.pk]), {
+            "heure_collecte": (timezone.now() + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M"),
+            "message": "Demande non autorisée",
+        })
+        self.assertRedirects(reponse, reverse("food_rescue:eligibilite"))
+        self.assertFalse(ReservationSurplus.objects.filter(beneficiaire=self.autre).exists())
+
+    def test_demande_eligibilite_creee_en_attente(self):
+        self.client.force_login(self.autre)
+        reponse = self.client.post(reverse("food_rescue:eligibilite"), {
+            "type_beneficiaire": "ASSOCIATION",
+            "organisme": "Association Test",
+            "reference_justificatif": "ASSO-001",
+            "attestation": "on",
+        })
+        self.assertRedirects(reponse, reverse("food_rescue:eligibilite"))
+        profil = ProfilBeneficiaire.objects.get(utilisateur=self.autre)
+        self.assertEqual(profil.statut, ProfilBeneficiaire.Statut.EN_ATTENTE)
+
     def test_autre_utilisateur_ne_traite_pas_reservation(self):
         annonce = self.creer_annonce()
         reservation = ReservationSurplus.objects.create(
@@ -104,6 +128,11 @@ class VuesFoodRescueTest(FoodRescueTestCase):
         annonce.refresh_from_db()
         self.assertEqual(reservation.statut, "COLLECTEE")
         self.assertEqual(annonce.statut, "COLLECTEE")
+        collecte = reservation.collecte
+        collecte.refresh_from_db()
+        self.assertGreater(collecte.points_attribues, 0)
+        self.assertEqual(solde_points(self.donateur), collecte.points_attribues)
+        self.assertEqual(TransactionPoints.objects.filter(utilisateur=self.donateur).count(), 1)
 
     def test_mauvais_code_ne_confirme_pas_collecte(self):
         annonce = self.creer_annonce(statut="RESERVEE")

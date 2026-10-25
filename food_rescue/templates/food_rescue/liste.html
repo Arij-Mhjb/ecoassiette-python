@@ -13,6 +13,10 @@
   </div>
 </div>
 
+{% if not eligibilite %}<div class="bandeau bandeau-info" role="status"><p><strong>Vous souhaitez récupérer un don ?</strong> Cette option est réservée aux étudiants et associations validés. <a href="{% url 'food_rescue:eligibilite' %}">Demander l'accès bénéficiaire</a>.</p></div>
+{% elif eligibilite.statut == "EN_ATTENTE" %}<div class="bandeau bandeau-attente" role="status"><p>Votre demande d'éligibilité est en cours de validation. Vous pouvez consulter les surplus, mais pas encore les réserver.</p></div>
+{% elif eligibilite.statut == "REFUSEE" %}<div class="bandeau bandeau-attente" role="status"><p>Votre demande doit être corrigée. <a href="{% url 'food_rescue:eligibilite' %}">Consulter le motif et renvoyer la demande</a>.</p></div>{% endif %}
+
 {% if recommandations %}
 <section class="card rescue-recos" aria-labelledby="titre-recos">
   <h2 id="titre-recos"><span class="h-ico h-ico-violet">{% icon "zap" %}</span>Recommandés pour vous</h2>
