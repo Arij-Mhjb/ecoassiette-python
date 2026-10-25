@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Récompenses{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div><p class="eyebrow">Programme écologique</p><h1>Mon portefeuille</h1><p class="muted">Faites valider vos repas végétalisés et utilisez vos points chez nos sponsors.</p></div>
+  <a class="btn" href="{% url 'impact:soumettre_preuve' %}">Envoyer une preuve</a>
+</div>
+
+<section class="wallet-hero" aria-labelledby="titre-solde"><div><span id="titre-solde">Solde disponible</span><strong>{{ solde }} points</strong></div></section>
+
+<section aria-labelledby="titre-catalogue"><h2 id="titre-catalogue">Produits sponsorisés</h2>
+  {% if produits %}<div class="reward-grid">{% for produit in produits %}
+  <article class="card reward-card">
+    {% if produit.image %}<img src="{{ produit.image.url }}" alt="{{ produit.nom }}">{% endif %}
+    <p class="eyebrow">{{ produit.sponsor.nom }}</p><h3>{{ produit.nom }}</h3><p>{{ produit.description }}</p>
+    <p><del>{{ produit.prix_public }} €</del> <strong>{{ produit.prix_remise|floatformat:2 }} €</strong> · remise {{ produit.remise_pourcent }} %</p>
+    <p><strong>{{ produit.cout_points }} points</strong> · {{ produit.stock }} disponible{{ produit.stock|pluralize }}</p>
+    <form method="post" action="{% url 'impact:acheter_produit' produit.pk %}">{% csrf_token %}
+      <button class="btn btn-small" type="submit" {% if solde < produit.cout_points %}disabled{% endif %}>Réserver avec mes points</button>
+    </form>
+  </article>{% endfor %}</div>{% else %}<p class="empty">Aucun produit n'est publié pour le moment.</p>{% endif %}
+</section>
+
+<section class="card" aria-labelledby="titre-preuves"><h2 id="titre-preuves">Mes preuves</h2>
+  {% if preuves %}<ul class="history-list">{% for preuve in preuves %}<li><strong>{{ preuve.repas }}</strong> — {{ preuve.get_statut_display }}{% if preuve.points_attribues %} · +{{ preuve.points_attribues }} points{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="empty">Aucune preuve envoyée.</p>{% endif %}
+</section>
+
+<section class="card" aria-labelledby="titre-transactions"><h2 id="titre-transactions">Historique des points</h2>
+  {% if transactions %}<ul class="history-list">{% for tx in transactions %}<li><strong>{% if tx.montant > 0 %}+{% endif %}{{ tx.montant }}</strong> — {{ tx.motif }} <span class="muted">{{ tx.creee_le|date:"d/m/Y" }}</span></li>{% endfor %}</ul>
+  {% else %}<p class="empty">Aucun mouvement pour le moment.</p>{% endif %}
+</section>
+{% endblock %}

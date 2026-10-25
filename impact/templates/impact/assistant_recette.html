@@ -7,6 +7,41 @@
 </div>
 
 {% if not apercu %}
+<section class="card pantry-card" aria-labelledby="titre-garde-manger">
+  <h2 id="titre-garde-manger">Que puis-je cuisiner avec ce que j'ai ?</h2>
+  <p class="muted">Indiquez les ingrédients disponibles : l'IA proposera des repas végétaux qui limitent les achats et le gaspillage.</p>
+  <form method="post">
+    {% csrf_token %}<input type="hidden" name="mode" value="garde_manger">
+    {% for field in garde_form %}{% include "includes/champ.html" %}{% endfor %}
+    <button class="btn" type="submit">Proposer des repas écologiques</button>
+  </form>
+</section>
+
+{% if recettes_garde_manger %}
+<section aria-labelledby="titre-propositions">
+  <h2 id="titre-propositions">Propositions {% if source_garde %}<span class="small muted">({{ source_garde }})</span>{% endif %}</h2>
+  <div class="recipe-grid">
+  {% for recette in recettes_garde_manger %}
+    <article class="card recipe-card">
+      <h3>{{ recette.nom }}</h3>
+      <p class="small">{{ recette.raison_ecologique }}</p>
+      <h4>Ingrédients</h4><ul>{% for ingredient in recette.ingredients %}<li>{{ ingredient }}</li>{% endfor %}</ul>
+      {% if recette.etapes %}<h4>Préparation</h4><ol>{% for etape in recette.etapes %}<li>{{ etape }}</li>{% endfor %}</ol>{% endif %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="type_repas" value="DEJEUNER"><input type="hidden" name="date" value="{% now 'Y-m-d' %}">
+        <input type="hidden" name="note" value="{{ recette.nom }}">
+        <textarea hidden name="texte">{% for ingredient in recette.ingredients %}{{ ingredient }}{% if not forloop.last %}, {% endif %}{% endfor %}</textarea>
+        <button class="btn btn-small" type="submit">Analyser et personnaliser ce repas</button>
+      </form>
+    </article>
+  {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endif %}
+
+{% if not apercu %}
 <section class="card assistant-intro" aria-labelledby="titre-recette">
   <h2 id="titre-recette">Ma recette</h2>
   <form method="post">

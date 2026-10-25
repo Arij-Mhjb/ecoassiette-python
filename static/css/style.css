@@ -397,6 +397,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 .suggestion-vegetale p { margin: 0 0 .35rem; }
 .comparison-box { margin-block: 1rem; padding: 1rem; background: #f7fbf7; border: 1px solid var(--border); border-radius: 12px; }
 @media (max-width: 720px) { .extraction-row { grid-template-columns: 1fr; } }
+.pantry-card { margin-bottom: 1.5rem; background: linear-gradient(135deg, var(--primary-softer), var(--surface)); }
+.recipe-grid, .reward-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-block: 1rem 1.5rem; }
+.recipe-card h4 { margin: .8rem 0 .25rem; }
+.recipe-card ul, .recipe-card ol { padding-left: 1.25rem; }
+.wallet-hero { display: flex; padding: 1.5rem; margin-bottom: 1.5rem; color: #fff; border-radius: 22px; background: linear-gradient(135deg, var(--forest), var(--primary)); }
+.wallet-hero span, .wallet-hero strong { display: block; }.wallet-hero strong { margin-top: .25rem; font-size: 2rem; }
+.reward-card img { width: 100%; height: 180px; object-fit: cover; border-radius: 14px; }
+.history-list { display: grid; gap: .6rem; padding-left: 1.2rem; }
 .help ul { margin: .25rem 0 0; padding-left: 1.2rem; }
 .errors { color: var(--danger); font-size: .88rem; font-weight: 600; margin: .35rem 0 0; padding-left: 1.1rem; }
 .req { color: var(--danger); }

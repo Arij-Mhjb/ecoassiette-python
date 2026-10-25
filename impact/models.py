@@ -1,4 +1,4 @@
-from django.core.validators import MinValueValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.conf import settings
 from django.db import models
 
@@ -110,3 +110,119 @@ class ExtractionRecetteIA(models.Model):
 
     def __str__(self):
         return f"Extraction du repas {self.repas_id} ({self.source})"
+
+
+class Sponsor(models.Model):
+    nom = models.CharField(max_length=120, unique=True)
+    site_web = models.URLField(blank=True)
+    actif = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nom"]
+
+    def __str__(self):
+        return self.nom
+
+
+class ProduitRecompense(models.Model):
+    class Statut(models.TextChoices):
+        BROUILLON = "BROUILLON", "Brouillon à vérifier"
+        PUBLIE = "PUBLIE", "Publié"
+        ARCHIVE = "ARCHIVE", "Archivé"
+
+    sponsor = models.ForeignKey(Sponsor, on_delete=models.PROTECT, related_name="produits")
+    nom = models.CharField(max_length=160)
+    description = models.TextField(max_length=800)
+    image = models.ImageField(upload_to="recompenses/", blank=True, null=True)
+    prix_public = models.DecimalField(max_digits=9, decimal_places=2, validators=[MinValueValidator(0)])
+    remise_pourcent = models.PositiveSmallIntegerField(
+        default=50, validators=[MinValueValidator(1), MaxValueValidator(100)]
+    )
+    cout_points = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    stock = models.PositiveIntegerField(default=0)
+    produit_vegetal = models.BooleanField(default=True)
+    url_source = models.URLField(
+        blank=True, help_text="Page officielle du produit à vérifier avant publication."
+    )
+    propose_par_ia = models.BooleanField(default=False, editable=False)
+    statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.BROUILLON)
+
+    class Meta:
+        ordering = ["sponsor", "nom"]
+
+    @property
+    def prix_remise(self):
+        return self.prix_public * (100 - self.remise_pourcent) / 100
+
+    def __str__(self):
+        return f"{self.nom} — {self.sponsor}"
+
+
+class PreuveRepas(models.Model):
+    class Statut(models.TextChoices):
+        EN_ATTENTE = "EN_ATTENTE", "En attente"
+        APPROUVEE = "APPROUVEE", "Approuvée"
+        REFUSEE = "REFUSEE", "Refusée"
+
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="preuves_repas"
+    )
+    repas = models.OneToOneField(
+        "repas.Repas", on_delete=models.CASCADE, related_name="preuve_ecologique"
+    )
+    media = models.FileField(
+        upload_to="preuves/%Y/%m/",
+        validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"])],
+    )
+    type_media = models.CharField(max_length=10, choices=[("IMAGE", "Photo"), ("VIDEO", "Vidéo")])
+    statut = models.CharField(max_length=12, choices=Statut.choices, default=Statut.EN_ATTENTE)
+    commentaire_admin = models.CharField(max_length=300, blank=True)
+    points_attribues = models.PositiveIntegerField(default=0)
+    soumise_le = models.DateTimeField(auto_now_add=True)
+    traitee_le = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        ordering = ["-soumise_le"]
+
+    def __str__(self):
+        return f"Preuve de {self.utilisateur} — {self.get_statut_display()}"
+
+
+class TransactionPoints(models.Model):
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="transactions_points"
+    )
+    montant = models.IntegerField(help_text="Positif pour un crédit, négatif pour une dépense.")
+    motif = models.CharField(max_length=200)
+    preuve = models.OneToOneField(
+        PreuveRepas, on_delete=models.PROTECT, blank=True, null=True, related_name="transaction_points"
+    )
+    creee_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creee_le"]
+
+    def __str__(self):
+        return f"{self.utilisateur}: {self.montant:+d} points"
+
+
+class CommandeRecompense(models.Model):
+    class Statut(models.TextChoices):
+        CONFIRMEE = "CONFIRMEE", "Confirmée"
+        LIVREE = "LIVREE", "Livrée"
+        ANNULEE = "ANNULEE", "Annulée"
+
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="commandes_recompenses"
+    )
+    produit = models.ForeignKey(ProduitRecompense, on_delete=models.PROTECT, related_name="commandes")
+    points_utilises = models.PositiveIntegerField()
+    prix_remise = models.DecimalField(max_digits=9, decimal_places=2)
+    statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.CONFIRMEE)
+    creee_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creee_le"]
+
+    def __str__(self):
+        return f"Commande {self.pk} — {self.produit.nom}"

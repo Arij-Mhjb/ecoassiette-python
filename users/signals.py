@@ -24,6 +24,15 @@ GROUPES = {
             "view_demandenutritionniste", "view_invitation",
             "voir_journal", "view_journalaudit", "view_historiqueconnexion", "view_recommandation",
             "repas.view_repas", "repas.view_elementrepas", "repas.view_remplacement",
+            # Module impact : référentiels, sponsors, validation des preuves et récompenses
+            "impact.view_facteurimpact", "impact.add_facteurimpact", "impact.change_facteurimpact",
+            "impact.view_alternativevegetale", "impact.add_alternativevegetale", "impact.change_alternativevegetale",
+            "impact.view_sponsor", "impact.add_sponsor", "impact.change_sponsor", "impact.delete_sponsor",
+            "impact.view_produitrecompense", "impact.add_produitrecompense",
+            "impact.change_produitrecompense", "impact.delete_produitrecompense",
+            "impact.view_preuverepas", "impact.change_preuverepas",
+            "impact.view_transactionpoints", "impact.view_commanderecompense", "impact.change_commanderecompense",
+            "impact.view_alternativeadoptee", "impact.view_extractionrecetteia",
         ],
     ),
 }
