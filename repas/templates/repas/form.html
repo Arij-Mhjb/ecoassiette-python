@@ -170,6 +170,7 @@
   }
 
   function remplir(data) {
+    if (data.transcription) document.getElementById("ia-description").value = data.transcription;
     const type = document.getElementById("id_type_repas");
     if (data.type_repas && type && !type.dataset.touche) type.value = data.type_repas;
     data.aliments.forEach(function (a) {
@@ -259,27 +260,103 @@
     if (e.key === "Enter") { e.preventDefault(); analyserTexte(); }
   });
 
-  // Dictée (Web Speech API, Chrome / Edge)
-  const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // Dictée : enregistrement du micro, puis Gemini écoute l'audio (comprend le tounsi bien mieux que la dictée du navigateur)
   const micro = document.getElementById("ia-micro");
-  if (!Reco) {
-    micro.disabled = true; micro.title = "Dictée non disponible dans ce navigateur (utilisez Chrome ou Edge)";
+  const microLibelle = micro.querySelector("small");
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    micro.disabled = true; micro.title = "Enregistrement non disponible dans ce navigateur";
   } else {
-    let reco = null;
-    micro.addEventListener("click", function () {
-      if (reco) { reco.stop(); return; }
-      reco = new Reco();
-      reco.lang = document.getElementById("ia-langue").value;
-      reco.interimResults = true;
-      const champTexte = document.getElementById("ia-description");
-      reco.onstart = function () { micro.setAttribute("aria-pressed", "true"); micro.classList.add("ia-ecoute"); afficherStatut("Je vous écoute… parlez de votre repas.", "chargement"); };
-      reco.onresult = function (ev) { champTexte.value = [...ev.results].map(function (r) { return r[0].transcript; }).join(" "); };
-      reco.onerror = function (ev) { afficherStatut(ev.error === "not-allowed" ? "Micro refusé : autorisez-le dans le navigateur." : "Dictée interrompue (" + ev.error + ").", "erreur"); };
-      reco.onend = function () {
-        micro.setAttribute("aria-pressed", "false"); micro.classList.remove("ia-ecoute"); reco = null;
-        if (champTexte.value.trim()) analyserTexte();
+    const DUREE_MAX_MS = 30000, SILENCE_FIN_MS = 1800, SEUIL_VOIX = 0.08, SEUIL_SON = 0.04;
+    let enreg = null, flux = null, ctxAudio = null, anim = null;
+    const jauge = document.createElement("span");
+    jauge.className = "ia-niveau"; jauge.setAttribute("aria-hidden", "true"); jauge.hidden = true;
+    jauge.innerHTML = "<span></span>";
+    micro.appendChild(jauge);
+
+    function arreter() { if (enreg && enreg.state === "recording") enreg.stop(); }
+    function nettoyer() {
+      if (anim) cancelAnimationFrame(anim);
+      if (flux) flux.getTracks().forEach(function (t) { t.stop(); });
+      if (ctxAudio) ctxAudio.close();
+      flux = ctxAudio = anim = enreg = null; jauge.hidden = true;
+      micro.setAttribute("aria-pressed", "false"); micro.classList.remove("ia-ecoute");
+      microLibelle.textContent = "En tounsi ou en français";
+    }
+
+    // Conversion en WAV 16 kHz mono : format lu par Gemini, quel que soit le navigateur
+    async function versWav(blob) {
+      const brut = await blob.arrayBuffer();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const son = await ctx.decodeAudioData(brut); ctx.close();
+      const taux = 16000, n = Math.ceil(son.duration * taux);
+      const hors = new OfflineAudioContext(1, n, taux);
+      const src = hors.createBufferSource(); src.buffer = son; src.connect(hors.destination); src.start();
+      const pcm = (await hors.startRendering()).getChannelData(0);
+      const vue = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+      const ecrire = function (o, t) { for (let i = 0; i < t.length; i++) vue.setUint8(o + i, t.charCodeAt(i)); };
+      ecrire(0, "RIFF"); vue.setUint32(4, 36 + pcm.length * 2, true); ecrire(8, "WAVE"); ecrire(12, "fmt ");
+      vue.setUint32(16, 16, true); vue.setUint16(20, 1, true); vue.setUint16(22, 1, true);
+      vue.setUint32(24, taux, true); vue.setUint32(28, taux * 2, true); vue.setUint16(32, 2, true); vue.setUint16(34, 16, true);
+      ecrire(36, "data"); vue.setUint32(40, pcm.length * 2, true);
+      for (let i = 0; i < pcm.length; i++) vue.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 0x7fff, true);
+      return new Blob([vue], { type: "audio/wav" });
+    }
+
+    micro.addEventListener("click", async function () {
+      if (enreg) { arreter(); return; }
+      try {
+        flux = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      } catch (e) {
+        afficherStatut(e.name === "NotAllowedError" ? "Micro refusé : cliquez sur l'icône à gauche de l'adresse, puis Micro → Autoriser."
+          : "Aucun micro détecté sur cet appareil. Branchez un micro ou décrivez le repas par écrit.", "erreur");
+        return;
+      }
+      const morceaux = [];
+      enreg = new MediaRecorder(flux);
+      enreg.ondataavailable = function (e) { if (e.data.size) morceaux.push(e.data); };
+
+      // niveau du micro + fin automatique après un silence
+      ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+      const analyseur = ctxAudio.createAnalyser(); analyseur.fftSize = 512;
+      ctxAudio.createMediaStreamSource(flux).connect(analyseur);
+      const donnees = new Uint8Array(analyseur.fftSize);
+      const debut = Date.now();
+      let maxNiveau = 0, aParle = false, dernierSon = Date.now();
+      (function boucle() {
+        analyseur.getByteTimeDomainData(donnees);
+        let pic = 0;
+        for (let i = 0; i < donnees.length; i++) pic = Math.max(pic, Math.abs(donnees[i] - 128));
+        const niveau = Math.min(1, pic / 50);
+        maxNiveau = Math.max(maxNiveau, niveau);
+        if (niveau > SEUIL_VOIX) { aParle = true; dernierSon = Date.now(); }
+        jauge.firstChild.style.width = Math.round(niveau * 100) + "%";
+        const ecoule = Date.now() - debut;
+        microLibelle.textContent = "J'écoute… " + Math.round(ecoule / 1000) + " s · cliquez pour terminer";
+        if ((aParle && Date.now() - dernierSon > SILENCE_FIN_MS) || ecoule > DUREE_MAX_MS) { arreter(); return; }
+        if (!aParle && ecoule > 8000) { arreter(); return; }
+        anim = requestAnimationFrame(boucle);
+      })();
+
+      enreg.onstop = async function () {
+        const type = enreg.mimeType || "audio/webm";
+        const capte = maxNiveau >= SEUIL_SON, parle = aParle;
+        nettoyer();
+        if (!capte) {
+          afficherStatut("Votre micro ne capte aucun son. Dans Chrome : icône micro à droite de la barre d'adresse → choisissez le bon micro. Sous Windows : Paramètres → Son → Entrée.", "erreur");
+          return;
+        }
+        if (!parle) { afficherStatut("Je n'ai pas entendu de voix. Cliquez sur « Dicter » et parlez tout de suite.", "erreur"); return; }
+        let fichier = new Blob(morceaux, { type: type }), nom = "dictee.webm";
+        try { fichier = await versWav(fichier); nom = "dictee.wav"; } catch (e) { /* envoi du format d'origine */ }
+        const fd = new FormData();
+        fd.append("audio", fichier, nom);
+        fd.append("langue", document.getElementById("ia-langue").value);
+        envoyer("{% url 'repas:ia_audio' %}", { body: fd }, "Gemini écoute votre enregistrement…");
       };
-      reco.start();
+      enreg.start();
+      jauge.hidden = false;
+      micro.setAttribute("aria-pressed", "true"); micro.classList.add("ia-ecoute");
+      afficherStatut("Je vous écoute… décrivez votre repas (ex. « klit kosksi b djej w slata »).", "chargement");
     });
   }
 })();

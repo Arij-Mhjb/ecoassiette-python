@@ -103,6 +103,7 @@ class AnalyseRepasIA(models.Model):
     class Mode(models.TextChoices):
         PHOTO = "PHOTO", "Photo"
         TEXTE = "TEXTE", "Texte / voix"
+        AUDIO = "AUDIO", "Enregistrement vocal"
 
     class Statut(models.TextChoices):
         EN_ATTENTE = "EN_ATTENTE", "En attente"

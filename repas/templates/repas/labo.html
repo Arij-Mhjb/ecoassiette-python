@@ -119,6 +119,24 @@
 <div class="empty">{% icon "sparkles" 28 %}<p><strong>Aucune évaluation pour l'instant.</strong></p><p>Lancez le moteur local (instantané), puis Gemini.</p></div>
 {% endif %}
 
+<section class="card" aria-labelledby="t-diag">
+  <h2 id="t-diag"><span class="h-ico h-ico-blue">{% icon "shield" %}</span>Diagnostic de la connexion Gemini</h2>
+  <dl class="details">
+    <div><dt>Clé GEMINI_API_KEY</dt><dd>{% if diagnostic.cle %}<span class="badge badge-ok">configurée</span> <span class="small muted">({{ diagnostic.longueur_cle }} caractères, jamais affichée)</span>{% else %}<span class="badge badge-off">absente</span> <span class="small">Ajoutez-la dans les variables d'environnement (fichier .env ou Render → Environment).</span>{% endif %}</dd></div>
+    <div><dt>Modèles essayés, dans l'ordre</dt><dd>{{ diagnostic.modeles|join:" → " }}</dd></div>
+  </dl>
+  {% if diagnostic.erreurs %}
+  <h3 class="small" style="margin:1rem 0 .4rem">Dernières erreurs de l'IA</h3>
+  <div class="table-wrap" tabindex="0" role="region" aria-label="Dernières erreurs de l'IA (défilable)">
+  <table class="table compact">
+    <caption class="sr-only">5 dernières erreurs des analyses « Remplir avec l'IA »</caption>
+    <thead><tr><th scope="col">Date</th><th scope="col">Mode</th><th scope="col">Résultat</th><th scope="col">Cause technique</th></tr></thead>
+    <tbody>{% for e in diagnostic.erreurs %}<tr><th scope="row" style="white-space:nowrap">{{ e.cree_le|date:"d/m H:i" }}</th><td>{{ e.get_mode_display }}</td><td>{% if e.statut == "TERMINE" %}repli {{ e.source|lower }}{% else %}échec{% endif %}</td><td class="small"><code>{{ e.erreur|truncatechars:220 }}</code></td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+  {% endif %}
+</section>
+
 {% if usage %}
 <section class="card" aria-labelledby="t-usage">
   <h2 id="t-usage"><span class="h-ico h-ico-amber">{% icon "users" %}</span>Utilisation réelle par les citoyens</h2>

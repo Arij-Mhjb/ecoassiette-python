@@ -139,6 +139,23 @@ def depuis_photo(donnees, mime):
     return resultat
 
 
+LANGUES = {"ar-TN": "en tounsi (dialecte tunisien)", "fr-FR": "en français"}
+
+
+def depuis_audio(donnees, mime, langue=""):
+    """Enregistrement vocal -> transcription + aliments (Gemini écoute directement l'audio)."""
+    t0 = time.perf_counter()
+    brut = _appeler_gemini([
+        {"inlineData": {"mimeType": mime, "data": base64.b64encode(donnees).decode()}},
+        {"text": CONSIGNE + " Ajoute aussi la clé \"transcription\" : ce que la personne a dit, tel quel. "
+                 f"Écoute cet enregistrement où la personne décrit son repas {LANGUES.get(langue, '')}."},
+    ])
+    resultat = valider(brut)
+    resultat.update(source="GEMINI", transcription=str(brut.get("transcription") or "")[:500],
+                    duree_ms=int((time.perf_counter() - t0) * 1000))
+    return resultat
+
+
 def depuis_texte(texte):
     """Phrase (français / tounsi, lettres latines ou arabes) -> aliments, avec repli local."""
     t0 = time.perf_counter()

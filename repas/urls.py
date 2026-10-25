@@ -12,6 +12,7 @@ urlpatterns = [
     path("<int:pk>/supprimer/", views.RepasDeleteView.as_view(), name="supprimer"),
     path("<int:pk>/remplacer/<int:element_pk>/", views.remplacer, name="remplacer"),
     path("ia/photo/", views.ia_photo, name="ia_photo"),
+    path("ia/audio/", views.ia_audio, name="ia_audio"),
     path("ia/texte/", views.ia_texte, name="ia_texte"),
     path("ia/analyse/<int:pk>/", views.ia_etat, name="ia_etat"),
     path("labo/", views.LaboIAView.as_view(), name="labo"),

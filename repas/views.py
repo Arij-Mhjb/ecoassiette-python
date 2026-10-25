@@ -115,6 +115,8 @@ def remplacer(request, pk, element_pk):
 # ------------------------------------------------------- IA : photo et texte / voix
 TYPES_IMAGES = {"image/jpeg", "image/png", "image/webp"}
 TAILLE_MAX_PHOTO = 8 * 1024 * 1024
+TYPES_AUDIO = {"audio/wav", "audio/x-wav", "audio/wave", "audio/webm", "audio/ogg", "audio/mpeg", "audio/mp4"}
+TAILLE_MAX_AUDIO = 5 * 1024 * 1024
 
 
 def _etat(a):
@@ -132,7 +134,7 @@ def _reponse(a):
     if not a.est_terminee:
         return JsonResponse(_etat(a), status=202)
     if a.statut == a.Statut.ECHEC:
-        return JsonResponse(_etat(a), status=503 if a.mode == a.Mode.PHOTO else 422)
+        return JsonResponse(_etat(a), status=422 if a.mode == a.Mode.TEXTE else 503)
     return JsonResponse(_etat(a))
 
 
@@ -147,6 +149,23 @@ def ia_photo(request):
     if photo.size > TAILLE_MAX_PHOTO:
         return JsonResponse({"erreur": "Photo trop lourde (8 Mo maximum)."}, status=400)
     return _reponse(taches.lancer(request.user, AnalyseRepasIA.Mode.PHOTO, donnees=photo.read(), mime=photo.content_type))
+
+
+@citoyen_requis
+@require_POST
+def ia_audio(request):
+    """Dictée : l'enregistrement est analysé par Gemini (transcription + aliments)."""
+    audio = request.FILES.get("audio")
+    if not audio:
+        return JsonResponse({"erreur": "Aucun enregistrement reçu."}, status=400)
+    mime = (audio.content_type or "").split(";")[0].strip()
+    if mime not in TYPES_AUDIO:
+        return JsonResponse({"erreur": "Format audio non supporté."}, status=400)
+    if audio.size > TAILLE_MAX_AUDIO:
+        return JsonResponse({"erreur": "Enregistrement trop long (30 secondes maximum)."}, status=400)
+    langue = request.POST.get("langue", "") if request.POST.get("langue") in ("ar-TN", "fr-FR") else ""
+    return _reponse(taches.lancer(request.user, AnalyseRepasIA.Mode.AUDIO, texte=langue, donnees=audio.read(),
+                                  mime="audio/wav" if mime in ("audio/x-wav", "audio/wave") else mime))
 
 
 @citoyen_requis
@@ -298,6 +317,12 @@ class LaboIAView(PermissionOu403Mixin, TemplateView):
                 "facteur_temps": round((g["latence_ms"]["p50"] or 0) / max(l["latence_ms"]["p50"] or 1, 1)),
             }
         from repas.evaluation.metriques import charger_jeu
+        from users.ai import modeles_gemini
+        ctx["diagnostic"] = {     # la clé elle-même n'est jamais affichée
+            "cle": bool(settings.GEMINI_API_KEY), "longueur_cle": len(settings.GEMINI_API_KEY or ""),
+            "modeles": modeles_gemini(),
+            "erreurs": AnalyseRepasIA.objects.exclude(erreur="").order_by("-cree_le")[:5],
+        }
         ctx.update(
             vues=vues, local=vues.get("LOCAL"), gemini=vues.get("GEMINI"), comparaison=comparaison,
             en_cours=EvaluationIA.objects.filter(statut=EvaluationIA.Statut.EN_COURS).first(),

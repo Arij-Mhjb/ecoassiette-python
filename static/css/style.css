@@ -939,3 +939,9 @@ html[data-theme="dark"] .theme-toggle .i-lune { display: block; }
 @media (min-width: 901px) { .header-outils { order: 3; } .main-nav { order: 2; margin-left: auto; } .header-inner { gap: 1rem; } }
 html[data-theme="dark"] .btn-outline-light { background: rgba(255,255,255,.06); color: #fff; border-color: rgba(255,255,255,.35); }
 html[data-theme="dark"] .btn-outline-light:hover { background: rgba(255,255,255,.14); }
+
+/* Dictée : niveau du micro en direct */
+.ia-bouton { position: relative; }
+.ia-niveau { position: absolute; left: 1rem; right: 1rem; bottom: .45rem; height: 4px; border-radius: 4px; background: rgba(255,255,255,.18); overflow: hidden; }
+.ia-niveau > span { display: block; height: 100%; width: 0; background: #b7f36b; transition: width .08s linear; }
+@media (prefers-reduced-motion: reduce) { .ia-niveau > span { transition: none; } }

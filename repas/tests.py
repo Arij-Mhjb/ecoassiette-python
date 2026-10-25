@@ -416,6 +416,18 @@ class IaRepasTest(TestCase):
             ia.depuis_photo(b"img", "image/jpeg")
         self.assertEqual(post.call_count, 1)
 
+    @mock.patch("users.ai.requests.post")
+    def test_audio_envoie_le_son_et_renvoie_la_transcription(self, post):
+        post.return_value = reponse_gemini({"transcription": "klit kosksi b djej", "aliments": [
+            {"aliment": "couscous", "categorie": "FECULENT", "quantite_g": 250},
+            {"aliment": "poulet", "categorie": "VOLAILLE", "quantite_g": 150}]})
+        r = ia.depuis_audio(b"RIFF", "audio/wav", "ar-TN")
+        self.assertEqual(r["transcription"], "klit kosksi b djej")
+        self.assertEqual(len(r["aliments"]), 2)
+        parts = post.call_args.kwargs["json"]["contents"][0]["parts"]
+        self.assertEqual(parts[0]["inlineData"]["mimeType"], "audio/wav")
+        self.assertIn("tounsi", parts[1]["text"])
+
     @override_settings(GEMINI_API_KEY="")
     def test_sans_cle(self):
         with self.assertRaises(ErreurIA):
@@ -463,6 +475,27 @@ class VuesIaTest(TestCase):
         depuis_photo.return_value = {"aliments": [], "source": "GEMINI"}
         img = SimpleUploadedFile("a.jpg", b"jpeg", content_type="image/jpeg")
         self.assertEqual(self.client.post(reverse("repas:ia_photo"), {"photo": img}).status_code, 200)
+
+    def test_audio_validations(self):
+        url = reverse("repas:ia_audio")
+        self.assertEqual(self.client.post(url).status_code, 400)
+        txt = SimpleUploadedFile("a.txt", b"x", content_type="text/plain")
+        self.assertEqual(self.client.post(url, {"audio": txt}).status_code, 400)
+        wav = SimpleUploadedFile("a.wav", b"RIFFwav", content_type="audio/wav")
+        r = self.client.post(url, {"audio": wav, "langue": "ar-TN"})     # pas de clé -> 503 avec message clair
+        self.assertEqual(r.status_code, 503)
+        self.assertIn("enregistrement", r.json()["erreur"])
+        a = AnalyseRepasIA.objects.get(mode="AUDIO")
+        self.assertEqual(a.image_b64, "")                                   # l'audio n'est pas conservé
+
+    @mock.patch("repas.tasks.ia.depuis_audio")
+    def test_audio_ok_avec_transcription(self, depuis_audio):
+        depuis_audio.return_value = {"aliments": [], "source": "GEMINI", "transcription": "klit kosksi"}
+        wav = SimpleUploadedFile("a.webm", b"webm", content_type="audio/webm;codecs=opus")
+        r = self.client.post(reverse("repas:ia_audio"), {"audio": wav, "langue": "fr-FR"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["transcription"], "klit kosksi")
+        self.assertEqual(depuis_audio.call_args.args[1:], ("audio/webm", "fr-FR"))
 
     def test_formulaire_contient_le_panneau_ia(self):
         r = self.client.get(reverse("repas:ajouter"))

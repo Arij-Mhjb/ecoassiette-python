@@ -29,6 +29,8 @@ except ImportError:  # pragma: no cover
 
 MESSAGE_PHOTO = ("L'analyse de la photo est indisponible pour le moment. "
                  "Décrivez votre repas avec le texte ou la voix, ou saisissez-le à la main.")
+MESSAGE_AUDIO = ("Je n'ai pas pu analyser l'enregistrement. Parlez distinctement (ex. « klit kosksi b djej »), "
+                 "ou écrivez votre repas.")
 MESSAGE_TEXTE = "Aucun aliment reconnu. Essayez par exemple : « kosksi b l3allouch w slata »."
 
 
@@ -44,6 +46,8 @@ def executer(analyse_id):
     try:
         if a.mode == AnalyseRepasIA.Mode.PHOTO:
             resultat = ia.depuis_photo(base64.b64decode(a.image_b64), a.mime)
+        elif a.mode == AnalyseRepasIA.Mode.AUDIO:
+            resultat = ia.depuis_audio(base64.b64decode(a.image_b64), a.mime, a.texte)
         else:
             resultat = ia.depuis_texte(a.texte)
         a.resultat, a.source, a.statut = resultat, resultat.get("source", ""), AnalyseRepasIA.Statut.TERMINE
@@ -51,8 +55,8 @@ def executer(analyse_id):
     except ErreurIA as e:
         logger.warning("Analyse repas %s (%s) impossible : %s", a.pk, a.mode, e)
         a.statut, a.erreur = AnalyseRepasIA.Statut.ECHEC, str(e)[:300]
-        a.message = MESSAGE_PHOTO if a.mode == AnalyseRepasIA.Mode.PHOTO else MESSAGE_TEXTE
-        if settings.DEBUG and a.mode == AnalyseRepasIA.Mode.PHOTO:   # en développement : la cause aide à corriger
+        a.message = {AnalyseRepasIA.Mode.PHOTO: MESSAGE_PHOTO, AnalyseRepasIA.Mode.AUDIO: MESSAGE_AUDIO}.get(a.mode, MESSAGE_TEXTE)
+        if settings.DEBUG and a.mode != AnalyseRepasIA.Mode.TEXTE:   # en développement : la cause aide à corriger
             a.message = f"{a.message} [Détail : {e}]"[:300]
     except Exception as e:  # filet de sécurité : jamais d'analyse bloquée « en cours »
         logger.exception("Échec inattendu de l'analyse repas %s", a.pk)
