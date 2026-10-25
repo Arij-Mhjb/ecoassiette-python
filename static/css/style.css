@@ -217,6 +217,8 @@ form .btn-danger[type="submit"]:hover { background: linear-gradient(180deg, var(
 .icon-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: var(--muted);
   border: 1px solid transparent; background: none; text-decoration: none; transition: background .15s, color .15s, border-color .15s; }
 .icon-btn:hover { background: var(--primary-soft); color: var(--primary-dark); }
+.icon-verrou { color: #9aa49e; cursor: help; }
+.icon-verrou:hover { background: none; color: var(--muted); }
 .icon-btn-danger:hover { background: var(--danger-soft); color: var(--danger); }
 
 /* Chargement (app.js) */

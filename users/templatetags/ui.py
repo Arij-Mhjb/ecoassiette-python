@@ -57,6 +57,12 @@ ICONES = {
 }
 
 
+@register.filter
+def peut_gerer(user, cible):
+    """{% if user|peut_gerer:cible %} — faux pour un compte administrateur si l'on n'est pas super-administrateur."""
+    return user.is_authenticated and user.peut_gerer(cible)
+
+
 @register.simple_tag
 def icon(nom, taille=18, classe=""):
     trace = ICONES.get(nom, ICONES["box"])

@@ -179,7 +179,18 @@ class SuppressionCompteForm(AccessibleFormMixin, forms.Form):
 
 
 # ------------------------------------------------------------- administration (CRUD)
-class AdminUtilisateurCreationForm(AccessibleFormMixin, forms.ModelForm):
+class RoleSelonEditeurMixin:
+    """Seul un super-administrateur peut attribuer le rôle Administrateur."""
+
+    def __init__(self, *args, editeur=None, **kwargs):
+        self.editeur = editeur
+        super().__init__(*args, **kwargs)
+        if not (editeur and editeur.is_superuser):
+            self.fields["role"].choices = [c for c in self.fields["role"].choices if c[0] != User.Role.ADMIN]
+            self.fields["role"].help_text = "Le rôle Administrateur ne peut être attribué que par un super-administrateur."
+
+
+class AdminUtilisateurCreationForm(RoleSelonEditeurMixin, AccessibleFormMixin, forms.ModelForm):
     password1 = forms.CharField(label="Mot de passe", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
                                 help_text=password_validation.password_validators_help_text_html())
     password2 = forms.CharField(label="Confirmation", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
@@ -213,14 +224,10 @@ class AdminUtilisateurCreationForm(AccessibleFormMixin, forms.ModelForm):
         return user
 
 
-class AdminUtilisateurForm(AccessibleFormMixin, forms.ModelForm):
+class AdminUtilisateurForm(RoleSelonEditeurMixin, AccessibleFormMixin, forms.ModelForm):
     class Meta:
         model = User
         fields = ("username", "first_name", "last_name", "email", "telephone", "role", "is_active")
-
-    def __init__(self, *args, editeur=None, **kwargs):
-        self.editeur = editeur
-        super().__init__(*args, **kwargs)
 
     def clean_email(self):
         return _email_libre(self.cleaned_data.get("email"), exclure_pk=self.instance.pk)

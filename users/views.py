@@ -7,7 +7,7 @@ from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Avg, Count, Q
 from django.http import JsonResponse
@@ -365,6 +365,16 @@ class UtilisateurListView(AdminRequisMixin, ListView):
         return ctx
 
 
+class CibleGerableMixin:
+    """Modifier / désactiver / supprimer un compte administrateur : réservé au super-administrateur (403 sinon)."""
+
+    def get_object(self, queryset=None):
+        cible = super().get_object(queryset)
+        if not self.request.user.peut_gerer(cible):
+            raise PermissionDenied("Seul un super-administrateur peut modifier ou supprimer un compte administrateur.")
+        return cible
+
+
 class UtilisateurDetailView(AdminRequisMixin, DetailView):
     model = User
     template_name = "users/admin/detail.html"
@@ -377,6 +387,11 @@ class UtilisateurCreateView(AdminRequisMixin, CreateView):
     template_name = "users/form_page.html"
     extra_context = {"titre": "Créer un compte"}
 
+    def get_form_kwargs(self):
+        kw = super().get_form_kwargs()
+        kw["editeur"] = self.request.user
+        return kw
+
     def form_valid(self, form):
         messages.success(self.request, "Compte créé.")
         return super().form_valid(form)
@@ -385,7 +400,7 @@ class UtilisateurCreateView(AdminRequisMixin, CreateView):
         return reverse("users:admin_detail", args=[self.object.pk])
 
 
-class UtilisateurUpdateView(AdminRequisMixin, UpdateView):
+class UtilisateurUpdateView(AdminRequisMixin, CibleGerableMixin, UpdateView):
     model = User
     form_class = AdminUtilisateurForm
     template_name = "users/form_page.html"
@@ -408,7 +423,7 @@ class UtilisateurUpdateView(AdminRequisMixin, UpdateView):
         return reverse("users:admin_detail", args=[self.object.pk])
 
 
-class UtilisateurDeleteView(AdminRequisMixin, DeleteView):
+class UtilisateurDeleteView(AdminRequisMixin, CibleGerableMixin, DeleteView):
     model = User
     template_name = "users/admin/supprimer.html"
     context_object_name = "cible"
@@ -422,7 +437,7 @@ class UtilisateurDeleteView(AdminRequisMixin, DeleteView):
         return super().form_valid(form)
 
 
-class UtilisateurBasculerActifView(AdminRequisMixin, DetailView):
+class UtilisateurBasculerActifView(AdminRequisMixin, CibleGerableMixin, DetailView):
     model = User
     http_method_names = ["post"]
 

@@ -8,6 +8,7 @@
     <p class="muted">@{{ cible.username }} · <span class="badge badge-{{ cible.role|lower }}">{{ cible.get_role_display }}</span>
       {% if cible.is_active %}<span class="badge badge-ok">Actif</span>{% else %}<span class="badge badge-off">Désactivé</span>{% endif %}</p>
   </div>
+  {% if user|peut_gerer:cible %}
   <div class="form-actions">
     <a class="btn btn-ghost" href="{% url 'users:admin_modifier' cible.pk %}">{% icon "edit" %}Modifier</a>
     {% if cible.pk != user.pk %}
@@ -18,6 +19,9 @@
     <a class="btn btn-danger" href="{% url 'users:admin_supprimer' cible.pk %}">{% icon "trash" %}Supprimer</a>
     {% endif %}
   </div>
+  {% else %}
+  <p class="bandeau bandeau-info" style="margin:0">{% icon "lock" 18 %}<span>Compte administrateur : seul un <strong>super-administrateur</strong> peut le modifier, le désactiver ou le supprimer.</span></p>
+  {% endif %}
 </div>
 <div class="grid-2">
   <section class="card" aria-labelledby="t-c"><h2 id="t-c"><span class="h-ico h-ico-blue">{% icon "user" %}</span>Compte</h2>

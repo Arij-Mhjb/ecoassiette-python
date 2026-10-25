@@ -34,8 +34,12 @@
       <td>{% if u.is_active %}<span class="badge badge-ok">Actif</span>{% else %}<span class="badge badge-off">Désactivé</span>{% endif %}</td>
       <td>{{ u.date_joined|date:"d/m/Y" }}</td>
       <td class="actions-cell">
+        {% if user|peut_gerer:u %}
         <a class="icon-btn" href="{% url 'users:admin_modifier' u.pk %}" title="Modifier">{% icon "edit" %}<span class="sr-only">Modifier {{ u.username }}</span></a>
-        <a class="icon-btn icon-btn-danger" href="{% url 'users:admin_supprimer' u.pk %}" title="Supprimer">{% icon "trash" %}<span class="sr-only">Supprimer {{ u.username }}</span></a>
+        {% if u.pk != user.pk %}<a class="icon-btn icon-btn-danger" href="{% url 'users:admin_supprimer' u.pk %}" title="Supprimer">{% icon "trash" %}<span class="sr-only">Supprimer {{ u.username }}</span></a>{% endif %}
+        {% else %}
+        <span class="icon-btn icon-verrou" title="Réservé au super-administrateur">{% icon "lock" %}<span class="sr-only">Compte administrateur : modification réservée au super-administrateur</span></span>
+        {% endif %}
       </td>
     </tr>
   {% endfor %}

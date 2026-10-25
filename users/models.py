@@ -66,6 +66,10 @@ class Utilisateur(AbstractUser):
     def est_admin(self):
         return self.is_superuser or self.role == self.Role.ADMIN
 
+    def peut_gerer(self, cible):
+        """Un compte administrateur ne peut être modifié, désactivé ou supprimé que par un super-administrateur."""
+        return self.is_superuser or not cible.est_admin
+
     @property
     def est_nutritionniste(self):
         return self.role == self.Role.NUTRITIONNISTE
