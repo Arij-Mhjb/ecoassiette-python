@@ -73,6 +73,15 @@ et l'utilisateur est invité à renvoyer le lien (pas de page d'erreur).
 
 ## 3 bis. Intelligence artificielle
 
+### Assistant de recette et impact environnemental
+
+La page `/impact/assistant-recette/` accepte une recette en texte libre. Gemini extrait les ingrédients,
+leurs grammages et leurs catégories ; sans clé ou en cas d'erreur, un extracteur local prend le relais.
+L'utilisateur corrige toujours le brouillon avant validation, conserve ses ingrédients et choisit les
+substitutions végétales proposées. Seul le repas confirmé rejoint son historique. Son détail affiche le
+CO₂, l'eau, les terres et le risque de déforestation estimés. La page `/impact/` cumule l'impact réel des
+repas validés et les économies obtenues grâce aux alternatives adoptées.
+
 **Besoin réel couvert :** à l'inscription, l'utilisateur ne sait pas quel objectif se fixer ni par quoi
 remplacer les plats qu'il aime. L'IA transforme son profil en : empreinte estimée, **objectif CO₂ réaliste**
 (adoptable en un clic), **alternatives végétales basées sur ses plats préférés** (y compris tunisiens :

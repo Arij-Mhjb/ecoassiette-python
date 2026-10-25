@@ -7,7 +7,10 @@
     <h1>Mes repas</h1>
     <p class="muted">{{ paginator.count }} repas enregistré{{ paginator.count|pluralize }}</p>
   </div>
-  <a class="btn btn-large" href="{% url 'repas:ajouter' %}">{% icon "plus" 18 %}Ajouter un repas</a>
+  <div class="form-actions">
+    <a class="btn btn-ghost" href="{% url 'impact:assistant_recette' %}">{% icon "chef-hat" 18 %}Assistant recette IA</a>
+    <a class="btn btn-large" href="{% url 'repas:ajouter' %}">{% icon "plus" 18 %}Ajouter un repas</a>
+  </div>
 </div>
 
 <section class="card bilan" aria-labelledby="t-bilan">

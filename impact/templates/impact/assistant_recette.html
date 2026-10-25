@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Assistant recette{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Assistant de recette</h1>
+  <p class="muted">Décrivez ce que vous allez cuisiner. L'IA extrait les ingrédients et propose des substitutions végétales.</p>
+</div>
+
+{% if not apercu %}
+<section class="card assistant-intro" aria-labelledby="titre-recette">
+  <h2 id="titre-recette">Ma recette</h2>
+  <form method="post">
+    {% csrf_token %}
+    {% include "includes/form.html" %}
+    <div id="statut-analyse" role="status" aria-live="polite"></div>
+    <div class="form-actions"><button class="btn" id="bouton-analyser" type="submit">Analyser ma recette</button></div>
+  </form>
+</section>
+{% else %}
+<section class="card" aria-labelledby="titre-verification">
+  <h2 id="titre-verification">Vérifiez les ingrédients extraits</h2>
+  <p class="muted">Source : {% if apercu.source == "GEMINI" %}Gemini{% else %}moteur local{% endif %}. Corrigez librement les quantités avant de valider.</p>
+  {% if apercu.erreur_ia %}<p class="small muted">Gemini indisponible : le moteur local a pris le relais.</p>{% endif %}
+  <form method="post" action="{% url 'impact:valider_recette' %}">
+    {% csrf_token %}
+    <input type="hidden" name="type_repas" value="{{ form.type_repas.value }}">
+    <input type="hidden" name="date" value="{{ form.date.value }}">
+    <input type="hidden" name="note" value="{{ form.note.value|default:'' }}">
+    <textarea hidden name="texte">{{ form.texte.value }}</textarea>
+    <input type="hidden" name="source" value="{{ apercu.source }}">
+    {{ apercu.formset.management_form }}
+    {% if apercu.formset.non_form_errors %}<div class="alert alert-error" role="alert">{{ apercu.formset.non_form_errors }}</div>{% endif %}
+    <div class="extraction-list">
+      {% for ligne in apercu.lignes %}
+      <fieldset class="extraction-row">
+        <legend>Ingrédient {{ forloop.counter }}</legend>
+        {% for hidden in ligne.form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% for field in ligne.form.visible_fields %}
+          {% if field.name != "utiliser_alternative" and field.name != "DELETE" %}{% include "includes/champ.html" %}{% endif %}
+        {% endfor %}
+        {% if ligne.alternative %}
+          <div class="suggestion-vegetale">
+            <p><strong>{{ ligne.form.aliment.value|capfirst }} → {{ ligne.alternative.remplacement|capfirst }}</strong></p>
+            <p class="small">{{ ligne.alternative.idee }}</p>
+            <label>{{ ligne.form.utiliser_alternative }} Utiliser cette alternative dans le repas validé</label>
+          </div>
+        {% endif %}
+        <div class="field-check"><label>{{ ligne.form.DELETE }} Retirer cet ingrédient</label></div>
+      </fieldset>
+      {% endfor %}
+    </div>
+
+    {% if apercu.analyse %}
+    <div class="comparison-box" aria-label="Comparaison environnementale">
+      <h3>Impact avant les alternatives</h3>
+      <p><strong>{{ apercu.analyse.totaux.co2 }} kg CO₂e</strong> · {{ apercu.analyse.totaux.eau }} L d'eau · {{ apercu.analyse.totaux.terres }} m² de terres</p>
+      <h3>Réduction maximale proposée</h3>
+      <p><strong>{{ apercu.analyse.economies.co2 }} kg CO₂e</strong> · {{ apercu.analyse.economies.eau }} L d'eau · {{ apercu.analyse.economies.terres }} m² de terres</p>
+      <p class="small muted">Le bilan définitif sera recalculé après vos corrections et votre validation.</p>
+    </div>
+    {% endif %}
+    <div class="form-actions">
+      <button class="btn" type="submit">Valider et ajouter à mes repas</button>
+      <a class="btn btn-ghost" href="{% url 'impact:assistant_recette' %}">Recommencer</a>
+    </div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  const bouton = document.getElementById("bouton-analyser");
+  if (bouton) bouton.form.addEventListener("submit", function () {
+    bouton.disabled = true;
+    bouton.setAttribute("aria-busy", "true");
+    bouton.textContent = "Analyse IA en cours…";
+    document.getElementById("statut-analyse").textContent = "Extraction des ingrédients et recherche d'alternatives végétales…";
+  });
+</script>
+{% endblock %}

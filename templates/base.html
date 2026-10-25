@@ -27,6 +27,8 @@
           {% if user.is_authenticated %}
             {% if user.role == "CITOYEN" %}
             <li><a href="{% url 'repas:liste' %}" {% if request.resolver_match.app_name == 'repas' %}aria-current="page"{% endif %}>{% icon "utensils" %}Mes repas</a></li>
+            <li><a href="{% url 'impact:assistant_recette' %}" {% if request.resolver_match.url_name == 'assistant_recette' %}aria-current="page"{% endif %}>{% icon "chef-hat" %}Assistant recette</a></li>
+            <li><a href="{% url 'impact:tableau_bord' %}" {% if request.resolver_match.app_name == 'impact' and request.resolver_match.url_name != 'assistant_recette' %}aria-current="page"{% endif %}>{% icon "chart" %}Mon impact</a></li>
             <li><a href="{% url 'users:mes_recommandations' %}" {% if request.resolver_match.url_name == 'mes_recommandations' %}aria-current="page"{% endif %}>{% icon "lightbulb" %}Conseils{% if nb_recos_non_lues %} <span class="pastille">{{ nb_recos_non_lues }}<span class="sr-only"> nouveau(x)</span></span>{% endif %}</a></li>
             {% endif %}
             <li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>{% icon "leaf" %}Mon profil</a></li>

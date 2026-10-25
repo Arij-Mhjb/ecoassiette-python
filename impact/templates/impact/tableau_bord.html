@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Mon impact{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Mon impact positif</h1>
+  <p class="muted">Économies estimées grâce aux alternatives végétales que vous avez adoptées.</p>
+</div>
+
+<section class="card" aria-labelledby="titre-bilan">
+  <h2 id="titre-bilan">Impact de mes repas validés</h2>
+  <div class="impact-grid">
+    <div class="impact-kpi"><span>Repas analysés</span><strong>{{ nombre_repas }}</strong></div>
+    <div class="impact-kpi"><span>CO₂ émis</span><strong>{{ impact_reel.co2|floatformat:2 }} kg CO₂e</strong></div>
+    <div class="impact-kpi"><span>Empreinte eau</span><strong>{{ impact_reel.eau|floatformat:0 }} litres</strong></div>
+    <div class="impact-kpi"><span>Terres utilisées</span><strong>{{ impact_reel.terres|floatformat:2 }} m²</strong></div>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="titre-economies">
+  <h2 id="titre-economies">Réductions obtenues avec les alternatives</h2>
+  <div class="impact-grid">
+    <div class="impact-kpi"><span>Alternatives adoptées</span><strong>{{ nombre_adoptions }}</strong></div>
+    <div class="impact-kpi"><span>CO₂ évité</span><strong>{{ totaux.co2|floatformat:2 }} kg CO₂e</strong></div>
+    <div class="impact-kpi"><span>Eau économisée</span><strong>{{ totaux.eau|floatformat:0 }} litres</strong></div>
+    <div class="impact-kpi"><span>Terres préservées</span><strong>{{ totaux.terres|floatformat:2 }} m²</strong></div>
+  </div>
+</section>
+
+<section class="card" aria-labelledby="titre-repas-impact">
+  <h2 id="titre-repas-impact">Impact par repas</h2>
+  {% if repas_recents %}
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Impact des repas récents">
+      <table class="table compact">
+        <thead><tr><th scope="col">Repas</th><th scope="col">CO₂</th><th scope="col">Eau</th><th scope="col">Terres</th></tr></thead>
+        <tbody>{% for ligne in repas_recents %}<tr>
+          <th scope="row"><a href="{% url 'repas:detail' ligne.repas.pk %}">{{ ligne.repas }}</a></th>
+          <td>{{ ligne.impact.co2 }} kg</td><td>{{ ligne.impact.eau }} L</td><td>{{ ligne.impact.terres }} m²</td>
+        </tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  {% else %}<p class="empty">Aucun repas validé pour le moment.</p>{% endif %}
+</section>
+
+<section class="card" aria-labelledby="titre-historique">
+  <h2 id="titre-historique">Alternatives adoptées</h2>
+  {% if adoptions %}
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Historique des alternatives adoptées">
+      <table class="table compact">
+        <thead><tr><th scope="col">Date</th><th scope="col">Alternative</th><th scope="col">CO₂ évité</th><th scope="col">Eau</th><th scope="col">Terres</th></tr></thead>
+        <tbody>
+          {% for adoption in adoptions %}
+            <tr>
+              <td>{{ adoption.adoptee_le|date:"d/m/Y" }}</td>
+              <th scope="row"><a href="{% url 'repas:detail' adoption.repas_id %}">{{ adoption.aliment_original|capfirst }} → {{ adoption.remplacement|capfirst }}</a></th>
+              <td>{{ adoption.co2_evite }} kg</td><td>{{ adoption.eau_economisee }} L</td><td>{{ adoption.terres_preservees }} m²</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">Aucune alternative adoptée. Consultez un repas contenant un produit animal pour commencer.</p>
+  {% endif %}
+</section>
+{% endblock %}
