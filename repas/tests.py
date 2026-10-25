@@ -2,14 +2,14 @@
 import datetime
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import override_settings, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from users.models import Utilisateur
 
 from .forms import ElementRepasForm, RepasForm
-from .models import ElementRepas, Repas
+from .models import FACTEURS_CO2, AnalyseRepasIA, ElementRepas, Repas
 
 MDP = "UnMotDePasse!Solide42"
 
@@ -192,8 +192,9 @@ class Co2Test(TestCase):
 
     def test_calcul_element_et_repas(self):
         agneau = self.repas.elements.get(aliment="agneau")
-        self.assertEqual(agneau.co2_kg, 6.0)            # 0,1 kg × 60
-        self.assertEqual(self.repas.co2_kg, 6.4)        # 6,0 + 0,25 × 1,6
+        # facteurs du référentiel partagé (impact.FacteurImpact) : viande rouge 35, féculents 1,2
+        self.assertEqual(agneau.co2_kg, 3.5)            # 0,1 kg × 35
+        self.assertEqual(self.repas.co2_kg, 3.8)        # 3,5 + 0,25 × 1,2
         self.assertEqual(self.repas.niveau_co2, "eleve")
         self.assertEqual(self.repas.element_le_plus_emetteur, agneau)
 
@@ -208,7 +209,7 @@ class Co2Test(TestCase):
 
     def test_bilan_semaine_avec_objectif(self):
         p = self.amine.profil
-        p.objectif_co2_hebdo = 8
+        p.objectif_co2_hebdo = 5
         p.save()
         ancien = Repas.objects.create(utilisateur=self.amine, type_repas="DINER",
                                       date=timezone.localdate() - datetime.timedelta(days=10))
@@ -216,8 +217,8 @@ class Co2Test(TestCase):
         self.client.force_login(self.amine)
         r = self.client.get(reverse("repas:liste"))
         bilan = r.context["bilan"]
-        self.assertEqual(bilan["total"], 6.4)            # le repas d'il y a 10 jours est exclu
-        self.assertEqual(bilan["pct"], 80)
+        self.assertEqual(bilan["total"], 3.8)            # le repas d'il y a 10 jours est exclu
+        self.assertEqual(bilan["pct"], 76)
         self.assertFalse(bilan["depasse"])
         self.assertContains(r, "co2-eleve")
 
@@ -231,16 +232,17 @@ class Co2Test(TestCase):
         p = self.amine.profil
         p.objectif_co2_hebdo = 5
         p.save()
+        ElementRepas.objects.create(repas=self.repas, aliment="boeuf", categorie="VIANDE_ROUGE", quantite_g=200)
         self.client.force_login(self.amine)
         r = self.client.get(reverse("repas:liste"))
-        self.assertTrue(r.context["bilan"]["depasse"])
+        self.assertTrue(r.context["bilan"]["depasse"])       # 3,8 + 0,2 × 35 = 10,8 kg > 5 kg
         self.assertEqual(r.context["bilan"]["pct_barre"], 100)
         self.assertContains(r, "Objectif dépassé")
 
     def test_detail_affiche_astuce(self):
         self.client.force_login(self.amine)
         r = self.client.get(reverse("repas:detail", args=[self.repas.pk]))
-        self.assertContains(r, "6,4 kg CO₂e")
+        self.assertContains(r, "3,8 kg CO₂e")
         self.assertContains(r, "Astuce")
 
 
@@ -338,7 +340,7 @@ class IaRepasTest(TestCase):
         self.assertEqual([(a["aliment"], a["categorie"], a["quantite_g"]) for a in r["aliments"]],
                          [("agneau", "VIANDE_ROUGE", 3000), ("lentilles", "LEGUMINEUSE", 200)])
         self.assertIn(r["type_repas"], Repas.TypeRepas.values)
-        self.assertEqual(r["co2_total_kg"], 180.2)
+        self.assertEqual(r["co2_total_kg"], 105.18)      # 3 kg × 35 + 0,2 kg × 0,9
         with self.assertRaises(ErreurIA):
             ia.valider({"aliments": []})
         with self.assertRaises(ErreurIA):
@@ -390,6 +392,7 @@ class IaRepasTest(TestCase):
 
 
 @override_settings(GEMINI_API_KEY="")
+@override_settings(IA_SYNCHRONE=True)
 class VuesIaTest(TestCase):
     def setUp(self):
         self.amine = creer_user("amine")
@@ -423,7 +426,7 @@ class VuesIaTest(TestCase):
         self.assertEqual(r.status_code, 503)
         self.assertIn("indisponible", r.json()["erreur"])
 
-    @mock.patch("repas.views.ia.depuis_photo")
+    @mock.patch("repas.tasks.ia.depuis_photo")
     def test_photo_ok(self, depuis_photo):
         depuis_photo.return_value = {"aliments": [], "source": "GEMINI"}
         img = SimpleUploadedFile("a.jpg", b"jpeg", content_type="image/jpeg")
@@ -452,14 +455,14 @@ class SimulateurTest(TestCase):
         r = self.client.get(reverse("repas:detail", args=[self.repas.pk]))
         self.assertContains(r, "Et si")
         self.assertContains(r, "Pois chiches")          # SUBSTITUTIONS : agneau -> pois chiches
-        self.assertContains(r, "−8,85 kg CO₂e")         # 9,0 − 0,15 × 1,0
+        self.assertContains(r, "−5,11 kg CO₂e")         # 0,15 × 35 − 0,14 (0,15 × 0,9)
 
     def test_appliquer(self):
         r = self.client.post(reverse("repas:remplacer", args=[self.repas.pk, self.agneau.pk]), follow=True)
         self.agneau.refresh_from_db()
         self.assertEqual((self.agneau.aliment, self.agneau.categorie), ("pois chiches", "LEGUMINEUSE"))
         rem = Remplacement.objects.get()
-        self.assertEqual(rem.gain_kg, 8.85)
+        self.assertEqual(rem.gain_kg, 5.11)
         self.assertIn("agneau", str(rem))
         self.assertContains(r, "Premier pas")
 
@@ -488,7 +491,7 @@ class BilanTest(TestCase):
     def ajouter(self, jours, kg_viande):
         r = Repas.objects.create(utilisateur=self.amine, type_repas="DINER",
                                  date=timezone.localdate() - datetime.timedelta(days=jours))
-        ElementRepas.objects.create(repas=r, aliment="boeuf", categorie="VIANDE_ROUGE", quantite_g=int(kg_viande * 1000 / 60))
+        ElementRepas.objects.create(repas=r, aliment="boeuf", categorie="VIANDE_ROUGE", quantite_g=round(kg_viande * 1000 / FACTEURS_CO2["VIANDE_ROUGE"]))
         return r
 
     def test_foret(self):
@@ -535,3 +538,90 @@ class BilanTest(TestCase):
         self.assertContains(r, 'class="foret')
         self.assertContains(r, "km</strong> en voiture")
         self.assertContains(r, "graphe-barre")
+
+
+class SourceUniqueFacteursTest(TestCase):
+    """Le module repas et le module impact affichent le même CO₂ : un seul référentiel (impact.FacteurImpact)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.amine = creer_user("amine")
+        cls.repas = Repas.objects.create(utilisateur=cls.amine, type_repas="DINER")
+        for aliment, cat, g in [("agneau", "VIANDE_ROUGE", 300), ("pois chiches", "LEGUMINEUSE", 200),
+                                ("tomates", "FRUIT_LEGUME", 240), ("semoule", "FECULENT", 150)]:
+            ElementRepas.objects.create(repas=cls.repas, aliment=aliment, categorie=cat, quantite_g=g)
+
+    def test_meme_co2_que_le_module_impact(self):
+        from impact.services import analyser_repas
+        self.assertAlmostEqual(self.repas.co2_kg, float(analyser_repas(self.repas)["totaux"]["co2"]), places=1)
+
+    def test_facteur_modifie_dans_l_admin_pris_en_compte(self):
+        from impact.models import FacteurImpact
+        avant = self.repas.co2_kg
+        f = FacteurImpact.objects.get(categorie="VIANDE_ROUGE")
+        f.co2_kg_par_kg += 10
+        f.save()                                       # signal -> cache vidé
+        try:
+            self.assertAlmostEqual(Repas.objects.get(pk=self.repas.pk).co2_kg, avant + 3.0, places=2)
+        finally:
+            f.co2_kg_par_kg -= 10
+            f.save()
+
+    def test_repli_si_referentiel_indisponible(self):
+        from unittest import mock
+        from django.db import DatabaseError
+        from .facteurs import DEFAUTS
+        FACTEURS_CO2.invalider()
+        with mock.patch("impact.models.FacteurImpact.objects.filter", side_effect=DatabaseError("table absente")):
+            self.assertEqual(FACTEURS_CO2["VIANDE_ROUGE"], DEFAUTS["VIANDE_ROUGE"])   # valeur de repli
+        FACTEURS_CO2.invalider()
+        self.assertEqual(FACTEURS_CO2["VIANDE_ROUGE"], 35.0)                          # référentiel retrouvé
+        self.assertEqual(list(FACTEURS_CO2), list(DEFAUTS))                           # catégories fixes
+
+
+
+class IaAsynchroneTest(TestCase):
+    """Mode réel : la requête répond 202 tout de suite, le navigateur suit l'état de l'analyse."""
+
+    def setUp(self):
+        self.amine = creer_user("amine")
+        self.client.force_login(self.amine)
+
+    def lancer_texte(self):
+        return self.client.post(reverse("repas:ia_texte"), _json.dumps({"texte": "kosksi b l3allouch"}),
+                                content_type="application/json")
+
+    @override_settings(IA_SYNCHRONE=False, USE_CELERY=False, GEMINI_API_KEY="")
+    def test_202_puis_suivi_jusqu_au_resultat(self):
+        with mock.patch("repas.tasks.threading.Thread") as thread:     # le thread n'est pas démarré tout de suite
+            r = self.lancer_texte()
+        self.assertEqual(r.status_code, 202)
+        etat = r.json()
+        self.assertFalse(etat["termine"])
+        self.assertEqual(self.client.get(etat["url_etat"]).json()["termine"], False)
+        thread.call_args.kwargs["target"](*thread.call_args.kwargs["args"])   # le « thread » s'exécute
+        fin = self.client.get(etat["url_etat"]).json()
+        self.assertTrue(fin["termine"])
+        self.assertEqual(len(fin["aliments"]), 2)
+        a = AnalyseRepasIA.objects.get()
+        self.assertEqual((a.statut, a.source), ("TERMINE", "LOCAL"))
+        self.assertIsNotNone(a.duree_ms)
+
+    @override_settings(IA_SYNCHRONE=True)
+    @mock.patch("repas.tasks.ia.depuis_photo", return_value={"aliments": [], "source": "GEMINI"})
+    def test_photo_non_conservee(self, _):
+        img = SimpleUploadedFile("a.jpg", b"jpeg", content_type="image/jpeg")
+        self.client.post(reverse("repas:ia_photo"), {"photo": img})
+        self.assertEqual(AnalyseRepasIA.objects.get().image_b64, "")
+
+    @override_settings(IA_SYNCHRONE=True)
+    def test_suivi_reserve_au_proprietaire(self):
+        a = AnalyseRepasIA.objects.create(utilisateur=creer_user("autre"), mode="TEXTE", texte="x")
+        self.assertEqual(self.client.get(reverse("repas:ia_etat", args=[a.pk])).status_code, 404)
+
+    @override_settings(IA_SYNCHRONE=True)
+    @mock.patch("repas.tasks.ia.depuis_texte", side_effect=RuntimeError("bug"))
+    def test_erreur_inattendue_jamais_bloquee(self, _):
+        r = self.lancer_texte()
+        self.assertEqual(r.status_code, 422)
+        self.assertEqual(AnalyseRepasIA.objects.get().statut, "ECHEC")

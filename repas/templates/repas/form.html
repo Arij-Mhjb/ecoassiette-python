@@ -151,11 +151,16 @@
   const statut = document.getElementById("ia-statut");
   const csrf = document.querySelector("#form-repas [name=csrfmiddlewaretoken]").value;
 
-  function afficherStatut(texte, type) {
+  function afficherStatut(texte, type, progression) {
     statut.className = "ia-statut" + (type ? " ia-" + type : "");
     statut.replaceChildren();
     if (type === "chargement") { const sp = document.createElement("span"); sp.className = "spinner"; statut.append(sp); }
     const t = document.createElement("span"); t.textContent = texte; statut.append(t);
+    if (type === "chargement") {
+      const barre = document.createElement("span"); barre.className = "ia-progression"; barre.setAttribute("aria-hidden", "true");
+      const rempli = document.createElement("span"); rempli.style.width = (progression || 5) + "%"; barre.append(rempli);
+      statut.append(barre);
+    }
   }
 
   function lignesVides() {
@@ -183,17 +188,36 @@
   }
   document.getElementById("id_type_repas").addEventListener("change", function () { this.dataset.touche = "1"; });
 
+  // Réponse illisible (erreur 500, page HTML…) : message clair au lieu de « Unexpected token… »
+  async function lireJson(reponse) {
+    try { return await reponse.json(); }
+    catch (e) { throw new Error("Le serveur a rencontré une erreur (" + reponse.status + "). Réessayez dans un instant ou saisissez le repas à la main."); }
+  }
+
+  // Envoi puis suivi : le serveur répond 202 (analyse en arrière-plan) et on interroge l'état chaque seconde.
+  const DELAI_MAX_MS = 90000;
   async function envoyer(url, options, message) {
     afficherStatut(message, "chargement");
     const debut = Date.now();
     const minuteur = setInterval(function () {
-      afficherStatut(message + " (" + Math.round((Date.now() - debut) / 1000) + " s)", "chargement");
+      const s = Math.round((Date.now() - debut) / 1000);
+      afficherStatut(message + " (" + s + " s)", "chargement", Math.min(95, 8 + s * 4));
     }, 1000);
     try {
       options.headers = Object.assign({ "X-CSRFToken": csrf, "Accept": "application/json" }, options.headers || {});
       const r = await fetch(url, Object.assign({ method: "POST" }, options));
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.erreur || "Erreur " + r.status);
+      let data = await lireJson(r);
+      if (r.status !== 202 && !r.ok) throw new Error(data.erreur || "Erreur " + r.status);
+      while (!data.termine) {
+        if (Date.now() - debut > DELAI_MAX_MS) throw new Error("L'IA met trop de temps à répondre. Réessayez ou saisissez le repas à la main.");
+        await new Promise(function (ok) { setTimeout(ok, 1000); });
+        const suivi = await fetch(data.url_etat, { headers: { "Accept": "application/json" } });
+        if (!suivi.ok) throw new Error("Erreur " + suivi.status);
+        const nouveau = await lireJson(suivi);
+        nouveau.url_etat = nouveau.url_etat || data.url_etat;
+        data = nouveau;
+      }
+      if (data.statut === "ECHEC") throw new Error(data.erreur || "L'analyse a échoué.");
       remplir(data);
     } catch (e) {
       afficherStatut(e.message, "erreur");
