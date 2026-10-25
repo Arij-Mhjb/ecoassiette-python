@@ -10,17 +10,79 @@
 </div>
 
 <section class="card bilan" aria-labelledby="t-bilan">
-  <h2 id="t-bilan">Mon bilan des 7 derniers jours</h2>
-  <p class="bilan-chiffre"><strong>{{ bilan.total }}</strong> kg CO₂e <span class="muted">· {{ bilan.nb_repas }} repas</span></p>
-  {% if bilan.objectif %}
-    <div class="progress-wrap">
-      <span class="small" id="lbl-bilan">{{ bilan.pct }} % de {{ bilan.source }} ({{ bilan.objectif }} kg / semaine)</span>
-      <progress class="{% if bilan.depasse %}progress-alerte{% endif %}" max="100" value="{{ bilan.pct_barre }}" aria-labelledby="lbl-bilan"></progress>
+  <div class="bilan-tete">
+    <h2 id="t-bilan">Mon bilan des 7 derniers jours</h2>
+    {% if bilan.serie %}<span class="serie" title="Jours de suite sous votre objectif journalier">🔥 Série verte : {{ bilan.serie }} jour{{ bilan.serie|pluralize }}</span>{% endif %}
+  </div>
+
+  <div class="bilan-grille">
+    {% with f=bilan.foret %}
+    <figure class="foret-wrap">
+      <svg class="foret{% if bilan.depasse %} foret-alerte{% endif %}" viewBox="0 0 600 200" role="img" aria-labelledby="foret-titre foret-desc">
+        <title id="foret-titre">Ma forêt</title>
+        <desc id="foret-desc">{{ f.sains }} arbres en bonne santé, {{ f.fatigues }} fatigués et {{ f.morts }} morts.</desc>
+        <defs>
+          <linearGradient id="ciel" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" class="ciel-haut"/><stop offset="1" class="ciel-bas"/>
+          </linearGradient>
+        </defs>
+        <rect width="600" height="200" fill="url(#ciel)"/>
+        <circle class="soleil" cx="530" cy="42" r="22"/>
+        <path class="colline" d="M0 150 Q120 118 250 140 T600 132 V200 H0Z"/>
+        <path class="sol" d="M0 172 Q150 160 300 170 T600 166 V200 H0Z"/>
+        {% for a in f.arbres %}
+        <g transform="translate({{ a.x|stringformat:'.1f' }} {{ a.y }}) scale({{ a.echelle|stringformat:'.2f' }})">
+          <g class="arbre arbre-{{ a.etat }}" style="--d: {{ a.delai|stringformat:'.2f' }}s">
+            <rect class="tronc" x="-3" y="-32" width="6" height="32" rx="2"/>
+            {% if a.etat == "mort" %}
+              <path class="branches" d="M0 -30 L-11 -50 M0 -38 L10 -56 M0 -44 L-3 -62"/>
+            {% else %}
+              <g class="feuillage"><circle cy="-54" r="21"/><circle cx="-14" cy="-40" r="15"/><circle cx="14" cy="-40" r="15"/></g>
+              {% if a.etat == "fatigue" %}<ellipse class="feuille-tombe" cx="12" cy="-34" rx="3.2" ry="1.7"/>{% endif %}
+            {% endif %}
+          </g>
+        </g>
+        {% endfor %}
+      </svg>
+      <figcaption>{{ f.message }}</figcaption>
+    </figure>
+    {% endwith %}
+
+    <div class="bilan-chiffres">
+      <p class="bilan-chiffre"><strong>{{ bilan.total }}</strong> kg CO₂e <span class="muted">· {{ bilan.nb_repas }} repas</span></p>
+      {% if bilan.objectif %}
+        <div class="progress-wrap">
+          <span class="small" id="lbl-bilan">{{ bilan.pct }} % de {{ bilan.source }} ({{ bilan.objectif }} kg / semaine)</span>
+          <progress class="{% if bilan.depasse %}progress-alerte{% endif %}" max="100" value="{{ bilan.pct_barre }}" aria-labelledby="lbl-bilan"></progress>
+        </div>
+        {% if bilan.depasse %}<p class="small alerte-texte">Objectif dépassé cette semaine : essayez une alternative végétale pour vos prochains repas.</p>{% endif %}
+      {% endif %}
+      <ul class="equivalences" aria-label="Équivalences">
+        <li><span aria-hidden="true">🚗</span> <strong>{{ bilan.km_voiture }} km</strong> en voiture</li>
+        <li><span aria-hidden="true">🌳</span> <strong>{{ bilan.arbres_semaine }} arbre{{ bilan.arbres_semaine|pluralize }}</strong> pour l'absorber en une semaine</li>
+        {% if bilan.gain_total %}<li><span aria-hidden="true">💚</span> <strong>{{ bilan.gain_total }} kg</strong> évités grâce à vos remplacements</li>{% endif %}
+      </ul>
     </div>
-    {% if bilan.depasse %}
-      <p class="small alerte-texte">Objectif dépassé cette semaine : essayez une alternative végétale pour vos prochains repas.</p>
-    {% endif %}
-  {% endif %}
+  </div>
+
+  <div class="graphe" role="img" aria-label="CO₂ par jour sur les 7 derniers jours : {% for j in bilan.jours %}{{ j.label }} {{ j.kg }} kg{% if not forloop.last %}, {% endif %}{% endfor %}">
+    {% if bilan.ligne_objectif %}<span class="graphe-objectif" style="bottom: {{ bilan.ligne_objectif }}%"><span>objectif/jour {{ bilan.objectif_jour }} kg</span></span>{% endif %}
+    {% for j in bilan.jours %}
+      <div class="graphe-col{% if j.aujourd_hui %} graphe-auj{% endif %}">
+        <span class="graphe-val">{% if j.kg %}{{ j.kg }}{% endif %}</span>
+        <span class="graphe-barre{% if j.depasse %} graphe-depasse{% endif %}" style="height: {{ j.hauteur }}%"></span>
+        <span class="graphe-jour">{{ j.label }}</span>
+      </div>
+    {% endfor %}
+  </div>
+
+  <ul class="badges" aria-label="Badges">
+    {% for b in bilan.badges %}
+      <li class="badge-eco{% if not b.obtenu %} badge-verrou{% endif %}" title="{{ b.desc }}">
+        <span aria-hidden="true">{{ b.icone }}</span> {{ b.nom }}<span class="sr-only"> : {{ b.desc }} ({% if b.obtenu %}obtenu{% else %}à débloquer{% endif %})</span>
+      </li>
+    {% endfor %}
+  </ul>
 </section>
 
 <form method="get" class="filters" role="search" aria-label="Filtrer les repas">

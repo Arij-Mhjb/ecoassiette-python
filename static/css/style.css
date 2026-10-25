@@ -223,3 +223,77 @@ input[type=date], input[type=time] { width: 100%; min-height: 44px; padding: .55
 progress.progress-alerte { accent-color: var(--danger); }
 .alerte-texte { color: var(--danger); font-weight: 600; margin-top: .5rem; }
 .astuce { margin-top: 1rem; padding: .75rem 1rem; background: var(--primary-soft); border-radius: 10px; }
+
+/* ===================== Module repas : bilan, forêt, graphe, badges ===================== */
+.bilan-tete { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.serie { background: #fff1e0; color: #8a4300; border-radius: 999px; padding: .25rem .8rem; font-weight: 700; font-size: .9rem; }
+.bilan-grille { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1.5rem; align-items: center; margin: 1rem 0 1.25rem; }
+@media (max-width: 760px) { .bilan-grille { grid-template-columns: 1fr; } }
+.foret-wrap { margin: 0; }
+.foret { width: 100%; height: auto; border-radius: 14px; display: block; overflow: hidden; }
+.foret figcaption, .foret-wrap figcaption { font-weight: 600; margin-top: .5rem; color: var(--primary-dark); }
+.ciel-haut { stop-color: #cfe9f7; } .ciel-bas { stop-color: #f2f8ec; }
+.foret-alerte .ciel-haut { stop-color: #d9d4c8; } .foret-alerte .ciel-bas { stop-color: #efe7da; }
+.soleil { fill: #f6c945; } .foret-alerte .soleil { fill: #c9b48a; }
+.colline { fill: #b9d9a3; } .sol { fill: #8fbf6f; }
+.foret-alerte .colline { fill: #cdbf95; } .foret-alerte .sol { fill: #b9a77a; }
+.tronc { fill: #7a5232; } .branches { stroke: #6b4a2e; stroke-width: 3; stroke-linecap: round; fill: none; }
+.arbre-sain .feuillage circle { fill: #2f7d3e; } .arbre-sain .feuillage circle:first-child { fill: #3b9a4c; }
+.arbre-fatigue .feuillage circle { fill: #c9a227; } .arbre-fatigue .feuillage circle:first-child { fill: #d8b744; }
+.arbre-mort .tronc { fill: #6b4a2e; }
+.arbre { transform-box: fill-box; transform-origin: 50% 100%; animation: pousse .9s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--d) * .25); }
+.arbre-sain .feuillage, .arbre-fatigue .feuillage { transform-box: fill-box; transform-origin: 50% 100%; animation: balance 4s ease-in-out infinite; animation-delay: var(--d); }
+.feuille-tombe { fill: #c9a227; animation: tombe 3.5s ease-in infinite; animation-delay: var(--d); }
+@keyframes pousse { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes balance { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes tombe { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(14px, 34px) rotate(160deg); opacity: 0; } }
+
+.equivalences { list-style: none; padding: 0; margin: 1rem 0 0; display: grid; gap: .4rem; }
+.equivalences li { background: var(--primary-soft); border-radius: 10px; padding: .45rem .75rem; }
+
+.graphe { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: .6rem; height: 170px; align-items: end;
+  padding: 1.5rem .25rem 0; border-bottom: 2px solid var(--border); margin-bottom: 2.2rem; }
+.graphe-col { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+.graphe-barre { width: min(38px, 70%); min-height: 3px; background: linear-gradient(180deg, #3c8a4b, #2f6b3b); border-radius: 8px 8px 2px 2px;
+  transform-origin: bottom; animation: monte .8s cubic-bezier(.2,.8,.2,1) both; }
+.graphe-depasse { background: linear-gradient(180deg, #e06b5b, #b42318); }
+.graphe-val { font-size: .75rem; font-weight: 700; color: var(--muted); margin-bottom: .2rem; font-variant-numeric: tabular-nums; }
+.graphe-jour { position: absolute; bottom: -1.7rem; font-size: .8rem; color: var(--muted); text-transform: capitalize; }
+.graphe-auj .graphe-jour { color: var(--primary-dark); font-weight: 700; }
+.graphe-objectif { position: absolute; left: 0; right: 0; border-top: 2px dashed #b42318; z-index: 1; pointer-events: none; }
+.graphe-objectif span { position: absolute; left: 0; top: -1.3rem; font-size: .72rem; color: #8f1c13; font-weight: 600; background: var(--surface); padding: 0 .3rem; }
+@keyframes monte { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+.badges { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: .5rem; }
+.badge-eco { border: 1.5px solid var(--primary); background: var(--primary-soft); color: var(--primary-dark); border-radius: 999px; padding: .3rem .8rem; font-weight: 700; font-size: .88rem; }
+.badge-verrou { border-color: var(--border); background: #f2f1ec; color: #4f5550; }
+.badge-verrou > span[aria-hidden] { filter: grayscale(1); opacity: .6; }
+
+/* Simulateur « Et si… » */
+.etsi-carte { border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.1rem; margin-top: .9rem; background: linear-gradient(90deg, #fff 0%, var(--primary-soft) 100%); }
+.etsi-swap { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; font-weight: 700; font-size: 1.05rem; }
+.etsi-swap small { display: block; font-weight: 600; font-size: .78rem; }
+.etsi-avant { color: #8f1c13; }
+.etsi-avant { text-decoration: none; }
+.etsi-avant > span, .etsi-nom-avant { text-decoration: line-through; text-decoration-thickness: 2px; }
+.etsi-apres { color: var(--primary-dark); }
+.etsi-fleche { font-size: 1.4rem; color: var(--primary); animation: glisse 1.6s ease-in-out infinite; }
+@keyframes glisse { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+.etsi-idee { margin: .4rem 0; color: var(--muted); }
+.etsi-gain { margin: 0 0 .75rem; }
+
+/* Remplir avec l'IA */
+.ia-repas { border: 2px dashed var(--primary); border-radius: 14px; padding: 1rem 1.1rem; margin: 0 0 1.5rem; background: var(--primary-soft); }
+.ia-repas h2 { margin-bottom: .2rem; }
+.ia-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: .6rem 0; }
+.ia-bouton { background: var(--surface); cursor: pointer; }
+.ia-bouton:focus-within, label.ia-bouton:focus-visible { outline: 3px solid var(--focus); }
+#ia-photo:focus + .ia-bouton, #ia-photo:focus-visible ~ label { outline: 3px solid var(--focus); }
+.ia-langue { width: auto; min-height: 36px; }
+.ia-texte { display: flex; gap: .5rem; }
+.ia-texte input { flex: 1; }
+.ia-ecoute { background: #b42318 !important; border-color: #b42318 !important; color: #fff !important; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(180,35,24,.45); } 50% { box-shadow: 0 0 0 10px rgba(180,35,24,0); } }
+.ia-apercu { max-width: 220px; border-radius: 12px; margin-top: .6rem; box-shadow: var(--shadow); }
+.table-wrap-plain { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { .arbre, .feuillage, .feuille-tombe, .graphe-barre, .etsi-fleche, .ia-ecoute { animation: none !important; } }

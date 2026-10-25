@@ -84,3 +84,18 @@ class ElementRepas(models.Model):
     def co2_kg(self):
         """quantité (kg) × facteur d'émission de la catégorie."""
         return round(self.quantite_g / 1000 * FACTEURS_CO2.get(self.categorie, 0), 2)
+
+class Remplacement(models.Model):
+    """Trace d'un remplacement fait avec le simulateur « Et si… » (sert aux badges et au gain total)."""
+    utilisateur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="remplacements")
+    repas = models.ForeignKey(Repas, on_delete=models.SET_NULL, null=True, blank=True, related_name="remplacements")
+    ancien_aliment = models.CharField(max_length=100)
+    nouvel_aliment = models.CharField(max_length=100)
+    gain_kg = models.FloatField("CO₂e évité (kg)")
+    cree_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-cree_le"]
+
+    def __str__(self):
+        return f"{self.ancien_aliment} → {self.nouvel_aliment} (−{self.gain_kg} kg)"

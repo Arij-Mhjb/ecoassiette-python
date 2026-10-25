@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ElementRepas, Repas
+from .models import ElementRepas, Remplacement, Repas
 
 
 class ElementRepasInline(admin.TabularInline):
@@ -26,3 +26,9 @@ class ElementRepasAdmin(admin.ModelAdmin):
     list_display = ("aliment", "categorie", "quantite_g", "repas")
     list_filter = ("categorie",)
     search_fields = ("aliment",)
+
+@admin.register(Remplacement)
+class RemplacementAdmin(admin.ModelAdmin):
+    list_display = ("utilisateur", "ancien_aliment", "nouvel_aliment", "gain_kg", "cree_le")
+    list_filter = ("cree_le",)
+    search_fields = ("utilisateur__username", "ancien_aliment", "nouvel_aliment")

@@ -3,7 +3,30 @@
 {% block content %}
 <div class="card" style="max-width:820px;margin-inline:auto">
   <h1>{{ titre }}</h1>
-  <form method="post">
+
+  <section class="ia-repas" aria-labelledby="t-ia-repas">
+    <h2 id="t-ia-repas">✨ Remplir avec l'IA</h2>
+    <p class="muted small">Prenez votre assiette en photo, dictez ou décrivez votre repas (français ou tounsi) : les aliments, les quantités et le CO₂ sont remplis pour vous. Vous pouvez tout corriger avant d'enregistrer.</p>
+    <div class="ia-actions">
+      <input type="file" id="ia-photo" accept="image/*" capture="environment" class="sr-only">
+      <label class="btn btn-ghost ia-bouton" for="ia-photo">📸 Photo de l'assiette</label>
+      <button type="button" class="btn btn-ghost ia-bouton" id="ia-micro" aria-pressed="false">🎙️ Dicter</button>
+      <label class="sr-only" for="ia-langue">Langue de la dictée</label>
+      <select id="ia-langue" class="ia-langue">
+        <option value="ar-TN">Tounsi</option>
+        <option value="fr-FR">Français</option>
+      </select>
+    </div>
+    <div class="ia-texte">
+      <label for="ia-description" class="sr-only">Description du repas</label>
+      <input type="text" id="ia-description" maxlength="500" placeholder="ex. klit kosksi b l3allouch w slata mechouia">
+      <button type="button" class="btn btn-small" id="ia-analyser">Analyser</button>
+    </div>
+    <div id="ia-statut" class="ia-statut" role="status" aria-live="polite"></div>
+    <img id="ia-apercu" class="ia-apercu" alt="Photo du repas analysée" hidden>
+  </section>
+
+  <form method="post" id="form-repas">
     {% csrf_token %}
     {% include "includes/form.html" %}
 
@@ -47,6 +70,8 @@
   .aliment-ligne .field { margin: 0; }
   .aliment-ligne .field-check { align-self: center; margin-top: 1.6rem; }
   .aliment-ligne .co2-live { grid-column: 1 / -1; margin: 0; min-height: 1.4em; }
+  .aliment-ligne.ia-remplie { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); animation: ia-flash .8s ease; }
+  @keyframes ia-flash { from { background: var(--primary-soft); } to { background: transparent; } }
   @media (max-width: 640px) { .aliment-ligne { grid-template-columns: 1fr; } .aliment-ligne .field-check { margin-top: 0; } }
 </style>
 {{ aide_categories|json_script:"aide-categories" }}
@@ -128,6 +153,118 @@
     total.value = n + 1;
     document.getElementById("id_elements-" + n + "-aliment").focus();
   });
+
+  // ------------------------------------------------------------- Remplir avec l'IA
+  const statut = document.getElementById("ia-statut");
+  const csrf = document.querySelector("#form-repas [name=csrfmiddlewaretoken]").value;
+
+  function afficherStatut(texte, type) {
+    statut.className = "ia-statut" + (type ? " ia-" + type : "");
+    statut.replaceChildren();
+    if (type === "chargement") { const sp = document.createElement("span"); sp.className = "spinner"; statut.append(sp); }
+    const t = document.createElement("span"); t.textContent = texte; statut.append(t);
+  }
+
+  function lignesVides() {
+    return [...zone.querySelectorAll(".aliment-ligne")].filter(function (l) {
+      return !champ(l, "aliment").value && !(champ(l, "DELETE") && champ(l, "DELETE").checked);
+    });
+  }
+
+  function remplir(data) {
+    const type = document.getElementById("id_type_repas");
+    if (data.type_repas && type && !type.dataset.touche) type.value = data.type_repas;
+    data.aliments.forEach(function (a) {
+      let l = lignesVides()[0];
+      if (!l) { document.getElementById("ajouter-aliment").click(); l = lignesVides()[0]; }
+      champ(l, "aliment").value = a.aliment;
+      const sel = champ(l, "categorie"); sel.value = a.categorie; sel.dataset.auto = "0";
+      champ(l, "quantite_g").value = a.quantite_g;
+      l.classList.add("ia-remplie");
+      majCo2(l);
+    });
+    const total = data.co2_total_kg.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
+    const src = data.source === "GEMINI" ? "Gemini" : "moteur local";
+    afficherStatut(data.aliments.length + " aliment(s) ajouté(s) · ≈ " + total + " kg CO₂e · " + src + " en " +
+      (data.duree_ms / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + " s. Vérifiez puis enregistrez.", "ok");
+  }
+  document.getElementById("id_type_repas").addEventListener("change", function () { this.dataset.touche = "1"; });
+
+  async function envoyer(url, options, message) {
+    afficherStatut(message, "chargement");
+    const debut = Date.now();
+    const minuteur = setInterval(function () {
+      afficherStatut(message + " (" + Math.round((Date.now() - debut) / 1000) + " s)", "chargement");
+    }, 1000);
+    try {
+      options.headers = Object.assign({ "X-CSRFToken": csrf, "Accept": "application/json" }, options.headers || {});
+      const r = await fetch(url, Object.assign({ method: "POST" }, options));
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.erreur || "Erreur " + r.status);
+      remplir(data);
+    } catch (e) {
+      afficherStatut(e.message, "erreur");
+    } finally {
+      clearInterval(minuteur);
+    }
+  }
+
+  // Photo : réduite dans le navigateur (≤ 1280 px) pour un envoi rapide
+  async function reduire(fichier) {
+    try {
+      const img = await createImageBitmap(fichier);
+      const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      return await new Promise(function (ok) { c.toBlob(ok, "image/jpeg", 0.85); });
+    } catch (e) { return fichier; }
+  }
+  document.getElementById("ia-photo").addEventListener("change", async function () {
+    const f = this.files[0];
+    if (!f) return;
+    const blob = await reduire(f);
+    const apercu = document.getElementById("ia-apercu");
+    apercu.src = URL.createObjectURL(blob); apercu.hidden = false;
+    const fd = new FormData(); fd.append("photo", blob, "repas.jpg");
+    envoyer("{% url 'repas:ia_photo' %}", { body: fd }, "Analyse de la photo par Gemini…");
+    this.value = "";
+  });
+
+  function analyserTexte() {
+    const t = document.getElementById("ia-description").value.trim();
+    if (!t) { afficherStatut("Décrivez d'abord votre repas.", "erreur"); return; }
+    envoyer("{% url 'repas:ia_texte' %}", { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texte: t }) },
+      "Analyse de la description…");
+  }
+  document.getElementById("ia-analyser").addEventListener("click", analyserTexte);
+  document.getElementById("ia-description").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); analyserTexte(); }
+  });
+
+  // Dictée (Web Speech API, Chrome / Edge)
+  const Reco = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micro = document.getElementById("ia-micro");
+  if (!Reco) {
+    micro.disabled = true; micro.title = "Dictée non disponible dans ce navigateur (utilisez Chrome ou Edge)";
+  } else {
+    let reco = null;
+    micro.addEventListener("click", function () {
+      if (reco) { reco.stop(); return; }
+      reco = new Reco();
+      reco.lang = document.getElementById("ia-langue").value;
+      reco.interimResults = true;
+      const champTexte = document.getElementById("ia-description");
+      reco.onstart = function () { micro.setAttribute("aria-pressed", "true"); micro.classList.add("ia-ecoute"); afficherStatut("Je vous écoute… parlez de votre repas.", "chargement"); };
+      reco.onresult = function (ev) { champTexte.value = [...ev.results].map(function (r) { return r[0].transcript; }).join(" "); };
+      reco.onerror = function (ev) { afficherStatut(ev.error === "not-allowed" ? "Micro refusé : autorisez-le dans le navigateur." : "Dictée interrompue (" + ev.error + ").", "erreur"); };
+      reco.onend = function () {
+        micro.setAttribute("aria-pressed", "false"); micro.classList.remove("ia-ecoute"); reco = null;
+        if (champTexte.value.trim()) analyserTexte();
+      };
+      reco.start();
+    });
+  }
 })();
 </script>
 {% endblock %}

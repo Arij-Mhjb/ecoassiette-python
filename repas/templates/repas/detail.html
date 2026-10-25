@@ -13,21 +13,47 @@
     <a class="btn btn-danger" href="{% url 'repas:supprimer' repas.pk %}">Supprimer</a>
   </div>
 </div>
+
 <section class="card" aria-labelledby="t-aliments">
   <h2 id="t-aliments">Aliments</h2>
-  <table class="table compact">
-    <thead><tr><th scope="col">Aliment</th><th scope="col">Catégorie</th><th scope="col">Quantité</th><th scope="col">CO₂e</th></tr></thead>
-    <tbody>
-      {% for e in repas.elements.all %}
-      <tr><th scope="row">{{ e.aliment|capfirst }}</th><td>{{ e.get_categorie_display }}</td><td>{{ e.quantite_g }} g</td><td>{{ e.co2_kg }} kg</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap-plain">
+    <table class="table compact">
+      <thead><tr><th scope="col">Aliment</th><th scope="col">Catégorie</th><th scope="col">Quantité</th><th scope="col">CO₂e</th></tr></thead>
+      <tbody>
+        {% for e, s in lignes %}
+        <tr><th scope="row">{{ e.aliment|capfirst }}</th><td>{{ e.get_categorie_display }}</td><td>{{ e.quantite_g }} g</td><td>{{ e.co2_kg }} kg</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% with top=repas.element_le_plus_emetteur %}
     {% if top and repas.niveau_co2 != "faible" %}
-      <p class="astuce"><strong>Astuce :</strong> « {{ top.aliment }} » représente la plus grande part de l'empreinte de ce repas.
-        Consultez <a href="{% url 'users:profil' %}">votre analyse IA</a> pour une alternative végétale.</p>
+      <p class="astuce"><strong>Astuce :</strong> « {{ top.aliment }} » représente la plus grande part de l'empreinte de ce repas.</p>
     {% endif %}
   {% endwith %}
 </section>
+
+{% if a_suggestions or repas.niveau_co2 == "faible" %}
+<section class="card etsi" aria-labelledby="t-etsi">
+  <h2 id="t-etsi">🔁 Et si… ?</h2>
+  {% if a_suggestions %}<p class="muted">Simulez un remplacement végétal et voyez l'impact avant de décider.</p>{% endif %}
+  {% for e, s in lignes %}{% if s %}
+    <div class="etsi-carte">
+      <div class="etsi-swap">
+        <span class="etsi-avant"><span class="etsi-nom-avant">{{ e.aliment|capfirst }}</span><small>{{ e.co2_kg }} kg</small></span>
+        <span class="etsi-fleche" aria-hidden="true">→</span><span class="sr-only">remplacé par</span>
+        <span class="etsi-apres">{{ s.nom|capfirst }}<small>{{ s.apres }} kg</small></span>
+      </div>
+      <p class="etsi-idee">{{ s.idee }}</p>
+      <p class="etsi-gain"><strong>−{{ s.gain }} kg CO₂e</strong> sur ce repas ·
+        une fois par semaine, c'est <strong>−{{ s.gain_mois }} kg/mois</strong> (−{{ s.gain_an }} kg/an).</p>
+      <form method="post" action="{% url 'repas:remplacer' repas.pk e.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-small">Appliquer ce remplacement<span class="sr-only"> : {{ e.aliment }} par {{ s.nom }}</span></button>
+      </form>
+    </div>
+  {% endif %}{% endfor %}
+  {% if repas.niveau_co2 == "faible" %}<p class="astuce">Bravo, ce repas est déjà très sobre en carbone 🌿</p>{% endif %}
+</section>
+{% endif %}
 {% endblock %}
