@@ -1,12 +1,42 @@
 from decimal import Decimal, ROUND_HALF_UP
 from types import SimpleNamespace
 
-from .models import AlternativeVegetale, FacteurImpact
+from django.db.models import Sum
+from django.db import transaction
+from django.utils import timezone
+
+from .models import AlternativeVegetale, FacteurImpact, PreuveRepas, TransactionPoints
 
 
 ZERO = Decimal("0")
 Q2 = Decimal("0.01")
 RANG_RISQUE = {"FAIBLE": 1, "MOYEN": 2, "ELEVE": 3}
+
+
+def solde_points(utilisateur):
+    return TransactionPoints.objects.filter(utilisateur=utilisateur).aggregate(
+        total=Sum("montant")
+    )["total"] or 0
+
+
+def crediter_preuve(preuve):
+    """Approuve et crédite une preuve exactement une fois. Retourne (créé, points)."""
+    with transaction.atomic():
+        preuve = PreuveRepas.objects.select_for_update().select_related("repas").get(pk=preuve.pk)
+        transaction_existante = TransactionPoints.objects.filter(preuve=preuve).first()
+        if transaction_existante:
+            return False, transaction_existante.montant
+        co2 = sum(a.co2_evite for a in preuve.repas.alternatives_adoptees.all())
+        points = 50 + min(150, int(co2 * 10))
+        preuve.statut = PreuveRepas.Statut.APPROUVEE
+        preuve.points_attribues = points
+        preuve.traitee_le = timezone.now()
+        preuve.save(update_fields=["statut", "points_attribues", "traitee_le"])
+        TransactionPoints.objects.create(
+            utilisateur=preuve.utilisateur, montant=points,
+            motif=f"Preuve validée pour le repas #{preuve.repas_id}", preuve=preuve,
+        )
+        return True, points
 
 
 def _arrondir(valeur):

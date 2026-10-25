@@ -12,10 +12,13 @@ from repas.models import ElementRepas, Repas
 
 from users.ai import ErreurIA
 
-from .forms import IngredientExtraitFormSet, RecetteAssistantForm
-from .models import AlternativeAdoptee, ExtractionRecetteIA
-from .recipe_ai import extraire_recette
-from .services import analyser_ingredients, analyser_repas, proposer_alternative
+from .forms import GardeMangerForm, IngredientExtraitFormSet, PreuveRepasForm, RecetteAssistantForm
+from .models import (
+    AlternativeAdoptee, CommandeRecompense, ExtractionRecetteIA, PreuveRepas,
+    ProduitRecompense, TransactionPoints,
+)
+from .recipe_ai import extraire_recette, proposer_recettes_garde_manger
+from .services import analyser_ingredients, analyser_repas, proposer_alternative, solde_points
 
 
 @login_required
@@ -56,7 +59,22 @@ def _lignes_apercu(formset, utilisateur):
 @login_required
 def assistant_recette(request):
     apercu = None
+    recettes_garde_manger = None
+    garde_form = GardeMangerForm()
     if request.method == "POST":
+        if request.POST.get("mode") == "garde_manger":
+            garde_form = GardeMangerForm(request.POST)
+            form = RecetteAssistantForm()
+            if garde_form.is_valid():
+                recettes_garde_manger, source_garde = proposer_recettes_garde_manger(
+                    garde_form.cleaned_data["ingredients_maison"], getattr(request.user, "profil", None)
+                )
+            else:
+                source_garde = None
+            return render(request, "impact/assistant_recette.html", {
+                "form": form, "apercu": None, "garde_form": garde_form,
+                "recettes_garde_manger": recettes_garde_manger, "source_garde": source_garde,
+            })
         form = RecetteAssistantForm(request.POST)
         if form.is_valid():
             try:
@@ -75,7 +93,68 @@ def assistant_recette(request):
                 }
     else:
         form = RecetteAssistantForm()
-    return render(request, "impact/assistant_recette.html", {"form": form, "apercu": apercu})
+    return render(request, "impact/assistant_recette.html", {
+        "form": form, "apercu": apercu, "garde_form": garde_form,
+        "recettes_garde_manger": recettes_garde_manger,
+    })
+
+
+@login_required
+def portefeuille(request):
+    produits = ProduitRecompense.objects.filter(
+        statut=ProduitRecompense.Statut.PUBLIE, stock__gt=0, sponsor__actif=True
+    ).select_related("sponsor")
+    return render(request, "impact/portefeuille.html", {
+        "solde": solde_points(request.user), "produits": produits,
+        "preuves": PreuveRepas.objects.filter(utilisateur=request.user)[:10],
+        "transactions": TransactionPoints.objects.filter(utilisateur=request.user)[:15],
+        "commandes": CommandeRecompense.objects.filter(utilisateur=request.user).select_related("produit")[:10],
+    })
+
+
+@login_required
+def soumettre_preuve(request):
+    if request.method == "POST":
+        form = PreuveRepasForm(request.POST, request.FILES, utilisateur=request.user)
+        if form.is_valid():
+            preuve = form.save(commit=False)
+            preuve.utilisateur = request.user
+            preuve.type_media = form.type_media
+            preuve.save()
+            messages.success(request, "Preuve envoyée. Les points seront crédités après validation administrative.")
+            return redirect("impact:portefeuille")
+    else:
+        form = PreuveRepasForm(utilisateur=request.user)
+    return render(request, "impact/soumettre_preuve.html", {"form": form})
+
+
+@login_required
+@require_POST
+def acheter_produit(request, produit_id):
+    with transaction.atomic():
+        request.user.__class__.objects.select_for_update().get(pk=request.user.pk)
+        produit = get_object_or_404(
+            ProduitRecompense.objects.select_for_update(), pk=produit_id,
+            statut=ProduitRecompense.Statut.PUBLIE, sponsor__actif=True,
+        )
+        if produit.stock < 1:
+            messages.error(request, "Ce produit n'est plus en stock.")
+            return redirect("impact:portefeuille")
+        if solde_points(request.user) < produit.cout_points:
+            messages.error(request, "Votre solde de points est insuffisant.")
+            return redirect("impact:portefeuille")
+        CommandeRecompense.objects.create(
+            utilisateur=request.user, produit=produit, points_utilises=produit.cout_points,
+            prix_remise=produit.prix_remise,
+        )
+        TransactionPoints.objects.create(
+            utilisateur=request.user, montant=-produit.cout_points,
+            motif=f"Récompense : {produit.nom}",
+        )
+        produit.stock -= 1
+        produit.save(update_fields=["stock"])
+    messages.success(request, "Récompense réservée. Le sponsor vous contactera pour la remise du produit.")
+    return redirect("impact:portefeuille")
 
 
 @login_required

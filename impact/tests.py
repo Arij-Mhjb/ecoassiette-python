@@ -1,14 +1,25 @@
 from decimal import Decimal
+import shutil
+import tempfile
+from unittest import mock
 
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from repas.models import ElementRepas, Repas
+from users.ai import ErreurIA
 from users.models import Utilisateur
 
-from .models import AlternativeAdoptee, AlternativeVegetale, ExtractionRecetteIA, FacteurImpact
+from .admin import approuver_preuves
+from .forms import PreuveRepasForm
+from .models import (
+    AlternativeAdoptee, AlternativeVegetale, CommandeRecompense, ExtractionRecetteIA,
+    FacteurImpact, PreuveRepas, ProduitRecompense, Sponsor, TransactionPoints,
+)
 from .recipe_ai import extraire_localement
+from .services import crediter_preuve, solde_points
 from .services import analyser_repas
 
 
@@ -164,3 +175,140 @@ class AssistantRecetteTest(TestCase):
         })
         self.assertEqual(reponse.status_code, 400)
         self.assertFalse(Repas.objects.filter(utilisateur=self.user).exists())
+
+    @mock.patch("impact.recipe_ai.appeler_gemini", side_effect=Exception("ne doit pas sortir"))
+    def test_garde_manger_propose_des_recettes(self, gemini):
+        # ErreurIA est normalement levée par le fournisseur ; ce test du repli
+        # utilise une vraie absence de clé plutôt que le mock générique.
+        gemini.side_effect = ErreurIA("pas de clé")
+        reponse = self.client.post(reverse("impact:assistant_recette"), {
+            "mode": "garde_manger", "ingredients_maison": "tomates, courgette, cajou et tofu et oignions",
+        })
+        self.assertEqual(reponse.status_code, 200)
+        self.assertContains(reponse, "Poêlée végétale du garde-manger")
+        self.assertContains(reponse, "150 g de tofu")
+        self.assertContains(reponse, "60 g d&#x27;oignions", html=False)
+        self.assertContains(reponse, "Analyser et personnaliser ce repas")
+
+    @mock.patch("impact.recipe_ai.appeler_gemini", side_effect=ErreurIA("pas de clé"))
+    def test_recette_garde_manger_est_reanalysable(self, gemini):
+        reponse = self.client.post(reverse("impact:assistant_recette"), {
+            "type_repas": "DEJEUNER", "date": timezone.localdate().isoformat(),
+            "note": "Poêlée", "texte": "120 g de tomates, 180 g de courgette, 25 g de cajou, 150 g de tofu, 60 g de oignons",
+        })
+        self.assertEqual(reponse.status_code, 200)
+        self.assertContains(reponse, "Vérifiez les ingrédients extraits")
+        self.assertContains(reponse, 'value="150"')
+
+
+class RecompensesTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.media_tmp = tempfile.mkdtemp()
+        cls.override_media = override_settings(MEDIA_ROOT=cls.media_tmp)
+        cls.override_media.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.override_media.disable()
+        shutil.rmtree(cls.media_tmp, ignore_errors=True)
+        super().tearDownClass()
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = Utilisateur.objects.create_user(
+            username="recompense", email="reward@test.tn", password="MotDePasse!42", email_verifie=True
+        )
+        cls.repas = Repas.objects.create(utilisateur=cls.user, type_repas="DINER")
+        ElementRepas.objects.create(
+            repas=cls.repas, aliment="pois chiches", categorie="LEGUMINEUSE", quantite_g=200
+        )
+        cls.alternative = AlternativeVegetale.objects.get(aliment_source="agneau")
+        AlternativeAdoptee.objects.create(
+            utilisateur=cls.user, repas=cls.repas, alternative=cls.alternative,
+            aliment_original="agneau", remplacement="pois chiches", co2_evite="6.82",
+            eau_economisee="2650", terres_preservees="31.3",
+        )
+        cls.sponsor = Sponsor.objects.create(nom="Sponsor végétal", site_web="https://example.com")
+        cls.produit = ProduitRecompense.objects.create(
+            sponsor=cls.sponsor, nom="Panier végétal", description="Produits végétaux",
+            prix_public="20", remise_pourcent=60, cout_points=200, stock=2,
+            url_source="https://example.com/produit", statut="PUBLIE",
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def _preuve(self):
+        return PreuveRepas.objects.create(
+            utilisateur=self.user, repas=self.repas, type_media="IMAGE",
+            media=SimpleUploadedFile("repas.jpg", b"image-test", content_type="image/jpeg"),
+        )
+
+    def test_soumission_preuve_pour_repas_vegetalise(self):
+        fichier = SimpleUploadedFile("preuve.jpg", b"image-test", content_type="image/jpeg")
+        reponse = self.client.post(reverse("impact:soumettre_preuve"), {
+            "repas": self.repas.pk, "media": fichier,
+        })
+        self.assertRedirects(reponse, reverse("impact:portefeuille"))
+        self.assertEqual(PreuveRepas.objects.get().statut, "EN_ATTENTE")
+
+    def test_selecteur_affiche_nom_type_date_et_tous_repas_sans_preuve(self):
+        repas_simple = Repas.objects.create(
+            utilisateur=self.user, type_repas="DEJEUNER", note="Salade maison",
+            date=timezone.localdate(),
+        )
+        ElementRepas.objects.create(
+            repas=repas_simple, aliment="tomates", categorie="FRUIT_LEGUME", quantite_g=120
+        )
+        form = PreuveRepasForm(utilisateur=self.user)
+        ids = set(form.fields["repas"].queryset.values_list("pk", flat=True))
+        self.assertEqual(ids, {self.repas.pk, repas_simple.pk})
+        self.assertIn("Salade maison — Déjeuner", form.fields["repas"].label_from_instance(repas_simple))
+
+        PreuveRepas.objects.create(
+            utilisateur=self.user, repas=repas_simple, type_media="IMAGE", media="preuves/test.jpg"
+        )
+        form = PreuveRepasForm(utilisateur=self.user)
+        self.assertNotIn(repas_simple.pk, form.fields["repas"].queryset.values_list("pk", flat=True))
+
+    def test_validation_admin_credite_une_seule_transaction(self):
+        preuve = self._preuve()
+
+        class AdminMuet:
+            def message_user(self, *args, **kwargs):
+                pass
+
+        approuver_preuves(AdminMuet(), None, PreuveRepas.objects.filter(pk=preuve.pk))
+        preuve.refresh_from_db()
+        self.assertEqual(preuve.statut, "APPROUVEE")
+        self.assertGreater(preuve.points_attribues, 50)
+        self.assertEqual(TransactionPoints.objects.filter(preuve=preuve).count(), 1)
+        approuver_preuves(AdminMuet(), None, PreuveRepas.objects.filter(pk=preuve.pk))
+        self.assertEqual(TransactionPoints.objects.filter(preuve=preuve).count(), 1)
+
+    def test_approbation_manuelle_credite_le_portefeuille(self):
+        preuve = self._preuve()
+        preuve.statut = PreuveRepas.Statut.APPROUVEE
+        preuve.save(update_fields=["statut"])
+        creee, points = crediter_preuve(preuve)
+        self.assertTrue(creee)
+        self.assertEqual(solde_points(self.user), points)
+        creee_encore, _ = crediter_preuve(preuve)
+        self.assertFalse(creee_encore)
+
+    def test_achat_debite_points_et_stock(self):
+        TransactionPoints.objects.create(utilisateur=self.user, montant=500, motif="Test")
+        reponse = self.client.post(reverse("impact:acheter_produit", args=[self.produit.pk]))
+        self.assertRedirects(reponse, reverse("impact:portefeuille"))
+        self.produit.refresh_from_db()
+        self.assertEqual(self.produit.stock, 1)
+        self.assertEqual(solde_points(self.user), 300)
+        self.assertTrue(CommandeRecompense.objects.filter(utilisateur=self.user, produit=self.produit).exists())
+
+    def test_achat_refuse_si_solde_insuffisant(self):
+        self.client.post(reverse("impact:acheter_produit", args=[self.produit.pk]))
+        self.produit.refresh_from_db()
+        self.assertEqual(self.produit.stock, 2)
+        self.assertFalse(CommandeRecompense.objects.exists())
