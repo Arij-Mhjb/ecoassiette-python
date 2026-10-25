@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{% if object %}Modifier{% else %}Publier{% endif %} un surplus{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'food_rescue:liste' %}">{% icon "arrow-left" %}Food Rescue</a>
+<div class="page-head"><h1>{% if object %}Modifier le surplus{% else %}Publier un surplus{% endif %}</h1><p class="muted">Les résultats IA sont des suggestions : vérifiez toujours la catégorie, les allergènes et les conditions de conservation.</p></div>
+<form method="post" enctype="multipart/form-data" class="card narrow-wide">
+  {% csrf_token %}
+  {% include "includes/form.html" %}
+  <div class="bandeau-info" role="note">{% icon "info" %}<span>L'IA ne certifie jamais la sécurité sanitaire d'un aliment. Ne publiez pas un produit dont vous doutez.</span></div>
+  <div class="form-actions"><button class="btn" type="submit">{% icon "check" %}{% if object %}Enregistrer{% else %}Publier et analyser{% endif %}</button><a class="btn btn-ghost" href="{% url 'food_rescue:liste' %}">Annuler</a></div>
+</form>
+{% endblock %}
+
