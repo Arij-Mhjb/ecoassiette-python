@@ -10,7 +10,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Avg, Count, Q
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -31,6 +31,7 @@ from .emails import (
     notifier_changement_mdp, notifier_demande_traitee,
 )
 from .models import AnalyseProfilIA, DemandeNutritionniste, Invitation, JournalAudit, ProfilAlimentaire, Recommandation
+from .export_pdf import generer_pdf
 from .securite import deconnecter_autres_appareils, journaliser
 from .permissions import PermissionOu403Mixin, citoyen_requis
 from .tasks import lancer_analyse
@@ -46,6 +47,8 @@ def inscription(request):
     form = InscriptionForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
+        journaliser(request, JournalAudit.Action.INSCRIPTION, cible=user.username,
+                    details=f"rôle demandé : {'nutritionniste' if form.est_nutritionniste else 'citoyen'}", acteur=user)
         if form.est_nutritionniste:
             notifier_admins_demande(request, form.demande)
             messages.info(request, "Votre demande de statut nutritionniste a été transmise : un administrateur va "
@@ -83,6 +86,7 @@ def confirmer_email(request, uidb64, token):
         return render(request, "users/lien_invalide.html", status=400)
     user.email_verifie = True
     user.save(update_fields=["email_verifie"])
+    journaliser(request, JournalAudit.Action.EMAIL_CONFIRME, cible=user.email, acteur=user)
     request.session.pop("email_a_confirmer", None)
     login(request, user, backend="users.backends.EmailOuUsernameBackend")
     messages.success(request, f"Adresse confirmée, bienvenue {user.first_name or user.username} ! "
@@ -129,6 +133,8 @@ class ReinitialisationConfirmView(auth_views.PasswordResetConfirmView):
         if not user.email_verifie:  # cliquer sur le lien prouve aussi la possession de l'e-mail
             user.email_verifie = True
             user.save(update_fields=["email_verifie"])
+        journaliser(self.request, JournalAudit.Action.MDP_REINITIALISE, cible=user.username,
+                    details="via le lien « mot de passe oublié »", acteur=user)
         notifier_changement_mdp(self.request, user)
         return reponse
 
@@ -174,6 +180,7 @@ def demande_nutritionniste(request):
         demande = form.save(commit=False)
         demande.utilisateur = user
         demande.save()
+        journaliser(request, JournalAudit.Action.DEMANDE_ENVOYEE, cible=user.username, details=f"n° {demande.numero_ordre}")
         notifier_admins_demande(request, demande)
         messages.success(request, "Demande envoyée : vous recevrez un e-mail dès qu'un administrateur l'aura examinée.")
         return redirect("users:profil")
@@ -189,6 +196,9 @@ def modifier_infos(request):
     if request.method == "POST":
         if form.is_valid():
             form.save()
+            if form.changed_data:
+                journaliser(request, JournalAudit.Action.INFOS_MODIFIEES, cible=request.user.username,
+                            details="champs : " + ", ".join(str(form.fields[c].label or c) for c in form.changed_data))
             messages.success(request, "Informations personnelles mises à jour.")
             return redirect("users:profil")
         messages.error(request, "Le formulaire contient des erreurs.")
@@ -203,6 +213,9 @@ def modifier_profil(request):
     if request.method == "POST":
         if form.is_valid():
             form.save()
+            if form.changed_data:
+                journaliser(request, JournalAudit.Action.PROFIL_MODIFIE, cible=request.user.username,
+                            details="champs : " + ", ".join(str(form.fields[c].label or c) for c in form.changed_data))
             messages.success(request, "Profil alimentaire enregistré.")
             return redirect("users:profil")
         messages.error(request, "Le formulaire contient des erreurs.")
@@ -232,6 +245,7 @@ class ChangementMotDePasseView(LoginRequiredMixin, auth_views.PasswordChangeView
 
     def form_valid(self, form):
         reponse = super().form_valid(form)
+        journaliser(self.request, JournalAudit.Action.MDP_MODIFIE, cible=self.request.user.username)
         notifier_changement_mdp(self.request, self.request.user)
         messages.success(self.request, "Mot de passe modifié. Un e-mail de confirmation vous a été envoyé.")
         return reponse
@@ -262,6 +276,8 @@ def analyse_lancer(request):
         cree_le__gte=timezone.now() - timezone.timedelta(minutes=2),
     ).first()
     analyse = en_cours or lancer_analyse(p)
+    if not en_cours:
+        journaliser(request, JournalAudit.Action.ANALYSE_IA, cible=request.user.username)
     return JsonResponse(_analyse_json(analyse), status=202)
 
 
@@ -404,6 +420,12 @@ class UtilisateurDetailView(AdminRequisMixin, DetailView):
     model = User
     template_name = "users/admin/detail.html"
     context_object_name = "cible"
+
+    def get_context_data(self, **kw):
+        ctx = super().get_context_data(**kw)
+        if self.request.user.has_perm("users.voir_journal"):
+            ctx["activite"] = filtre_utilisateur(JournalAudit.objects.all(), self.object)[:10]
+        return ctx
 
 
 class UtilisateurCreateView(AdminRequisMixin, CreateView):
@@ -704,7 +726,7 @@ def _date(d):
 
 @login_required
 def export_donnees(request):
-    """RGPD (art. 15 et 20) : toutes les données personnelles, dans un format structuré et lisible par machine."""
+    """RGPD (art. 15 et 20) : toutes les données personnelles. PDF lisible par défaut, JSON avec ?format=json."""
     u = request.user
     p = u.profil
     donnees = {
@@ -738,25 +760,49 @@ def export_donnees(request):
         "historique_connexions": [{"date": _date(c.cree_le), "reussie": c.succes, "ip_masquee": c.ip,
                                    "navigateur": c.navigateur} for c in u.connexions.all()[:100]],
     }
-    journaliser(request, JournalAudit.Action.EXPORT_DONNEES, cible=u.username)
+    nom = f"ecoassiette-mes-donnees-{u.username}-{timezone.localdate():%Y%m%d}"
+    if request.GET.get("format") != "json":       # par défaut : document PDF lisible
+        journaliser(request, JournalAudit.Action.EXPORT_DONNEES, cible=u.username, details="format PDF")
+        reponse = HttpResponse(generer_pdf(u), content_type="application/pdf")
+        reponse["Content-Disposition"] = f'attachment; filename="{nom}.pdf"'
+        return reponse
+    journaliser(request, JournalAudit.Action.EXPORT_DONNEES, cible=u.username, details="format JSON")
     reponse = JsonResponse(donnees, json_dumps_params={"ensure_ascii": False, "indent": 2})
-    reponse["Content-Disposition"] = f'attachment; filename="ecoassiette-mes-donnees-{u.username}-{timezone.localdate():%Y%m%d}.json"'
+    reponse["Content-Disposition"] = f'attachment; filename="{nom}.json"'
     return reponse
 
 
 # ============================================================== journal d'audit (admin)
+def filtre_utilisateur(qs, u):
+    """Entrées où l'utilisateur est l'auteur OU la cible (y compris les connexions échouées par e-mail)."""
+    cibles = [u.username, u.email.lower()] if u.email else [u.username]
+    return qs.filter(Q(acteur=u) | Q(cible__in=cibles) | Q(cible__iexact=u.username))
+
+
 class JournalView(PermissionOu403Mixin, ListView):
+    """Journal d'audit de TOUS les comptes : connexions, activité des citoyens et nutritionnistes, administration."""
     permission_required = "users.voir_journal"
     template_name = "users/admin/journal.html"
     context_object_name = "entrees"
     paginate_by = 25
 
     def get_queryset(self):
-        qs = JournalAudit.objects.all()
-        action = self.request.GET.get("action")
+        qs = JournalAudit.objects.select_related("acteur")
+        g = self.request.GET
+        self.categorie = g.get("type", "")
+        if self.categorie in JournalAudit.CATEGORIES:
+            qs = qs.filter(action__in=JournalAudit.CATEGORIES[self.categorie][1])
+        action = g.get("action")
         if action in JournalAudit.Action.values:
             qs = qs.filter(action=action)
-        q = (self.request.GET.get("q") or "").strip()
+        self.cible_utilisateur = None
+        if g.get("u"):
+            self.cible_utilisateur = User.objects.filter(username=g["u"]).first()
+            qs = filtre_utilisateur(qs, self.cible_utilisateur) if self.cible_utilisateur else qs.none()
+        role = g.get("role")
+        if role in User.Role.values:
+            qs = qs.filter(acteur__role=role)
+        q = (g.get("q") or "").strip()
         if q:
             qs = qs.filter(Q(acteur_nom__icontains=q) | Q(cible__icontains=q) | Q(details__icontains=q))
         return qs
@@ -765,6 +811,17 @@ class JournalView(PermissionOu403Mixin, ListView):
         ctx = super().get_context_data(**kw)
         params = self.request.GET.copy()
         params.pop("page", None)
-        ctx.update(actions=JournalAudit.Action.choices, action_active=self.request.GET.get("action", ""),
-                   q=self.request.GET.get("q", ""), params=params.urlencode())
+        depuis = timezone.now() - timezone.timedelta(hours=24)
+        recent = JournalAudit.objects.filter(cree_le__gte=depuis)
+        ctx.update(
+            actions=JournalAudit.Action.choices, action_active=self.request.GET.get("action", ""),
+            categories=[(k, v[0]) for k, v in JournalAudit.CATEGORIES.items()], categorie_active=self.categorie,
+            roles=User.Role.choices, role_active=self.request.GET.get("role", ""),
+            cible_utilisateur=self.cible_utilisateur, u=self.request.GET.get("u", ""),
+            q=self.request.GET.get("q", ""), params=params.urlencode(),
+            kpi_actions=recent.count(),
+            kpi_actifs=recent.exclude(acteur=None).values("acteur").distinct().count(),
+            kpi_connexions=recent.filter(action=JournalAudit.Action.CONNEXION).count(),
+            kpi_echecs=recent.filter(action=JournalAudit.Action.CONNEXION_ECHOUEE).count(),
+        )
         return ctx

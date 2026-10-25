@@ -125,6 +125,7 @@
       <li><a href="{% url 'users:admin_demandes' %}">{% icon "chef-hat" %}Demandes nutritionnistes</a></li>
       <li><a href="{% url 'users:admin_invitations' %}">{% icon "mail" %}Inviter une nutritionniste</a></li>
       <li><a href="{% url 'users:admin_stats' %}">{% icon "chart" %}Statistiques</a></li>
+      <li><a href="{% url 'repas:labo' %}">{% icon "sparkles" %}Laboratoire IA</a></li>
     </ul>
   </section>
   <section class="card" aria-labelledby="titre-actions">
@@ -150,7 +151,7 @@
     <li><a href="{% url 'users:modifier_infos' %}">{% icon "edit" %}Modifier mes informations personnelles</a></li>
     <li><a href="{% url 'users:password_change' %}">{% icon "lock" %}Changer mon mot de passe</a></li>
     <li><a href="{% url 'users:securite' %}">{% icon "shield" %}Sécurité & connexions</a></li>
-    <li><a href="{% url 'users:export_donnees' %}" download>{% icon "box" %}Télécharger mes données</a></li>
+    <li><a href="{% url 'users:export_donnees' %}" download>{% icon "box" %}Télécharger mes données (PDF)</a></li>
     {% if user.role == "CITOYEN" and not demande or user.role == "CITOYEN" and demande.statut == "ACCEPTEE" %}<li><a href="{% url 'users:demande_nutritionniste' %}">{% icon "chef-hat" %}Je suis nutritionniste</a></li>{% endif %}
     <li><a class="danger-link" href="{% url 'users:supprimer_compte' %}">{% icon "trash" %}Supprimer mon compte</a></li>
   </ul>

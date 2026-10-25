@@ -27,11 +27,13 @@
   <section class="card" aria-labelledby="t-donnees">
     <h2 id="t-donnees"><span class="h-ico h-ico-blue">{% icon "box" %}</span>Mes données (RGPD)</h2>
     <p class="muted small">Téléchargez toutes vos données : compte, profil alimentaire, repas, analyses IA, conseils reçus et connexions,
-      dans un fichier JSON réutilisable (droit d'accès et à la portabilité).</p>
+      dans un document PDF (droit d'accès, RGPD article 15).</p>
     <div class="form-actions" style="margin-top:0">
-      <a class="btn" href="{% url 'users:export_donnees' %}" download>{% icon "arrow" %}Télécharger mes données</a>
+      <a class="btn" href="{% url 'users:export_donnees' %}" download>{% icon "arrow" %}Télécharger mes données (PDF)</a>
       <a class="btn btn-danger" href="{% url 'users:supprimer_compte' %}">{% icon "trash" %}Supprimer mon compte</a>
     </div>
+    <p class="small muted" style="margin:.8rem 0 0">Besoin de transférer vos données vers un autre service ?
+      <a href="{% url 'users:export_donnees' %}?format=json" download>Format JSON (portabilité, article 20)</a></p>
   </section>
 </div>
 

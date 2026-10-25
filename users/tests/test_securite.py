@@ -147,7 +147,7 @@ class ExportRGPDTest(BaseTest):
         ElementRepas.objects.create(repas=repas, aliment="couscous", categorie="FECULENT", quantite_g=300)
         Recommandation.objects.create(auteur=self.nutri, citoyen=self.citoyen, titre="T", contenu="C")
         self.client.force_login(self.citoyen)
-        r = self.client.get(reverse("users:export_donnees"))
+        r = self.client.get(reverse("users:export_donnees"), {"format": "json"})
         self.assertEqual(r.status_code, 200)
         self.assertIn("attachment", r["Content-Disposition"])
         d = json.loads(r.content)
@@ -160,7 +160,17 @@ class ExportRGPDTest(BaseTest):
     def test_seulement_mes_donnees(self):
         Repas.objects.create(utilisateur=self.autre, type_repas="DINER", note="secret de autre")
         self.client.force_login(self.citoyen)
-        self.assertNotIn("secret de autre", self.client.get(reverse("users:export_donnees")).content.decode())
+        self.assertNotIn("secret de autre", self.client.get(reverse("users:export_donnees"), {"format": "json"}).content.decode())
+
+    def test_export_pdf_par_defaut(self):
+        Repas.objects.create(utilisateur=self.citoyen, type_repas="DINER", note="note-dans-le-pdf")
+        self.client.force_login(self.citoyen)
+        r = self.client.get(reverse("users:export_donnees"))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["Content-Type"], "application/pdf")
+        self.assertIn(".pdf", r["Content-Disposition"])
+        self.assertTrue(r.content.startswith(b"%PDF"))
+        self.assertTrue(JournalAudit.objects.filter(action=A.EXPORT_DONNEES, details="format PDF").exists())
 
     def test_anonyme(self):
         self.assertEqual(self.client.get(reverse("users:export_donnees")).status_code, 302)
@@ -171,7 +181,9 @@ class JournalAuditTest(BaseTest):
         self.client.force_login(self.admin)
         self.client.post(reverse("users:admin_basculer", args=[self.autre.pk]))
         self.client.post(reverse("users:admin_supprimer", args=[self.autre.pk]))
-        actions = list(JournalAudit.objects.order_by("cree_le").values_list("action", "acteur_nom", "cible"))
+        admin_seul = JournalAudit.CATEGORIES["administration"][1]
+        actions = list(JournalAudit.objects.filter(action__in=admin_seul).order_by("cree_le")
+                       .values_list("action", "acteur_nom", "cible"))
         self.assertEqual(actions, [(A.COMPTE_DESACTIVE, "admin1", "autre"), (A.COMPTE_SUPPRIME, "admin1", "autre")])
 
     def test_suppression_par_le_titulaire(self):
@@ -196,3 +208,51 @@ class JournalAuditTest(BaseTest):
         self.client.force_login(root)
         self.assertEqual(self.client.post(f"/admin/users/journalaudit/{e.pk}/delete/", {"post": "yes"}).status_code, 403)
         self.assertTrue(JournalAudit.objects.filter(pk=e.pk).exists())
+
+
+class ActiviteUtilisateursTest(BaseTest):
+    """L'administrateur voit l'activité de TOUS les comptes, pas seulement les actions d'administration."""
+
+    def _actions(self, **filtre):
+        return list(JournalAudit.objects.filter(**filtre).values_list("action", flat=True))
+
+    def test_connexion_echec_deconnexion(self):
+        c = Client()
+        c.post(reverse("users:login"), {"username": self.citoyen.username, "password": "mauvais"})
+        c.post(reverse("users:login"), {"username": self.citoyen.username, "password": MDP})
+        c.post(reverse("users:logout"))
+        self.assertIn(A.CONNEXION_ECHOUEE, self._actions(cible=self.citoyen.username.lower()))
+        self.assertIn(A.CONNEXION, self._actions(acteur=self.citoyen))
+        self.assertIn(A.DECONNEXION, self._actions(acteur=self.citoyen))
+
+    def test_activite_citoyen_journalisee(self):
+        self.client.force_login(self.citoyen)
+        self.client.post(reverse("users:password_change"), {
+            "old_password": MDP, "new_password1": "Nouveau#Mdp2026", "new_password2": "Nouveau#Mdp2026"})
+        r = Repas.objects.create(utilisateur=self.citoyen, type_repas="DINER")
+        self.client.post(reverse("repas:supprimer", args=[r.pk]))
+        actions = self._actions(acteur=self.citoyen)
+        self.assertIn(A.MDP_MODIFIE, actions)
+        self.assertIn(A.REPAS_SUPPRIME, actions)
+
+    def test_filtre_par_utilisateur_et_type(self):
+        JournalAudit.objects.create(acteur=self.citoyen, acteur_nom=self.citoyen.username, action=A.REPAS_AJOUTE, cible="repas n° 1")
+        JournalAudit.objects.create(acteur=self.nutri, acteur_nom=self.nutri.username, action=A.PROFIL_MODIFIE, cible="zzz-nutri")
+        self.client.force_login(self.admin)
+        url = reverse("users:admin_journal")
+        r = self.client.get(url, {"u": self.citoyen.username})
+        self.assertContains(r, "repas n° 1")
+        self.assertNotContains(r, "zzz-nutri")
+        r = self.client.get(url, {"type": "connexions"})
+        self.assertNotContains(r, "repas n° 1")
+        r = self.client.get(url, {"role": "NUTRITIONNISTE"})
+        self.assertContains(r, "zzz-nutri")
+        self.assertNotContains(r, "repas n° 1")
+        self.assertContains(self.client.get(url, {"u": "inconnu"}), "Aucun compte")
+
+    def test_activite_sur_la_fiche_du_compte(self):
+        JournalAudit.objects.create(acteur=self.citoyen, acteur_nom=self.citoyen.username, action=A.REPAS_AJOUTE, details="dîner test-fiche")
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse("users:admin_detail", args=[self.citoyen.pk]))
+        self.assertContains(r, "Activité récente")
+        self.assertContains(r, "dîner test-fiche")
