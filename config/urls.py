@@ -4,12 +4,16 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
 
+from users import pwa
+
 admin.site.site_header = "EcoAssiette — Administration"
 admin.site.site_title = "EcoAssiette"
 admin.site.index_title = "Tableau de bord"
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="home.html"), name="home"),
+    path("sw.js", pwa.service_worker, name="service_worker"),          # application installable (PWA)
+    path("hors-ligne/", pwa.hors_ligne, name="hors_ligne"),
     path("admin/", admin.site.urls),
     path("comptes/", include("users.urls")),
     path("api/", include("users.api.urls")),

@@ -1,0 +1,24 @@
+{
+  "name": "EcoAssiette — alimentation bas carbone",
+  "short_name": "EcoAssiette",
+  "description": "Suivez l'empreinte carbone de vos repas et trouvez des alternatives végétales.",
+  "lang": "fr",
+  "start_url": "/repas/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f6f2",
+  "theme_color": "#0b3b2c",
+  "categories": ["food", "health", "lifestyle"],
+  "icons": [
+    {"src": "/static/img/pwa/icone-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/img/pwa/icone-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/static/img/pwa/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Ajouter un repas", "short_name": "Ajouter", "url": "/repas/ajouter/",
+     "icons": [{"src": "/static/img/pwa/icone-192.png", "sizes": "192x192"}]},
+    {"name": "Mes repas et ma forêt", "short_name": "Mes repas", "url": "/repas/",
+     "icons": [{"src": "/static/img/pwa/icone-192.png", "sizes": "192x192"}]}
+  ]
+}
