@@ -25,8 +25,6 @@ services:
         value: "False"
       - key: GEMINI_API_KEY
         sync: false
-      - key: CONFIRMATION_EMAIL     # False : pas de service e-mail sur Render gratuit
-        value: "False"
       - key: BREVO_API_KEY          # e-mails (Render gratuit bloque l'SMTP)
         sync: false
       - key: DEFAULT_FROM_EMAIL     # ex. "EcoAssiette <adresse.verifiee@gmail.com>"
@@ -39,3 +37,11 @@ services:
         sync: false
       - key: SEED_DEMO
         value: "True"
+      - key: CLOUDFLARE_R2_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_R2_ACCESS_KEY_ID
+        sync: false
+      - key: CLOUDFLARE_R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: CLOUDFLARE_R2_BUCKET
+        sync: false
