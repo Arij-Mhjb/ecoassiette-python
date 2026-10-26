@@ -1,0 +1,50 @@
+name: Tests and SonarQube
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  sonar:
+    name: Django tests, coverage and SonarQube
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Django tests with branch coverage
+        env:
+          DEBUG: "True"
+          SECRET_KEY: github-actions-sonarqube-test-key
+          USE_CELERY: "False"
+          CONFIRMATION_EMAIL: "True"
+        run: |
+          coverage run manage.py test
+          coverage xml -o coverage.xml
+          coverage report -m
+
+      - name: Analyze with SonarQube Cloud
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io

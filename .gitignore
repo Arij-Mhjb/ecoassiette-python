@@ -8,4 +8,5 @@ media/
 staticfiles/
 htmlcov/
 .coverage
+coverage.xml
 rapport_ia.json
