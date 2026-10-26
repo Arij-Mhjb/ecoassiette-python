@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Food Rescue AI{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <p class="eyebrow">{% icon "heart" 14 %}Anti-gaspillage solidaire</p>
+    <h1>Food Rescue AI</h1>
+    <p class="muted">Donnez ou récupérez les surplus alimentaires disponibles près de chez vous.</p>
+  </div>
+  <div class="form-actions">
+    <a class="btn btn-ghost" href="{% url 'food_rescue:assistant' %}">{% icon "zap" %}Assistant IA</a>
+    <a class="btn btn-ghost" href="{% url 'food_rescue:tableau_bord' %}">{% icon "chart" %}Mon impact</a>
+    <a class="btn" href="{% url 'food_rescue:creer' %}">{% icon "plus" %}Publier un surplus</a>
+  </div>
+</div>
+
+{% if not eligibilite %}<div class="bandeau bandeau-info" role="status"><p><strong>Vous souhaitez récupérer un don ?</strong> Cette option est réservée aux étudiants et associations validés. <a href="{% url 'food_rescue:eligibilite' %}">Demander l'accès bénéficiaire</a>.</p></div>
+{% elif eligibilite.statut == "EN_ATTENTE" %}<div class="bandeau bandeau-attente" role="status"><p>Votre demande d'éligibilité est en cours de validation. Vous pouvez consulter les surplus, mais pas encore les réserver.</p></div>
+{% elif eligibilite.statut == "REFUSEE" %}<div class="bandeau bandeau-attente" role="status"><p>Votre demande doit être corrigée. <a href="{% url 'food_rescue:eligibilite' %}">Consulter le motif et renvoyer la demande</a>.</p></div>{% endif %}
+
+{% if recommandations %}
+<section class="card rescue-recos" aria-labelledby="titre-recos">
+  <h2 id="titre-recos"><span class="h-ico h-ico-violet">{% icon "zap" %}</span>Recommandés pour vous</h2>
+  <p class="muted">Classement explicable selon l'urgence, votre ville et les aliments évités.</p>
+  <div class="rescue-grid">
+    {% for ligne in recommandations %}
+    <article class="rescue-card rescue-card-reco">
+      <p><span class="badge badge-ok">{{ ligne.score }} % compatible</span></p>
+      <h3><a href="{% url 'food_rescue:detail' ligne.annonce.pk %}">{{ ligne.annonce.titre }}</a></h3>
+      <p class="small muted">{{ ligne.raisons|join:" · " }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<form method="get" class="filters" role="search" aria-label="Rechercher des surplus">
+  <div class="field"><label for="q">Mot-clé ou ville</label><input id="q" name="q" type="search" value="{{ recherche }}"></div>
+  <div class="field"><label for="categorie">Catégorie</label><select id="categorie" name="categorie"><option value="">Toutes</option>{% for val, lib in categories %}<option value="{{ val }}" {% if val == categorie_active %}selected{% endif %}>{{ lib }}</option>{% endfor %}</select></div>
+  <button class="btn btn-small" type="submit">{% icon "search" %}Rechercher</button>
+</form>
+
+{% if annonces %}
+<div class="rescue-grid">
+{% for annonce in annonces %}
+  <article class="card rescue-card">
+    {% if annonce.photo %}<img src="{{ annonce.photo.url }}" alt="Photo fournie pour {{ annonce.titre }}" loading="lazy">{% else %}<div class="rescue-placeholder" aria-hidden="true">{% icon "image" 32 %}</div>{% endif %}
+    <div class="rescue-card-body">
+      <p class="rescue-meta"><span class="badge statut-{{ annonce.statut }}">{{ annonce.get_statut_display }}</span>{% if annonce.urgence_ia %}<span class="badge urgence-{{ annonce.urgence_ia }}">Urgence {{ annonce.urgence_ia|lower }}</span>{% endif %}</p>
+      <h2><a href="{% url 'food_rescue:detail' annonce.pk %}">{{ annonce.titre }}</a></h2>
+      <p>{{ annonce.description|truncatechars:150 }}</p>
+      <ul class="rescue-facts">
+        <li>{% icon "map-pin" 16 %}{{ annonce.ville }}</li>
+        <li>{% icon "scale" 16 %}{{ annonce.quantite }} {{ annonce.get_unite_display }}</li>
+        <li>{% icon "clock" 16 %}avant {{ annonce.disponible_jusquau|date:"d/m à H:i" }}</li>
+      </ul>
+    </div>
+  </article>
+{% endfor %}
+</div>
+{% include "users/_pagination.html" %}
+{% else %}<div class="empty"><p><strong>Aucun surplus disponible.</strong></p><a class="btn" href="{% url 'food_rescue:creer' %}">Publier le premier</a></div>{% endif %}
+{% endblock %}
+

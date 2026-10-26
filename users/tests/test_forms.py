@@ -1,3 +1,8 @@
+import io
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image
+
 from users.forms import (
     AdminUtilisateurCreationForm, AdminUtilisateurForm, InfosPersonnellesForm, InscriptionForm,
     SuppressionCompteForm,
@@ -46,6 +51,17 @@ class InscriptionFormTest(BaseTest):
 
 
 class AutresFormsTest(BaseTest):
+    def test_avatar_est_converti_en_webp(self):
+        contenu = io.BytesIO()
+        Image.new("RGB", (800, 600), "green").save(contenu, format="PNG")
+        avatar = SimpleUploadedFile("profil.png", contenu.getvalue(), content_type="image/png")
+        f = InfosPersonnellesForm(
+            {"first_name": "a", "last_name": "b", "email": "citoyen@test.tn"},
+            {"avatar": avatar}, instance=self.citoyen,
+        )
+        self.assertTrue(f.is_valid(), f.errors)
+        self.assertTrue(f.cleaned_data["avatar"].name.endswith(".webp"))
+
     def test_infos_email_pris(self):
         f = InfosPersonnellesForm({"first_name": "a", "last_name": "b", "email": "autre@test.tn"}, instance=self.citoyen)
         self.assertIn("email", f.errors)

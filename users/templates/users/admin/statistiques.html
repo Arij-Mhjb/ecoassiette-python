@@ -4,6 +4,8 @@
 <div class="page-head row-between"><div><p class="eyebrow">{% icon "chart" 14 %}Administration</p><h1>Statistiques du module</h1></div>
   <a class="btn" href="{% url 'repas:labo' %}">{% icon "sparkles" %}Laboratoire IA</a></div>
 
+{% include "users/admin/_onglets.html" %}
+
 <section aria-labelledby="t-u">
   <h2 id="t-u">Utilisateurs</h2>
   <dl class="stat-tiles">

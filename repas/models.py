@@ -30,7 +30,8 @@ class Repas(models.Model):
         verbose_name_plural = "repas"
 
     def __str__(self):
-        return f"{self.get_type_repas_display()} du {self.date:%d/%m/%Y}"
+        contexte = f"{self.get_type_repas_display()} du {self.date:%d/%m/%Y}"
+        return f"{self.note} — {contexte}" if self.note.strip() else contexte
 
     @property
     def co2_kg(self):

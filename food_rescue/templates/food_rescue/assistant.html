@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Assistant Food Rescue{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'food_rescue:liste' %}">{% icon "arrow-left" %}Food Rescue</a>
+<div class="page-head"><div><p class="eyebrow">Assistant intelligent</p><h1>Assistant Food Rescue</h1><p class="muted">Interrogez vos dons, votre éligibilité et votre portefeuille sans exposer les adresses privées.</p></div></div>
+<section class="card narrow"><form method="post">{% csrf_token %}<div class="field"><label for="question">Votre question</label><textarea id="question" name="question" rows="3" required placeholder="Quels surplus sont disponibles près de moi ?">{{ question }}</textarea></div><button class="btn" type="submit">Demander à l'assistant</button></form>{% if reponse %}<div class="ai-card" role="status"><h2>Réponse</h2><p>{{ reponse }}</p><p class="small muted">Réponse explicable à partir des données auxquelles votre compte a accès.</p></div>{% endif %}</section>
+{% endblock %}

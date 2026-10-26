@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Supprimer {{ object.titre }}{% endblock %}
+{% block body_class %}page-auth{% endblock %}
+{% block content %}<div class="narrow card"><div class="auth-tete"><span class="auth-ico auth-ico-red">{% icon "trash" 26 %}</span><h1>Supprimer « {{ object.titre }} » ?</h1><p>L'annonce et ses demandes seront définitivement supprimées.</p></div><form method="post">{% csrf_token %}<div class="form-actions" style="justify-content:center"><button class="btn btn-danger" type="submit">Oui, supprimer</button><a class="btn btn-ghost" href="{% url 'food_rescue:detail' object.pk %}">Annuler</a></div></form></div>{% endblock %}
+

@@ -19,6 +19,9 @@ urlpatterns = [
     path("api/", include("users.api.urls")),
     path("repas/", include("repas.urls")),
     path("impact/", include("impact.urls")),
+    path("planning/", include("planning.urls")),
+    path("food-rescue/", include("food_rescue.urls")),
+    path("communaute/", include("community.urls")),
 ]
 
 if settings.DEBUG:

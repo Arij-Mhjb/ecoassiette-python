@@ -3,6 +3,7 @@
 set -o errexit
 
 pip install -r requirements.txt
+python manage.py check --deploy
 python manage.py collectstatic --no-input
 python manage.py migrate
 
@@ -13,4 +14,6 @@ fi
 # Comptes de démonstration (optionnel)
 if [[ "$SEED_DEMO" == "True" ]]; then
   python manage.py seed_demo
+  python manage.py seed_food_rescue
+  python manage.py seed_community
 fi

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Envoyer une preuve{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'impact:portefeuille' %}">{% icon "arrow-left" 16 %}Mon portefeuille</a>
+<section class="card narrow" aria-labelledby="titre-preuve">
+  <h1 id="titre-preuve">Prouver mon repas végétalisé</h1>
+  <p class="muted">La liste contient tous vos repas qui n'ont pas encore de preuve. Ajoutez une photo ou une courte vidéo de la réalisation ; un administrateur la vérifiera avant de créditer les points.</p>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}{% include "includes/form.html" %}
+    <button class="btn" type="submit">Envoyer pour validation</button>
+  </form>
+</section>
+{% endblock %}

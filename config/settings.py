@@ -27,6 +27,7 @@ def env_bool(name, default=False):
 # --- Sécurité -----------------------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me")
 DEBUG = env_bool("DEBUG", False)
+TESTING = "test" in sys.argv
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
@@ -57,10 +58,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "storages",
     "rest_framework",
     "users.apps.UsersConfig",
     "repas",
     "impact",
+    "planning.apps.PlanningConfig",
+    "food_rescue.apps.FoodRescueConfig",
+    "community.apps.CommunityConfig",
 ]
 
 MIDDLEWARE = [
@@ -89,6 +94,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "users.context_processors.notifications_admin",
                 "users.context_processors.notifications_citoyen",
+                "community.context_processors.notifications_communaute",
             ],
         },
     },
@@ -135,7 +141,7 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": (
             "django.contrib.staticfiles.storage.StaticFilesStorage"
-            if DEBUG
+            if DEBUG or TESTING
             else "whitenoise.storage.CompressedManifestStaticFilesStorage"
         )
     },
@@ -143,9 +149,40 @@ STORAGES = {
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Stockage persistant Cloudflare R2 (API compatible S3). Sans ces quatre
+# variables, le développement et les tests continuent d'utiliser le disque.
+# Le bucket reste privé : les URL générées sont signées et expirent après 1 h.
+R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET = os.getenv("CLOUDFLARE_R2_BUCKET", "")
+R2_CONFIGURED = all((R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET))
+if R2_CONFIGURED:
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "access_key": R2_ACCESS_KEY_ID,
+            "secret_key": R2_SECRET_ACCESS_KEY,
+            "bucket_name": R2_BUCKET,
+            "endpoint_url": f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            "region_name": "auto",
+            "signature_version": "s3v4",
+            "querystring_auth": True,
+            "querystring_expire": 3600,
+            "default_acl": None,
+            "file_overwrite": False,
+        },
+    }
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Génération d'images communautaires via Pollinations. La clé reste côté serveur.
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
+POLLINATIONS_IMAGE_MODEL = os.getenv("POLLINATIONS_IMAGE_MODEL", "flux")
+POLLINATIONS_TIMEOUT = int(os.getenv("POLLINATIONS_TIMEOUT", "90"))
+
 # --- E-mails ------------------------------------------------------------------------
+<<<<<<< HEAD
 # Choix automatique du backend :
 #   BREVO_API_KEY défini   -> API HTTPS Brevo (fonctionne sur Render gratuit, qui bloque l'SMTP)
 #   EMAIL_HOST_USER défini -> SMTP (ex. Gmail + mot de passe d'application) — idéal en local
@@ -156,17 +193,41 @@ EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+=======
+# Choix automatique du backend. Les noms Django EMAIL_* et les noms MAIL_*
+# (souvent utilisés dans les fichiers .env Laravel) sont tous les deux acceptés.
+#   BREVO_API_KEY défini              -> API HTTPS Brevo
+#   MAIL_MAILER=smtp ou identifiant   -> SMTP (Gmail + mot de passe d'application)
+#   sinon                             -> console
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+MAIL_MAILER = os.getenv("MAIL_MAILER", "").strip().lower()
+EMAIL_HOST = os.getenv("EMAIL_HOST") or os.getenv("MAIL_HOST") or "smtp.gmail.com"
+EMAIL_PORT = int(os.getenv("EMAIL_PORT") or os.getenv("MAIL_PORT") or "587")
+MAIL_ENCRYPTION = (os.getenv("MAIL_ENCRYPTION") or "tls").strip().lower()
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", MAIL_ENCRYPTION in ("tls", "starttls"))
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", MAIL_ENCRYPTION == "ssl")
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise ValueError("EMAIL_USE_TLS et EMAIL_USE_SSL ne peuvent pas être activés ensemble.")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER") or os.getenv("MAIL_USERNAME", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") or os.getenv("MAIL_PASSWORD", "")
+# Google affiche les mots de passe d'application par groupes de quatre caractères.
+if EMAIL_HOST.lower() == "smtp.gmail.com":
+    EMAIL_HOST_PASSWORD = "".join(EMAIL_HOST_PASSWORD.split())
+>>>>>>> b1b56d0e2c630417285efaf89a3b958452eaf64f
 EMAIL_TIMEOUT = 15
 if BREVO_API_KEY:
     EMAIL_BACKEND = "users.email_backends.BrevoBackend"
-elif EMAIL_HOST_USER:
+elif MAIL_MAILER == "smtp" or EMAIL_HOST_USER:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"EcoAssiette <{EMAIL_HOST_USER or 'no-reply@ecoassiette.tn'}>")
+EMAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS") or EMAIL_HOST_USER or "no-reply@ecoassiette.tn"
+EMAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "EcoAssiette").strip()
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>")
 # Confirmation obligatoire de l'e-mail à l'inscription. Mettre False quand aucun service
 # d'envoi n'est disponible (ex. Render gratuit sans Brevo) : le compte est activé directement.
-CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", True)
+SERVICE_EMAIL_CONFIGURE = bool(BREVO_API_KEY or (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD))
+CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", SERVICE_EMAIL_CONFIGURE)
 INVITATION_DUREE_HEURES = 48          # validité d'un lien d'invitation (nutritionniste)
 # Durée de validité des liens (confirmation d'e-mail et réinitialisation) : 1 jour
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
@@ -207,7 +268,6 @@ GEMINI_PAUSE_S = float(os.getenv("GEMINI_PAUSE_S", "4"))
 LABO_LIMITE_GEMINI = int(os.getenv("LABO_LIMITE_GEMINI", "40"))
 
 # --- Journalisation (silencieuse pendant les tests)
-TESTING = "test" in sys.argv
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -215,5 +275,6 @@ LOGGING = {
     "loggers": {
         "users": {"handlers": ["console"], "level": "CRITICAL" if TESTING else os.getenv("LOG_LEVEL", "INFO")},
         "repas": {"handlers": ["console"], "level": "CRITICAL" if TESTING else os.getenv("LOG_LEVEL", "INFO")},
+        "food_rescue": {"handlers": ["console"], "level": "CRITICAL" if TESTING else os.getenv("LOG_LEVEL", "INFO")},
     },
 }

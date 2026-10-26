@@ -1,8 +1,12 @@
 {% with n=request.resolver_match.url_name %}
-<nav class="onglets" aria-label="Sections de la gestion des comptes">
+<nav class="onglets" aria-label="Sections du centre d'administration">
+  <a href="{% url 'users:admin_centre' %}" {% if n == "admin_centre" %}aria-current="page"{% endif %}>{% icon "shield" 16 %}Vue d'ensemble</a>
   <a href="{% url 'users:admin_liste' %}" {% if n == "admin_liste" %}aria-current="page"{% endif %}>{% icon "users" 16 %}Comptes</a>
   <a href="{% url 'users:admin_demandes' %}" {% if n == "admin_demandes" %}aria-current="page"{% endif %}>{% icon "chef-hat" 16 %}Demandes nutritionnistes{% if nb_demandes_attente %} <span class="pastille">{{ nb_demandes_attente }}<span class="sr-only"> en attente</span></span>{% endif %}</a>
   <a href="{% url 'users:admin_invitations' %}" {% if n == "admin_invitations" %}aria-current="page"{% endif %}>{% icon "mail" 16 %}Invitations</a>
+  <a href="{% url 'food_rescue:administration' %}" {% if request.resolver_match.app_name == "food_rescue" %}aria-current="page"{% endif %}>{% icon "heart" 16 %}Food Rescue</a>
+  <a href="{% url 'community:administration' %}" {% if request.resolver_match.app_name == "community" %}aria-current="page"{% endif %}>{% icon "message" 16 %}Communauté</a>
+  <a href="{% url 'users:admin_stats' %}" {% if n == "admin_stats" %}aria-current="page"{% endif %}>{% icon "chart" 16 %}Statistiques</a>
   {% if perms.users.voir_journal %}<a href="{% url 'users:admin_journal' %}" {% if n == "admin_journal" %}aria-current="page"{% endif %}>{% icon "clock" 16 %}Journal d'audit</a>{% endif %}
 </nav>
 {% endwith %}

@@ -1,0 +1,10 @@
+{% if nutrition %}
+<div class="nutrition-summary" aria-label="Valeurs nutritionnelles estimées pour la portion">
+  <span><strong>{{ nutrition.kcal|floatformat:0 }}</strong><small>kcal</small></span>
+  <span><strong>{{ nutrition.proteines|floatformat:1 }} g</strong><small>protéines</small></span>
+  <span><strong>{{ nutrition.fibres|floatformat:1 }} g</strong><small>fibres</small></span>
+  <span><strong>{{ nutrition.glucides|floatformat:1 }} g</strong><small>glucides</small></span>
+  <span><strong>{{ nutrition.lipides|floatformat:1 }} g</strong><small>lipides</small></span>
+</div>
+<p class="nutrition-note">Valeurs indicatives pour la portion{% if nutrition.source == 'PRODUIT' %}, d’après les données du produit{% else %}, calculées à partir de moyennes alimentaires{% endif %}.</p>
+{% endif %}

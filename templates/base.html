@@ -43,24 +43,47 @@
       <nav id="menu-principal" class="main-nav" aria-label="Navigation principale">
         <ul>
           {% if user.is_authenticated %}
+            <li><a href="{% url 'community:fil' %}" {% if request.resolver_match.app_name == 'community' and request.resolver_match.url_name != 'notifications' %}aria-current="page"{% endif %}>{% icon "users" %}Communauté</a></li>
+            <li><a href="{% url 'community:notifications' %}" {% if request.resolver_match.url_name == 'notifications' %}aria-current="page"{% endif %}>{% icon "bell" %}<span class="sr-only">Notifications</span>{% if nb_notifications_communaute %}<span class="pastille">{{ nb_notifications_communaute }}<span class="sr-only"> notification{{ nb_notifications_communaute|pluralize }} non lue{{ nb_notifications_communaute|pluralize }}</span></span>{% endif %}</a></li>
             {% if user.role == "CITOYEN" %}
-            <li><a href="{% url 'repas:liste' %}" {% if request.resolver_match.app_name == 'repas' %}aria-current="page"{% endif %}>{% icon "utensils" %}Mes repas</a></li>
-            <li><a href="{% url 'impact:assistant_recette' %}" {% if request.resolver_match.url_name == 'assistant_recette' %}aria-current="page"{% endif %}>{% icon "chef-hat" %}Assistant recette</a></li>
-            <li><a href="{% url 'impact:tableau_bord' %}" {% if request.resolver_match.app_name == 'impact' and request.resolver_match.url_name != 'assistant_recette' %}aria-current="page"{% endif %}>{% icon "chart" %}Mon impact</a></li>
+            <li class="nav-group-li">
+              <details class="nav-group">
+                <summary class="{% if request.resolver_match.app_name == 'repas' or request.resolver_match.app_name == 'planning' or request.resolver_match.url_name == 'assistant_recette' or request.resolver_match.url_name == 'reprendre_brouillon' %}is-active{% endif %}">
+                  {% icon "utensils" %}<span>Repas</span>{% icon "chevron-down" 15 %}
+                </summary>
+                <div class="nav-group-panel">
+                  <a href="{% url 'repas:liste' %}" {% if request.resolver_match.app_name == 'repas' %}aria-current="page"{% endif %}>{% icon "utensils" %}<span><strong>Mes repas</strong><small>Historique et suivi</small></span></a>
+                  <a href="{% url 'impact:assistant_recette' %}" {% if request.resolver_match.url_name == 'assistant_recette' or request.resolver_match.url_name == 'reprendre_brouillon' %}aria-current="page"{% endif %}>{% icon "chef-hat" %}<span><strong>Assistant recette</strong><small>Analyse et alternatives</small></span></a>
+                  <a href="{% url 'planning:tableau' %}" {% if request.resolver_match.app_name == 'planning' %}aria-current="page"{% endif %}>{% icon "calendar" %}<span><strong>Planificateur</strong><small>Menus de la semaine</small></span></a>
+                </div>
+              </details>
+            </li>
+            <li class="nav-group-li">
+              <details class="nav-group">
+                <summary class="{% if request.resolver_match.url_name == 'tableau_bord' or request.resolver_match.url_name == 'portefeuille' or request.resolver_match.url_name == 'soumettre_preuve' or request.resolver_match.app_name == 'food_rescue' %}is-active{% endif %}">
+                  {% icon "leaf" %}<span>Écologie</span>{% icon "chevron-down" 15 %}
+                </summary>
+                <div class="nav-group-panel">
+                  <a href="{% url 'impact:tableau_bord' %}" {% if request.resolver_match.url_name == 'tableau_bord' %}aria-current="page"{% endif %}>{% icon "chart" %}<span><strong>Mon impact</strong><small>CO₂, eau et terres</small></span></a>
+                  <a href="{% url 'impact:portefeuille' %}" {% if request.resolver_match.url_name == 'portefeuille' or request.resolver_match.url_name == 'soumettre_preuve' %}aria-current="page"{% endif %}>{% icon "gift" %}<span><strong>Récompenses</strong><small>Points et produits</small></span></a>
+                  <a href="{% url 'food_rescue:liste' %}" {% if request.resolver_match.app_name == 'food_rescue' %}aria-current="page"{% endif %}>{% icon "heart" %}<span><strong>Food Rescue</strong><small>Dons anti-gaspillage</small></span></a>
+                </div>
+              </details>
+            </li>
             <li><a href="{% url 'users:mes_recommandations' %}" {% if request.resolver_match.url_name == 'mes_recommandations' %}aria-current="page"{% endif %}>{% icon "lightbulb" %}Conseils{% if nb_recos_non_lues %} <span class="pastille">{{ nb_recos_non_lues }}<span class="sr-only"> nouveau(x)</span></span>{% endif %}</a></li>
             {% endif %}
-            <li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>{% icon "leaf" %}Mon profil</a></li>
+            {% if user.role != "CITOYEN" %}<li><a href="{% url 'users:profil' %}" {% if request.resolver_match.url_name == 'profil' %}aria-current="page"{% endif %}>{% icon "leaf" %}Mon profil</a></li>{% endif %}
             {% if perms.users.view_profilalimentaire %}
               <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' or request.resolver_match.url_name == 'nutri_profil_detail' %}aria-current="page"{% endif %}>{% icon "users" %}Profils citoyens</a></li>
             {% endif %}
             {% if perms.users.gerer_utilisateurs %}
-              <li><a href="{% url 'users:admin_liste' %}" {% if request.resolver_match.url_name == 'admin_liste' or request.resolver_match.url_name == 'admin_demandes' or request.resolver_match.url_name == 'admin_invitations' or request.resolver_match.url_name == 'admin_journal' %}aria-current="page"{% endif %}>{% icon "shield" %}Comptes{% if nb_demandes_attente %} <span class="pastille" title="Demandes nutritionnistes en attente">{{ nb_demandes_attente }}<span class="sr-only"> demande(s) en attente</span></span>{% endif %}</a></li>
-              <li><a href="{% url 'users:admin_stats' %}" {% if request.resolver_match.url_name == 'admin_stats' %}aria-current="page"{% endif %}>{% icon "chart" %}Statistiques</a></li>
+              <li><a href="{% url 'users:admin_centre' %}" {% if request.resolver_match.url_name|slice:':6' == 'admin_' or request.resolver_match.url_name == 'administration' or request.resolver_match.url_name == 'intelligence_dashboard' %}aria-current="page"{% endif %}>{% icon "shield" %}Administration{% if nb_demandes_attente %} <span class="pastille" title="Demandes en attente">{{ nb_demandes_attente }}<span class="sr-only"> demande(s) en attente</span></span>{% endif %}</a></li>
             {% endif %}
             <li class="user-menu-li">
               <details class="user-menu">
                 <summary>
-                  <span class="avatar avatar-xs avatar-initiales" aria-hidden="true">{{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>
+                  {% if user.avatar %}<img class="avatar avatar-xs" src="{{ user.avatar.url }}" alt="" width="32" height="32">
+                  {% else %}<span class="avatar avatar-xs avatar-initiales" aria-hidden="true">{{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>{% endif %}
                   <span class="user-menu-nom">{{ user.first_name|default:user.username }}</span>{% icon "chevron-down" 16 %}
                   <span class="sr-only">: menu du compte</span>
                 </summary>

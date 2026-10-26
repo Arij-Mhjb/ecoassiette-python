@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Recettes anti-gaspillage{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'food_rescue:detail' annonce.pk %}">{% icon "arrow-left" %}{{ annonce.titre }}</a>
+<div class="page-head"><div><p class="eyebrow">Génération {{ source }}</p><h1>Recettes anti-gaspillage</h1><p class="muted">Suggestions adaptées au surplus et à votre profil alimentaire.</p></div></div>
+<div class="rescue-grid">{% for recette in recettes %}<article class="card"><h2>{{ recette.nom }}</h2><h3>Ingrédients</h3><ul>{% for ingredient in recette.ingredients %}<li>{{ ingredient }}</li>{% endfor %}</ul><h3>Préparation</h3><ol>{% for etape in recette.etapes %}<li>{{ etape }}</li>{% endfor %}</ol><p class="small muted">{{ recette.raison_ecologique }}</p></article>{% endfor %}</div>
+{% endblock %}

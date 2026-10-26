@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Pilotage IA Food Rescue{% endblock %}
+{% block content %}
+<div class="page-head"><div><p class="eyebrow">Administration</p><h1>Pilotage IA Food Rescue</h1><p class="muted">Indicateurs d'urgence, d'équité et de fiabilité.</p></div></div>
+<section class="card"><div class="impact-grid"><div class="impact-kpi"><span>Annonces</span><strong>{{ stats.total }}</strong></div><div class="impact-kpi"><span>Urgentes</span><strong>{{ stats.urgentes }}</strong></div><div class="impact-kpi"><span>Collectées</span><strong>{{ stats.collectees }}</strong></div><div class="impact-kpi"><span>Bénéficiaires validés</span><strong>{{ stats.eligibles }}</strong></div><div class="impact-kpi"><span>Collectes en retard</span><strong>{{ stats.retards }}</strong></div></div></section>
+<section class="card"><h2>Répartition par catégorie</h2><div class="table-wrap"><table class="table"><thead><tr><th>Catégorie</th><th>Annonces</th></tr></thead><tbody>{% for ligne in stats.par_categorie %}<tr><td>{{ ligne.categorie }}</td><td>{{ ligne.total }}</td></tr>{% endfor %}</tbody></table></div></section>
+{% endblock %}
