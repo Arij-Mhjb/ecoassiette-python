@@ -177,8 +177,20 @@ pip install -r requirements-ai-local.txt
 python manage.py prepare_image_model
 ```
 
-La seconde commande télécharge une seule fois `stabilityai/sd-turbo` dans le cache local. Après ce téléchargement,
-mettez `LOCAL_IMAGE_OFFLINE=True` dans `.env` pour interdire tout accès réseau pendant la génération. Le réglage
+Avant la première préparation, configurez `.env` ainsi :
+
+```dotenv
+LOCAL_IMAGE_MODEL=stabilityai/sd-turbo
+LOCAL_IMAGE_DEVICE=auto
+LOCAL_IMAGE_OFFLINE=False
+LOCAL_IMAGE_STEPS=2
+LOCAL_IMAGE_SIZE=512
+```
+
+`prepare_image_model` télécharge le modèle dans le cache local et affiche `Modèle prêt.` lorsqu'il est chargé.
+Cette étape nécessite une connexion Internet fonctionnelle. Après ce message, mettez `LOCAL_IMAGE_OFFLINE=True`
+dans `.env` pour que la génération n'essaie plus d'accéder au réseau, puis démarrez l'application avec
+`python manage.py runserver`. Ne passez en mode hors ligne qu'une fois le téléchargement terminé. Le réglage
 `LOCAL_IMAGE_DEVICE=auto` utilise CUDA si un GPU NVIDIA compatible est disponible, sinon le processeur.
 
 ## Comptes de démonstration
