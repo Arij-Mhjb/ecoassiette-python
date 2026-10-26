@@ -171,6 +171,12 @@ if all((R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUB
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Génération d'images communautaires — Pollinations fournit des crédits gratuits.
+# La clé reste exclusivement côté serveur et n'est jamais envoyée au navigateur.
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
+POLLINATIONS_IMAGE_MODEL = os.getenv("POLLINATIONS_IMAGE_MODEL", "flux")
+POLLINATIONS_TIMEOUT = int(os.getenv("POLLINATIONS_TIMEOUT", "90"))
+
 # --- E-mails ------------------------------------------------------------------------
 # Choix automatique du backend. Les noms Django EMAIL_* et les noms MAIL_*
 # (souvent utilisés dans les fichiers .env Laravel) sont tous les deux acceptés.

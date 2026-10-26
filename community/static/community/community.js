@@ -134,4 +134,63 @@
       if (popup) installerMention(input, popup, container.dataset.mentionUrl, select, chips);
     });
   });
+
+  var compose = document.querySelector(".community-compose[data-image-ai-url]");
+  if (compose) {
+    var generateButton = compose.querySelector(".js-generate-image");
+    var removeButton = compose.querySelector(".js-remove-ai-image");
+    var textInput = compose.querySelector("[name='texte']");
+    var fileInput = compose.querySelector("[name='image']");
+    var tokenInput = compose.querySelector("[name='image_ia_token']");
+    var status = compose.querySelector(".community-ai-status");
+    var preview = compose.querySelector(".community-ai-preview");
+    var previewImage = preview.querySelector("img");
+    var csrf = compose.querySelector("[name='csrfmiddlewaretoken']");
+
+    function retirerImageIA() {
+      tokenInput.value = "";
+      previewImage.removeAttribute("src");
+      preview.hidden = true;
+      status.textContent = "";
+    }
+
+    removeButton.addEventListener("click", retirerImageIA);
+    fileInput.addEventListener("change", function () {
+      if (fileInput.files.length) retirerImageIA();
+    });
+    generateButton.addEventListener("click", async function () {
+      var texte = textInput.value.trim();
+      if (texte.length < 8) {
+        status.textContent = "Écrivez d’abord une description plus précise de votre publication.";
+        textInput.focus();
+        return;
+      }
+      generateButton.disabled = true;
+      generateButton.setAttribute("aria-busy", "true");
+      generateButton.querySelector("span").textContent = "Génération en cours…";
+      status.textContent = "Le modèle prépare votre image. Cela peut prendre jusqu’à une minute.";
+      var donnees = new FormData();
+      donnees.append("texte", texte);
+      donnees.append("ancien_token", tokenInput.value);
+      donnees.append("csrfmiddlewaretoken", csrf.value);
+      try {
+        var response = await fetch(compose.dataset.imageAiUrl, {
+          method: "POST", body: donnees, headers: { "X-Requested-With": "XMLHttpRequest" }
+        });
+        var resultat = await response.json();
+        if (!response.ok) throw new Error(resultat.erreur || "La génération a échoué.");
+        tokenInput.value = resultat.token;
+        previewImage.src = resultat.url;
+        preview.hidden = false;
+        fileInput.value = "";
+        status.textContent = "Image créée avec " + resultat.modele + ". Vous pouvez la régénérer ou publier.";
+      } catch (error) {
+        status.textContent = error.message || "Impossible de générer l’image pour le moment.";
+      } finally {
+        generateButton.disabled = false;
+        generateButton.removeAttribute("aria-busy");
+        generateButton.querySelector("span").textContent = "Générer depuis mon texte";
+      }
+    });
+  }
 })();

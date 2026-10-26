@@ -14,6 +14,8 @@ class Publication(models.Model):
         upload_to="community/%Y/%m/", blank=True, null=True,
         validators=[FileExtensionValidator(["jpg", "jpeg", "png", "webp"])],
     )
+    image_generee_ia = models.BooleanField(default=False)
+    modele_image_ia = models.CharField(max_length=80, blank=True)
     publication_originale = models.ForeignKey(
         "self", on_delete=models.CASCADE, null=True, blank=True, related_name="republications"
     )

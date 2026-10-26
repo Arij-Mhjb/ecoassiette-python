@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.fil, name="fil"),
     path("publier/", views.publier, name="publier"),
     path("api/utilisateurs/", views.rechercher_utilisateurs, name="rechercher_utilisateurs"),
+    path("api/generer-image/", views.generer_image_ia, name="generer_image_ia"),
     path("notifications/", views.notifications, name="notifications"),
     path("notifications/tout-lire/", views.tout_lire, name="tout_lire"),
     path("notifications/<int:pk>/lire/", views.lire_notification, name="lire_notification"),

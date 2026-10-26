@@ -5,8 +5,8 @@ from .models import Commentaire, Jaime, Mention, MentionCommentaire, Notificatio
 
 @admin.register(Publication)
 class PublicationAdmin(admin.ModelAdmin):
-    list_display = ("auteur", "resume", "publication_originale", "est_masquee", "creee_le")
-    list_filter = ("est_masquee", "creee_le")
+    list_display = ("auteur", "resume", "publication_originale", "image_generee_ia", "est_masquee", "creee_le")
+    list_filter = ("est_masquee", "image_generee_ia", "creee_le")
     search_fields = ("texte", "auteur__username", "auteur__email")
     readonly_fields = ("creee_le", "modifiee_le")
 

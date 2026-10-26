@@ -1,6 +1,11 @@
+import io
+import tempfile
+from unittest.mock import Mock, patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from PIL import Image
 
 from .models import Commentaire, Jaime, Mention, MentionCommentaire, NotificationCommunaute, Publication
 
@@ -99,6 +104,38 @@ class CommunityViewsTests(TestCase):
         self.client.post(reverse("community:moderer_publication", args=[self.post.pk]))
         self.post.refresh_from_db()
         self.assertTrue(self.post.est_masquee)
+
+    def test_generer_image_ia_et_publier(self):
+        flux = io.BytesIO()
+        Image.new("RGB", (16, 16), "green").save(flux, format="JPEG")
+        reponse_ia = Mock(content=flux.getvalue())
+        reponse_ia.raise_for_status.return_value = None
+        with tempfile.TemporaryDirectory() as medias, self.settings(
+            MEDIA_ROOT=medias, POLLINATIONS_API_KEY="sk-test", POLLINATIONS_IMAGE_MODEL="flux"
+        ), patch("community.ai.requests.get", return_value=reponse_ia) as appel:
+            response = self.client.post(reverse("community:generer_image_ia"), {
+                "texte": "Une assiette végétale locale et colorée",
+            })
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("token", response.json())
+            self.assertNotIn("sk-test", appel.call_args.args[0])
+            response = self.client.post(reverse("community:publier"), {
+                "texte": "Une assiette végétale locale et colorée",
+                "image_ia_token": response.json()["token"],
+            })
+            publication = Publication.objects.exclude(pk=self.post.pk).get()
+            self.assertRedirects(response, publication.get_absolute_url())
+            self.assertTrue(publication.image_generee_ia)
+            self.assertTrue(publication.image.name.startswith("community/ai/"))
+            publication.image.storage.delete(publication.image.name)
+
+    def test_generation_ia_explique_la_configuration_manquante(self):
+        with self.settings(POLLINATIONS_API_KEY=""):
+            response = self.client.post(reverse("community:generer_image_ia"), {
+                "texte": "Une assiette végétale locale et colorée",
+            })
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("POLLINATIONS_API_KEY", response.json()["erreur"])
 
     def test_un_membre_ne_supprime_pas_le_contenu_d_un_autre(self):
         self.client.force_login(self.bob)

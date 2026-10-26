@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .forms import CommentaireForm, PublicationForm
+from .ai import ErreurGenerationImage, generer_image
 from .models import Commentaire, Jaime, NotificationCommunaute, Publication
 
 User = get_user_model()
@@ -82,6 +83,7 @@ def publier(request):
         with transaction.atomic():
             publication = form.save(commit=False)
             publication.auteur = request.user
+            form.appliquer_image_ia(publication)
             publication.full_clean()
             publication.save()
             nouveaux = form.enregistrer_mentions(publication)
@@ -106,7 +108,9 @@ def modifier(request, pk):
     form = PublicationForm(request.POST or None, request.FILES or None, instance=publication, utilisateur=request.user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
-            publication = form.save()
+            publication = form.save(commit=False)
+            form.appliquer_image_ia(publication)
+            publication.save()
             nouveaux = form.enregistrer_mentions(publication)
             _notifier_mentions(acteur=request.user, publication=publication, utilisateurs=nouveaux)
         if ancien_fichier and publication.image.name != ancien_fichier:
@@ -218,6 +222,19 @@ def rechercher_utilisateurs(request):
             "avatar": u.avatar.url if u.avatar else "",
         } for u in utilisateurs
     ]})
+
+
+@login_required
+@require_POST
+def generer_image_ia(request):
+    try:
+        resultat = generer_image(
+            request.POST.get("texte", ""), request.user,
+            ancien_token=request.POST.get("ancien_token", ""),
+        )
+    except ErreurGenerationImage as exc:
+        return JsonResponse({"erreur": str(exc)}, status=503)
+    return JsonResponse(resultat)
 
 
 @login_required

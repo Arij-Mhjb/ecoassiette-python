@@ -80,6 +80,7 @@ Chaque menu et chaque alternative affiche une estimation des calories, protéine
 
 - Fil social accessible à tous les membres connectés.
 - Publications texte et photo, profils publics et recherche.
+- Génération optionnelle d'une illustration depuis le texte avec Flux via Pollinations.
 - Mentions `@utilisateur` avec suggestions et sélection du compte.
 - J’aime, commentaires, repartage interne et partage par lien.
 - Photos stockées sur Cloudflare R2 lorsque le stockage distant est configuré.
@@ -195,6 +196,11 @@ DATABASE_URL=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-flash-latest
 GEMINI_TIMEOUT=60
+
+# Crédits gratuits disponibles après création d'une clé Pollinations.
+POLLINATIONS_API_KEY=
+POLLINATIONS_IMAGE_MODEL=flux
+POLLINATIONS_TIMEOUT=90
 
 USE_CELERY=False
 REDIS_URL=redis://localhost:6379/0

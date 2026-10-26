@@ -14,4 +14,5 @@ fi
 if [[ "$SEED_DEMO" == "True" ]]; then
   python manage.py seed_demo
   python manage.py seed_food_rescue
+  python manage.py seed_community
 fi

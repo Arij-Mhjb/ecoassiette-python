@@ -1105,6 +1105,8 @@ html[data-theme="dark"] .btn-outline-light:hover { background: rgba(255,255,255,
 .community-edit { display: grid; place-items: center; padding: .3rem; border-radius: 7px; }
 .community-text { margin: 1rem 0; white-space: normal; overflow-wrap: anywhere; }
 .community-image { display: block; width: 100%; max-height: 600px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+.community-image-wrap { position: relative; }
+.community-ai-label { position: absolute; right: .65rem; bottom: .65rem; display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .55rem; border-radius: 999px; background: rgba(11,59,44,.88); color: #fff; font-size: .72rem; font-weight: 750; backdrop-filter: blur(5px); }
 .community-reshare { display: flex; align-items: center; gap: .4rem; color: var(--muted); font-size: .84rem; margin: .8rem 0 .4rem; }
 .community-original { border: 1px solid var(--line); border-radius: 13px; padding: 1rem; }
 .community-original p { margin: .55rem 0; }
@@ -1143,5 +1145,12 @@ html[data-theme="dark"] .btn-outline-light:hover { background: rgba(255,255,255,
 .community-notification { display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: center; padding: 1rem; margin: 0; }
 .community-notification p { margin: 0 0 .15rem; }
 .community-notification.is-unread { border-left: 4px solid var(--primary); background: var(--primary-softer); }
+.community-ai-image { display: grid; gap: .8rem; margin-top: 1rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--line)); border-radius: 14px; background: var(--primary-softer); }
+.community-ai-image h2, .community-ai-image p { margin: .15rem 0; }
+.community-ai-image .btn { width: max-content; }
+.community-ai-status { min-height: 1.2em; color: var(--primary-dark); font-weight: 650; }
+.community-ai-preview { display: grid; gap: .55rem; }
+.community-ai-preview img { width: min(100%, 460px); aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+.community-ai-preview > div { display: flex; align-items: center; justify-content: space-between; gap: .5rem; max-width: 460px; }
 @media (max-width: 860px) { .community-layout { grid-template-columns: minmax(0, 680px); } .community-sidebar { display: none; } }
 @media (max-width: 560px) { .community-actions { grid-template-columns: repeat(2, 1fr); } .community-search { grid-template-columns: 1fr; } .community-profile { align-items: flex-start; } }
