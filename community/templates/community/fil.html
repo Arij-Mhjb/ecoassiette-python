@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Communauté{% endblock %}
+{% block content %}
+<div class="community-layout">
+  <main class="community-feed">
+    <div class="page-head row-between">
+      <div><p class="eyebrow">{% icon "users" 14 %}EcoAssiette ensemble</p><h1>Communauté</h1><p class="muted">Partagez vos idées, réussites et actions anti-gaspillage.</p></div>
+      <a class="btn" href="{% url 'community:publier' %}">{% icon "plus" %}Publier</a>
+    </div>
+    <form class="community-search" method="get" role="search"><label class="sr-only" for="community-q">Rechercher</label><input id="community-q" name="q" type="search" value="{{ recherche }}" placeholder="Rechercher un membre ou une publication"><button class="btn btn-small" type="submit">{% icon "search" 17 %}Rechercher</button></form>
+    {% for publication in publications %}{% include "community/_publication.html" %}{% empty %}<div class="empty">{% icon "users" 36 %}<p><strong>Aucune publication trouvée.</strong></p><a class="btn" href="{% url 'community:publier' %}">Créer la première</a></div>{% endfor %}
+    {% if page_obj.paginator.num_pages > 1 %}{% include "users/_pagination.html" with is_paginated=True params="" %}{% endif %}
+  </main>
+  <aside class="community-sidebar card"><h2>Règles du partage</h2><ul><li>Respectez chaque membre.</li><li>Publiez des contenus utiles et authentiques.</li><li>Utilisez <strong>@</strong> pour inviter quelqu’un à participer.</li></ul><a class="btn btn-ghost" href="{% url 'users:profil' %}">Voir mon profil</a></aside>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'community/community.js' %}" defer></script>{% endblock %}

@@ -43,6 +43,7 @@
       <nav id="menu-principal" class="main-nav" aria-label="Navigation principale">
         <ul>
           {% if user.is_authenticated %}
+            <li><a href="{% url 'community:fil' %}" {% if request.resolver_match.app_name == 'community' %}aria-current="page"{% endif %}>{% icon "users" %}Communauté</a></li>
             {% if user.role == "CITOYEN" %}
             <li class="nav-group-li">
               <details class="nav-group">

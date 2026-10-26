@@ -76,6 +76,15 @@ Chaque menu et chaque alternative affiche une estimation des calories, protéine
 - Recettes anti-gaspillage et assistant privé avec moteur local gratuit en secours.
 - Tableau de pilotage intelligent réservé aux administrateurs.
 
+### Communauté
+
+- Fil social accessible à tous les membres connectés.
+- Publications texte et photo, profils publics et recherche.
+- Mentions `@utilisateur` avec suggestions et sélection du compte.
+- J’aime, commentaires, repartage interne et partage par lien.
+- Photos stockées sur Cloudflare R2 lorsque le stockage distant est configuré.
+- Modération depuis l’administration Django et protections d’accès côté serveur.
+
 ### Comptes et accompagnement
 
 - Rôles Citoyen, Nutritionniste et Administrateur.
@@ -135,6 +144,7 @@ Copy-Item .env.example .env
 python manage.py migrate
 python manage.py seed_demo
 python manage.py seed_food_rescue
+python manage.py seed_community
 python manage.py runserver
 ```
 
@@ -151,6 +161,7 @@ cp .env.example .env
 python manage.py migrate
 python manage.py seed_demo
 python manage.py seed_food_rescue
+python manage.py seed_community
 python manage.py runserver
 ```
 
@@ -212,7 +223,7 @@ python manage.py migrate
 
 # Tests
 python manage.py test
-python manage.py test users repas impact planning food_rescue
+python manage.py test users repas impact planning food_rescue community
 
 # Couverture
 coverage run manage.py test
@@ -230,6 +241,7 @@ ecoassiette/
 ├── impact/          # impacts, alternatives, sponsors, points et bons PDF
 ├── planning/        # menus hebdomadaires et listes de courses
 ├── food_rescue/     # dons de surplus et collectes solidaires
+├── community/       # fil social, mentions, likes, commentaires et partages
 ├── templates/       # mise en page globale et composants partagés
 ├── static/          # CSS, JavaScript, polices et icônes
 ├── docs/images/     # captures utilisées par la documentation
