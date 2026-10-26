@@ -7,7 +7,6 @@ en local, variables Render en production). Aucun secret dans le code source.
 import os
 import sys
 from pathlib import Path
-from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -54,6 +53,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "storages",
     "rest_framework",
     "users.apps.UsersConfig",
     "repas",
@@ -143,14 +143,15 @@ STORAGES = {
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Cloudflare R2 (palier gratuit) : activé seulement quand toutes les variables
-# sont présentes. En local et dans les tests, les médias restent sur disque.
+# Stockage persistant Cloudflare R2 (API compatible S3). Sans ces quatre
+# variables, le développement et les tests continuent d'utiliser le disque.
+# Le bucket reste privé : les URL générées sont signées et expirent après 1 h.
 R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID", "")
 R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID", "")
 R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY", "")
 R2_BUCKET = os.getenv("CLOUDFLARE_R2_BUCKET", "")
-R2_PUBLIC_URL = os.getenv("CLOUDFLARE_R2_PUBLIC_URL", "").rstrip("/")
-if all((R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_URL)):
+R2_CONFIGURED = all((R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET))
+if R2_CONFIGURED:
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
@@ -160,13 +161,12 @@ if all((R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUB
             "endpoint_url": f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
             "region_name": "auto",
             "signature_version": "s3v4",
-            "querystring_auth": False,
-            "custom_domain": urlparse(R2_PUBLIC_URL).netloc,
-            "url_protocol": "https:",
+            "querystring_auth": True,
+            "querystring_expire": 3600,
+            "default_acl": None,
             "file_overwrite": False,
         },
     }
-    MEDIA_URL = f"{R2_PUBLIC_URL}/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -202,7 +202,8 @@ EMAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "EcoAssiette").strip()
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>")
 # Confirmation obligatoire de l'e-mail à l'inscription. Mettre False quand aucun service
 # d'envoi n'est disponible (ex. Render gratuit sans Brevo) : le compte est activé directement.
-CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", True)
+SERVICE_EMAIL_CONFIGURE = bool(BREVO_API_KEY or (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD))
+CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", SERVICE_EMAIL_CONFIGURE)
 INVITATION_DUREE_HEURES = 48          # validité d'un lien d'invitation (nutritionniste)
 # Durée de validité des liens (confirmation d'e-mail et réinitialisation) : 1 jour
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
