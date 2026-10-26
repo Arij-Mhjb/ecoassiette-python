@@ -15,6 +15,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
+def env_cle(name):
+    """Clé secrète : enlève les espaces, retours à la ligne et guillemets collés par erreur."""
+    return os.getenv(name, "").strip().strip('"').strip("'").strip()
+
+
 def env_bool(name, default=False):
     return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
 
@@ -89,6 +94,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "users.context_processors.notifications_admin",
                 "users.context_processors.notifications_citoyen",
+                "community.context_processors.notifications_communaute",
             ],
         },
     },
@@ -170,13 +176,18 @@ if R2_CONFIGURED:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Génération d'images communautaires via Pollinations. La clé reste côté serveur.
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
+POLLINATIONS_IMAGE_MODEL = os.getenv("POLLINATIONS_IMAGE_MODEL", "flux")
+POLLINATIONS_TIMEOUT = int(os.getenv("POLLINATIONS_TIMEOUT", "90"))
+
 # --- E-mails ------------------------------------------------------------------------
 # Choix automatique du backend. Les noms Django EMAIL_* et les noms MAIL_*
 # (souvent utilisés dans les fichiers .env Laravel) sont tous les deux acceptés.
 #   BREVO_API_KEY défini              -> API HTTPS Brevo
 #   MAIL_MAILER=smtp ou identifiant   -> SMTP (Gmail + mot de passe d'application)
 #   sinon                             -> console
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_KEY = env_cle("BREVO_API_KEY")
 MAIL_MAILER = os.getenv("MAIL_MAILER", "").strip().lower()
 EMAIL_HOST = os.getenv("EMAIL_HOST") or os.getenv("MAIL_HOST") or "smtp.gmail.com"
 EMAIL_PORT = int(os.getenv("EMAIL_PORT") or os.getenv("MAIL_PORT") or "587")
@@ -200,10 +211,11 @@ else:
 EMAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS") or EMAIL_HOST_USER or "no-reply@ecoassiette.tn"
 EMAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "EcoAssiette").strip()
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>")
-# Confirmation obligatoire de l'e-mail à l'inscription. Mettre False quand aucun service
-# d'envoi n'est disponible (ex. Render gratuit sans Brevo) : le compte est activé directement.
+# Confirmation OBLIGATOIRE de l'e-mail à l'inscription : le compte reste inactif tant que le lien
+# reçu par e-mail n'a pas été cliqué. Sans service d'envoi (en local), le lien s'affiche dans le terminal.
+# CONFIRMATION_EMAIL=False uniquement pour une démo sans e-mail (activation directe).
 SERVICE_EMAIL_CONFIGURE = bool(BREVO_API_KEY or (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD))
-CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", SERVICE_EMAIL_CONFIGURE)
+CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", True)
 INVITATION_DUREE_HEURES = 48          # validité d'un lien d'invitation (nutritionniste)
 # Durée de validité des liens (confirmation d'e-mail et réinitialisation) : 1 jour
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
@@ -221,7 +233,7 @@ REST_FRAMEWORK = {
 }
 
 # --- IA (Gemini) ---------------------------------------------------------------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEY = env_cle("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "60"))
 # Si le modèle principal est surchargé (HTTP 503 « high demand »), on essaie ces modèles dans l'ordre.

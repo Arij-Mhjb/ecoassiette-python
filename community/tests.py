@@ -1,8 +1,13 @@
+import io
+import tempfile
+from unittest.mock import Mock, patch
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from PIL import Image
 
-from .models import Commentaire, Jaime, Mention, Publication
+from .models import Commentaire, Jaime, Mention, MentionCommentaire, NotificationCommunaute, Publication
 
 User = get_user_model()
 
@@ -13,6 +18,7 @@ class CommunityViewsTests(TestCase):
         cls.alice = User.objects.create_user("alice", "alice@example.com", "motdepasse", first_name="Alice")
         cls.bob = User.objects.create_user("bob", "bob@example.com", "motdepasse", first_name="Bob")
         cls.charlie = User.objects.create_user("charlie", "charlie@example.com", "motdepasse")
+        cls.admin = User.objects.create_superuser("admin", "admin@example.com", "motdepasse")
         cls.post = Publication.objects.create(auteur=cls.alice, texte="Une astuce anti-gaspillage")
 
     def setUp(self):
@@ -34,6 +40,10 @@ class CommunityViewsTests(TestCase):
         self.assertRedirects(response, publication.get_absolute_url())
         self.assertIn("@bob", publication.texte)
         self.assertTrue(Mention.objects.filter(publication=publication, utilisateur=self.bob).exists())
+        self.assertTrue(NotificationCommunaute.objects.filter(
+            publication=publication, destinataire=self.bob,
+            type=NotificationCommunaute.Type.PUBLICATION,
+        ).exists())
 
     def test_publication_vide_est_refusee(self):
         response = self.client.post(reverse("community:publier"), {"texte": ""})
@@ -60,6 +70,76 @@ class CommunityViewsTests(TestCase):
         self.assertEqual(commentaire.auteur, self.alice)
         self.client.post(reverse("community:supprimer_commentaire", args=[commentaire.pk]))
         self.assertFalse(Commentaire.objects.exists())
+
+    def test_mention_dans_commentaire_cree_notification(self):
+        response = self.client.post(
+            reverse("community:commenter", args=[self.post.pk]),
+            {"contenu": "Merci @bob pour cette idée"},
+        )
+        self.assertEqual(response.status_code, 302)
+        commentaire = Commentaire.objects.get()
+        self.assertTrue(MentionCommentaire.objects.filter(
+            commentaire=commentaire, utilisateur=self.bob
+        ).exists())
+        self.assertTrue(NotificationCommunaute.objects.filter(
+            commentaire=commentaire, destinataire=self.bob,
+            type=NotificationCommunaute.Type.COMMENTAIRE,
+        ).exists())
+
+    def test_notification_est_marquee_lue_en_l_ouvrant(self):
+        notification = NotificationCommunaute.objects.create(
+            destinataire=self.alice, acteur=self.bob,
+            type=NotificationCommunaute.Type.PUBLICATION, publication=self.post,
+        )
+        response = self.client.post(reverse("community:lire_notification", args=[notification.pk]))
+        notification.refresh_from_db()
+        self.assertRedirects(response, self.post.get_absolute_url())
+        self.assertIsNotNone(notification.lue_le)
+
+    def test_administration_communaute_est_reservee_et_permet_masquage(self):
+        url = reverse("community:administration")
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.client.post(reverse("community:moderer_publication", args=[self.post.pk]))
+        self.post.refresh_from_db()
+        self.assertTrue(self.post.est_masquee)
+
+    def test_generer_image_ia_et_publier(self):
+        image_bytes = io.BytesIO()
+        Image.new("RGB", (16, 16), "green").save(image_bytes, format="JPEG")
+        image_response = Mock(content=image_bytes.getvalue())
+        image_response.raise_for_status.return_value = None
+        with tempfile.TemporaryDirectory() as medias, self.settings(
+            MEDIA_ROOT=medias, POLLINATIONS_API_KEY="sk-test", POLLINATIONS_IMAGE_MODEL="flux"
+        ), patch("community.ai.requests.get", return_value=image_response) as generation:
+            response = self.client.post(reverse("community:generer_image_ia"), {
+                "texte": "Une assiette végétale locale et colorée",
+            })
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("token", response.json())
+            generation.assert_called_once()
+            self.assertNotIn("sk-test", generation.call_args.args[0])
+            self.assertEqual(
+                generation.call_args.kwargs["headers"]["Authorization"], "Bearer sk-test"
+            )
+            response = self.client.post(reverse("community:publier"), {
+                "texte": "Une assiette végétale locale et colorée",
+                "image_ia_token": response.json()["token"],
+            })
+            publication = Publication.objects.exclude(pk=self.post.pk).get()
+            self.assertRedirects(response, publication.get_absolute_url())
+            self.assertTrue(publication.image_generee_ia)
+            self.assertTrue(publication.image.name.startswith("community/ai/"))
+            publication.image.storage.delete(publication.image.name)
+
+    def test_generation_ia_explique_la_configuration_manquante(self):
+        with self.settings(POLLINATIONS_API_KEY=""):
+            response = self.client.post(reverse("community:generer_image_ia"), {
+                "texte": "Une assiette végétale locale et colorée",
+            })
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("POLLINATIONS_API_KEY", response.json()["erreur"])
 
     def test_un_membre_ne_supprime_pas_le_contenu_d_un_autre(self):
         self.client.force_login(self.bob)

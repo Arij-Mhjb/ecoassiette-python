@@ -80,6 +80,7 @@ Chaque menu et chaque alternative affiche une estimation des calories, protéine
 
 - Fil social accessible à tous les membres connectés.
 - Publications texte et photo, profils publics et recherche.
+- Génération optionnelle d'une illustration avec Flux via Pollinations.
 - Mentions `@utilisateur` avec suggestions et sélection du compte.
 - J’aime, commentaires, repartage interne et partage par lien.
 - Photos stockées sur Cloudflare R2 lorsque le stockage distant est configuré.
@@ -167,6 +168,21 @@ python manage.py runserver
 
 Ouvrez ensuite [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
 
+### Génération d’images IA avec Pollinations
+
+La génération d’illustrations de publications utilise le modèle Flux via l’API Pollinations. Aucun modèle n’est
+téléchargé sur la machine. Ajoutez ces variables à `.env` :
+
+```dotenv
+POLLINATIONS_API_KEY=votre_cle_pollinations
+POLLINATIONS_IMAGE_MODEL=flux
+POLLINATIONS_TIMEOUT=90
+```
+
+La clé est envoyée par le serveur dans l’en-tête d’autorisation et n’est jamais incluse dans l’URL ni exposée au
+navigateur. La génération requiert une connexion Internet et échoue avec un message explicite si la clé manque,
+si l’API ne répond pas ou si elle renvoie un fichier qui n’est pas une image valide.
+
 ## Comptes de démonstration
 
 Après `python manage.py seed_demo` :
@@ -195,6 +211,11 @@ DATABASE_URL=
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-flash-latest
 GEMINI_TIMEOUT=60
+
+# Illustrations des publications via Pollinations.
+POLLINATIONS_API_KEY=
+POLLINATIONS_IMAGE_MODEL=flux
+POLLINATIONS_TIMEOUT=90
 
 USE_CELERY=False
 REDIS_URL=redis://localhost:6379/0

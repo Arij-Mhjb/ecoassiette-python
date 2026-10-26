@@ -25,6 +25,8 @@ services:
         value: "False"
       - key: GEMINI_API_KEY
         sync: false
+      - key: CONFIRMATION_EMAIL     # True : lien de confirmation obligatoire avant la 1re connexion (e-mails via Brevo)
+        value: "True"
       - key: BREVO_API_KEY          # e-mails (Render gratuit bloque l'SMTP)
         sync: false
       - key: DEFAULT_FROM_EMAIL     # ex. "EcoAssiette <adresse.verifiee@gmail.com>"
