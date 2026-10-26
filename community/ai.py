@@ -1,10 +1,9 @@
 import io
 import secrets
+import threading
+from functools import lru_cache
 from pathlib import Path
-from urllib.parse import quote
 
-import requests
-from PIL import Image, UnidentifiedImageError
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -13,63 +12,92 @@ from django.core.signing import BadSignature, SignatureExpired, dumps, loads
 SIGNING_SALT = "community.image-ia"
 DOSSIER_IA = "community/ai"
 TAILLE_MAX = 8 * 1024 * 1024
+_VERROU_GENERATION = threading.Lock()
 
 
 class ErreurGenerationImage(Exception):
     pass
 
 
-def generer_image(texte, utilisateur, ancien_token=""):
-    cle = settings.POLLINATIONS_API_KEY.strip()
-    if not cle:
+@lru_cache(maxsize=1)
+def charger_modele_local():
+    try:
+        import torch
+        from diffusers import AutoPipelineForText2Image
+    except ImportError as exc:
         raise ErreurGenerationImage(
-            "La génération IA n'est pas encore configurée. Ajoutez POLLINATIONS_API_KEY dans le fichier .env."
+            "Le moteur IA local n'est pas installé. Exécutez : pip install -r requirements-ai-local.txt"
+        ) from exc
+
+    appareil = settings.LOCAL_IMAGE_DEVICE.lower()
+    if appareil == "auto":
+        appareil = "cuda" if torch.cuda.is_available() else "cpu"
+    if appareil == "cuda" and not torch.cuda.is_available():
+        raise ErreurGenerationImage("CUDA est demandé, mais aucun GPU NVIDIA compatible n'est disponible.")
+
+    dtype = torch.float16 if appareil == "cuda" else torch.float32
+    try:
+        pipeline = AutoPipelineForText2Image.from_pretrained(
+            settings.LOCAL_IMAGE_MODEL,
+            torch_dtype=dtype,
+            use_safetensors=True,
+            local_files_only=settings.LOCAL_IMAGE_OFFLINE,
         )
+        pipeline.enable_attention_slicing()
+        if appareil == "cuda" and torch.cuda.get_device_properties(0).total_memory < 6 * 1024**3:
+            pipeline.enable_model_cpu_offload()
+            appareil_generation = "cuda"
+        else:
+            pipeline.to(appareil)
+            appareil_generation = appareil
+    except Exception as exc:
+        mode = "hors ligne" if settings.LOCAL_IMAGE_OFFLINE else "local"
+        raise ErreurGenerationImage(
+            f"Impossible de charger le modèle IA {mode}. Lancez d'abord : python manage.py prepare_image_model"
+        ) from exc
+    return pipeline, torch, appareil_generation
+
+
+def _generer_avec_modele(prompt):
+    pipeline, torch, appareil = charger_modele_local()
+    seed = secrets.randbelow(2_147_483_647)
+    generateur = torch.Generator(device="cpu").manual_seed(seed)
+    try:
+        with _VERROU_GENERATION, torch.inference_mode():
+            image = pipeline(
+                prompt=prompt,
+                num_inference_steps=settings.LOCAL_IMAGE_STEPS,
+                guidance_scale=0.0,
+                width=settings.LOCAL_IMAGE_SIZE,
+                height=settings.LOCAL_IMAGE_SIZE,
+                generator=generateur,
+            ).images[0]
+    except Exception as exc:
+        raise ErreurGenerationImage("La génération locale a échoué. Vérifiez la mémoire disponible.") from exc
+    return image, settings.LOCAL_IMAGE_MODEL
+
+
+def generer_image(texte, utilisateur, ancien_token=""):
     description = " ".join((texte or "").split())[:800]
     if len(description) < 8:
         raise ErreurGenerationImage("Décrivez davantage votre publication avant de générer une image.")
-
     prompt = (
         "Professional square social media photograph about sustainable food and community, "
         "natural light, realistic, appetizing, inclusive, ecological, no text, no logo. "
         f"Post context: {description}"
     )
-    url = f"https://gen.pollinations.ai/image/{quote(prompt, safe='')}"
-    try:
-        reponse = requests.get(
-            url,
-            params={
-                "model": settings.POLLINATIONS_IMAGE_MODEL,
-                "width": 1024, "height": 1024, "safe": "true",
-                "seed": secrets.randbelow(2_147_483_647),
-            },
-            headers={"Authorization": f"Bearer {cle}"},
-            timeout=(10, settings.POLLINATIONS_TIMEOUT),
-        )
-        reponse.raise_for_status()
-    except requests.Timeout as exc:
-        raise ErreurGenerationImage("Le modèle IA met trop de temps à répondre. Réessayez dans un instant.") from exc
-    except requests.RequestException as exc:
-        raise ErreurGenerationImage("Le service d'images IA est temporairement indisponible.") from exc
-
-    contenu = reponse.content
+    image, modele = _generer_avec_modele(prompt)
+    sortie = io.BytesIO()
+    image.convert("RGB").save(sortie, format="JPEG", quality=90, optimize=True)
+    contenu = sortie.getvalue()
     if not contenu or len(contenu) > TAILLE_MAX:
         raise ErreurGenerationImage("L'image générée est vide ou dépasse 8 Mo.")
-    try:
-        with Image.open(io.BytesIO(contenu)) as image:
-            image.verify()
-            format_image = (image.format or "").lower()
-    except (UnidentifiedImageError, OSError) as exc:
-        raise ErreurGenerationImage("Le service IA n'a pas renvoyé une image valide.") from exc
-    extensions = {"jpeg": "jpg", "png": "png", "webp": "webp"}
-    if format_image not in extensions:
-        raise ErreurGenerationImage("Le format d'image généré n'est pas accepté.")
 
     supprimer_image_temporaire(ancien_token, utilisateur.pk)
-    nom = f"{DOSSIER_IA}/u{utilisateur.pk}-{secrets.token_hex(12)}.{extensions[format_image]}"
+    nom = f"{DOSSIER_IA}/u{utilisateur.pk}-{secrets.token_hex(12)}.jpg"
     chemin = default_storage.save(nom, ContentFile(contenu))
     token = dumps({"uid": utilisateur.pk, "path": chemin}, salt=SIGNING_SALT, compress=True)
-    return {"token": token, "url": default_storage.url(chemin), "modele": settings.POLLINATIONS_IMAGE_MODEL}
+    return {"token": token, "url": default_storage.url(chemin), "modele": modele}
 
 
 def decoder_token_image(token, utilisateur_id, max_age=1800):

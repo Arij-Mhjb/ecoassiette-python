@@ -1,6 +1,7 @@
 import re
 
 from django import forms
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from .ai import ErreurGenerationImage, decoder_token_image
@@ -81,7 +82,7 @@ class PublicationForm(forms.ModelForm):
             return False
         publication.image.name = self.chemin_image_ia
         publication.image_generee_ia = True
-        publication.modele_image_ia = "Pollinations / Flux"
+        publication.modele_image_ia = settings.LOCAL_IMAGE_MODEL[:80]
         return True
 
     def enregistrer_mentions(self, publication):

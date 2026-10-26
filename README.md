@@ -80,7 +80,7 @@ Chaque menu et chaque alternative affiche une estimation des calories, protéine
 
 - Fil social accessible à tous les membres connectés.
 - Publications texte et photo, profils publics et recherche.
-- Génération optionnelle d'une illustration depuis le texte avec Flux via Pollinations.
+- Génération optionnelle d'une illustration avec Stable Diffusion Turbo exécuté localement, sans API.
 - Mentions `@utilisateur` avec suggestions et sélection du compte.
 - J’aime, commentaires, repartage interne et partage par lien.
 - Photos stockées sur Cloudflare R2 lorsque le stockage distant est configuré.
@@ -168,6 +168,19 @@ python manage.py runserver
 
 Ouvrez ensuite [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
 
+### Génération d’images IA sans API
+
+Le moteur d’images est optionnel et séparé des dépendances web afin de ne pas alourdir une installation classique :
+
+```bash
+pip install -r requirements-ai-local.txt
+python manage.py prepare_image_model
+```
+
+La seconde commande télécharge une seule fois `stabilityai/sd-turbo` dans le cache local. Après ce téléchargement,
+mettez `LOCAL_IMAGE_OFFLINE=True` dans `.env` pour interdire tout accès réseau pendant la génération. Le réglage
+`LOCAL_IMAGE_DEVICE=auto` utilise CUDA si un GPU NVIDIA compatible est disponible, sinon le processeur.
+
 ## Comptes de démonstration
 
 Après `python manage.py seed_demo` :
@@ -197,10 +210,12 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-flash-latest
 GEMINI_TIMEOUT=60
 
-# Crédits gratuits disponibles après création d'une clé Pollinations.
-POLLINATIONS_API_KEY=
-POLLINATIONS_IMAGE_MODEL=flux
-POLLINATIONS_TIMEOUT=90
+# Génération d'images locale et gratuite (aucune clé API).
+LOCAL_IMAGE_MODEL=stabilityai/sd-turbo
+LOCAL_IMAGE_DEVICE=auto
+LOCAL_IMAGE_OFFLINE=False
+LOCAL_IMAGE_STEPS=2
+LOCAL_IMAGE_SIZE=512
 
 USE_CELERY=False
 REDIS_URL=redis://localhost:6379/0
