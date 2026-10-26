@@ -1,12 +1,12 @@
+import io
 import tempfile
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from PIL import Image
 
-from .ai import ErreurGenerationImage
 from .models import Commentaire, Jaime, Mention, MentionCommentaire, NotificationCommunaute, Publication
 
 User = get_user_model()
@@ -106,18 +106,23 @@ class CommunityViewsTests(TestCase):
         self.assertTrue(self.post.est_masquee)
 
     def test_generer_image_ia_et_publier(self):
+        image_bytes = io.BytesIO()
+        Image.new("RGB", (16, 16), "green").save(image_bytes, format="JPEG")
+        image_response = Mock(content=image_bytes.getvalue())
+        image_response.raise_for_status.return_value = None
         with tempfile.TemporaryDirectory() as medias, self.settings(
-            MEDIA_ROOT=medias, LOCAL_IMAGE_MODEL="stabilityai/sd-turbo"
-        ), patch(
-            "community.ai._generer_avec_modele",
-            return_value=(Image.new("RGB", (16, 16), "green"), "stabilityai/sd-turbo"),
-        ) as generation:
+            MEDIA_ROOT=medias, POLLINATIONS_API_KEY="sk-test", POLLINATIONS_IMAGE_MODEL="flux"
+        ), patch("community.ai.requests.get", return_value=image_response) as generation:
             response = self.client.post(reverse("community:generer_image_ia"), {
                 "texte": "Une assiette végétale locale et colorée",
             })
             self.assertEqual(response.status_code, 200)
             self.assertIn("token", response.json())
             generation.assert_called_once()
+            self.assertNotIn("sk-test", generation.call_args.args[0])
+            self.assertEqual(
+                generation.call_args.kwargs["headers"]["Authorization"], "Bearer sk-test"
+            )
             response = self.client.post(reverse("community:publier"), {
                 "texte": "Une assiette végétale locale et colorée",
                 "image_ia_token": response.json()["token"],
@@ -128,16 +133,13 @@ class CommunityViewsTests(TestCase):
             self.assertTrue(publication.image.name.startswith("community/ai/"))
             publication.image.storage.delete(publication.image.name)
 
-    def test_generation_ia_explique_moteur_local_manquant(self):
-        with patch(
-            "community.ai._generer_avec_modele",
-            side_effect=ErreurGenerationImage("Installez requirements-ai-local.txt"),
-        ):
+    def test_generation_ia_explique_la_configuration_manquante(self):
+        with self.settings(POLLINATIONS_API_KEY=""):
             response = self.client.post(reverse("community:generer_image_ia"), {
                 "texte": "Une assiette végétale locale et colorée",
             })
         self.assertEqual(response.status_code, 503)
-        self.assertIn("requirements-ai-local.txt", response.json()["erreur"])
+        self.assertIn("POLLINATIONS_API_KEY", response.json()["erreur"])
 
     def test_un_membre_ne_supprime_pas_le_contenu_d_un_autre(self):
         self.client.force_login(self.bob)

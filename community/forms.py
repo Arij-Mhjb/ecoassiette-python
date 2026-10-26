@@ -82,7 +82,7 @@ class PublicationForm(forms.ModelForm):
             return False
         publication.image.name = self.chemin_image_ia
         publication.image_generee_ia = True
-        publication.modele_image_ia = settings.LOCAL_IMAGE_MODEL[:80]
+        publication.modele_image_ia = settings.POLLINATIONS_IMAGE_MODEL[:80]
         return True
 
     def enregistrer_mentions(self, publication):

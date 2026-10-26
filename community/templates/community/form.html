@@ -11,7 +11,7 @@
       <div class="field{% if form.image.errors %} has-error{% endif %}"><label for="{{ form.image.id_for_label }}">Photo</label>{{ form.image }}<div class="help">JPEG, PNG ou WebP, 8 Mo maximum. La photo est stockée sur Cloudflare R2 lorsque le service est configuré.</div>{{ form.image.errors }}</div>
       {% if form.image_ia_token.errors %}<div class="alert alert-error">{{ form.image_ia_token.errors }}</div>{% endif %}
       <section class="community-ai-image" aria-labelledby="titre-image-ia">
-        <div><p class="eyebrow">{% icon "sparkles" 14 %}Option IA locale</p><h2 id="titre-image-ia">Illustrer la publication avec l’IA</h2><p class="muted small">EcoAssiette transforme votre texte en image carrée avec Stable Diffusion Turbo exécuté sur votre machine, sans clé ni API externe. Vérifiez toujours l’image avant de publier.</p></div>
+        <div><p class="eyebrow">{% icon "sparkles" 14 %}Option IA</p><h2 id="titre-image-ia">Illustrer la publication avec l’IA</h2><p class="muted small">EcoAssiette transforme votre texte en image carrée avec le modèle Flux via Pollinations. Vérifiez toujours l’image avant de publier.</p></div>
         <button class="btn btn-ghost js-generate-image" type="button">{% icon "sparkles" 18 %}<span>Générer depuis mon texte</span></button>
         <p class="community-ai-status small" role="status" aria-live="polite"></p>
         <div class="community-ai-preview" hidden>

@@ -171,12 +171,10 @@ if R2_CONFIGURED:
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Génération locale d'images communautaires, sans clé ni API externe.
-LOCAL_IMAGE_MODEL = os.getenv("LOCAL_IMAGE_MODEL", "stabilityai/sd-turbo")
-LOCAL_IMAGE_DEVICE = os.getenv("LOCAL_IMAGE_DEVICE", "auto")  # auto, cuda ou cpu
-LOCAL_IMAGE_OFFLINE = env_bool("LOCAL_IMAGE_OFFLINE", False)
-LOCAL_IMAGE_STEPS = int(os.getenv("LOCAL_IMAGE_STEPS", "2"))
-LOCAL_IMAGE_SIZE = int(os.getenv("LOCAL_IMAGE_SIZE", "512"))
+# Génération d'images communautaires via Pollinations. La clé reste côté serveur.
+POLLINATIONS_API_KEY = os.getenv("POLLINATIONS_API_KEY", "")
+POLLINATIONS_IMAGE_MODEL = os.getenv("POLLINATIONS_IMAGE_MODEL", "flux")
+POLLINATIONS_TIMEOUT = int(os.getenv("POLLINATIONS_TIMEOUT", "90"))
 
 # --- E-mails ------------------------------------------------------------------------
 # Choix automatique du backend. Les noms Django EMAIL_* et les noms MAIL_*
