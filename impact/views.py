@@ -218,7 +218,13 @@ def soumettre_preuve(request):
             messages.success(request, "Preuve envoyée. Les points seront crédités après validation administrative.")
             return redirect("impact:portefeuille")
     else:
-        form = PreuveRepasForm(utilisateur=request.user)
+        initial = {}
+        repas_id = request.GET.get("repas")
+        if repas_id and Repas.objects.filter(
+            pk=repas_id, utilisateur=request.user, preuve_ecologique__isnull=True,
+        ).exists():
+            initial["repas"] = repas_id
+        form = PreuveRepasForm(utilisateur=request.user, initial=initial)
     return render(request, "impact/soumettre_preuve.html", {"form": form})
 
 

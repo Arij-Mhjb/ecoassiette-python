@@ -56,7 +56,21 @@
           <ul>{% for ingredient in menu.ingredients %}<li>{{ ingredient.quantite_g }} g de {{ ingredient.nom }}</li>{% endfor %}</ul>
           <ol>{% for instruction in menu.instructions %}<li>{{ instruction }}</li>{% endfor %}</ol>
         </details>
-        <form method="post" action="{% url 'planning:remplacer' menu.pk %}">{% csrf_token %}<button class="btn btn-small btn-ghost" type="submit">Proposer une autre option plus sobre</button></form>
+        {% if menu.repas_realise_id %}
+          <div class="planner-meal-added">
+            <strong>{% icon "check" 17 %} Ajouté à mes repas</strong>
+            {% if not menu.repas_realise.preuve_ecologique %}
+              <a class="btn btn-small" href="{% url 'impact:soumettre_preuve' %}?repas={{ menu.repas_realise_id }}">Envoyer une preuve et gagner des points</a>
+            {% else %}
+              <span class="small muted">Preuve {{ menu.repas_realise.preuve_ecologique.get_statut_display|lower }}</span>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="planner-actions">
+            <form method="post" action="{% url 'planning:ajouter_comme_repas' menu.pk %}">{% csrf_token %}<button class="btn btn-small" type="submit">Ajouter à mes repas</button></form>
+            <form method="post" action="{% url 'planning:remplacer' menu.pk %}">{% csrf_token %}<button class="btn btn-small btn-ghost" type="submit">Proposer une autre option plus sobre</button></form>
+          </div>
+        {% endif %}
         <a class="planner-tutorial" href="{{ menu.tutoriel_video_url }}" target="_blank" rel="noopener noreferrer">{% icon "play" 17 %}Voir un tutoriel vidéo pour préparer ce menu</a>
       </article>
       {% endfor %}

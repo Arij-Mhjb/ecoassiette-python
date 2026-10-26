@@ -1020,6 +1020,10 @@ html[data-theme="dark"] .impact-kpi, html[data-theme="dark"] .suggestion-vegetal
 .planner-product small { color: var(--muted); }
 .planner-product > a { font-weight: 700; font-size: .85rem; }
 .planner-tutorial { display: flex; align-items: center; gap: .45rem; margin-top: .8rem; padding-top: .75rem; border-top: 1px solid var(--border); font-weight: 700; font-size: .88rem; }
+.planner-actions { display: flex; flex-wrap: wrap; gap: .55rem; align-items: center; }
+.planner-actions form { margin: 0; }
+.planner-meal-added { display: grid; gap: .6rem; padding: .75rem; border-radius: 12px; background: var(--primary-soft); }
+.planner-meal-added strong { display: flex; align-items: center; gap: .35rem; color: var(--primary-dark); }
 .nutrition-summary { display: grid; grid-template-columns: repeat(5, minmax(62px, 1fr)); gap: .35rem; margin: .7rem 0 .25rem; }
 .nutrition-summary span { display: grid; gap: .05rem; padding: .45rem .3rem; border-radius: 8px; background: var(--bg); text-align: center; }
 .nutrition-summary strong { font-size: .82rem; }

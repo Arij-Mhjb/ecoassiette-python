@@ -3,11 +3,13 @@ from decimal import Decimal
 from unittest import mock
 
 from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from django.utils import timezone
 
 from repas.models import ElementRepas, Repas
-from impact.models import ProduitRecompense, Sponsor
+from impact.models import PreuveRepas, ProduitRecompense, Sponsor, TransactionPoints
+from impact.services import crediter_preuve
 from users.ai import ErreurIA
 from users.models import Utilisateur
 
@@ -103,6 +105,45 @@ class PlanificateurTest(TestCase):
         )
         reponse = self.client.get(reverse("planning:courses", args=[plan.pk]))
         self.assertEqual(reponse.status_code, 404)
+
+    def test_menu_devient_repas_puis_preuve_et_points(self):
+        plan = PlanMenu.objects.create(
+            utilisateur=self.user, semaine_du=self.lundi,
+            objectif_co2=20, source="LOCAL",
+        )
+        menu = MenuPlanifie.objects.create(
+            plan=plan, date=self.lundi, type_repas="DEJEUNER",
+            nom="Burger végétal planifié",
+            ingredients=[
+                {"nom": "haricots rouges", "quantite_g": 160, "categorie": "LEGUMINEUSE"},
+                {"nom": "pain burger", "quantite_g": 80, "categorie": "FECULENT"},
+            ],
+            instructions=[], co2_estime=Decimal("0.25"),
+        )
+        reponse = self.client.post(reverse("planning:ajouter_comme_repas", args=[menu.pk]))
+        menu.refresh_from_db()
+        repas = menu.repas_realise
+        self.assertRedirects(
+            reponse,
+            f"{reverse('impact:soumettre_preuve')}?repas={repas.pk}",
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(repas.note, menu.nom)
+        self.assertEqual(repas.elements.count(), 2)
+
+        # Un deuxième clic ne crée pas de doublon et le repas est présélectionné.
+        self.client.post(reverse("planning:ajouter_comme_repas", args=[menu.pk]))
+        self.assertEqual(Repas.objects.filter(utilisateur=self.user, note=menu.nom).count(), 1)
+        page = self.client.get(reverse("impact:soumettre_preuve"), {"repas": repas.pk})
+        self.assertContains(page, f'value="{repas.pk}" selected')
+
+        fichier = SimpleUploadedFile("repas.jpg", b"image-test", content_type="image/jpeg")
+        self.client.post(reverse("impact:soumettre_preuve"), {"repas": repas.pk, "media": fichier})
+        preuve = PreuveRepas.objects.get(repas=repas)
+        creee, points = crediter_preuve(preuve)
+        self.assertTrue(creee)
+        self.assertGreaterEqual(points, 50)
+        self.assertTrue(TransactionPoints.objects.filter(preuve=preuve, montant=points).exists())
 
     @mock.patch("planning.services.appeler_gemini", side_effect=ErreurIA("repli local"))
     def test_menus_utilisent_produits_vegetaux_et_affichent_tutoriels(self, gemini):

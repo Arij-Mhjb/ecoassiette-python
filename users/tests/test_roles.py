@@ -151,6 +151,28 @@ class SuperAdministrateurTest(BaseTest):
         r = self.client.post(f"/admin/users/utilisateur/{self.admin2.pk}/change/", {})
         self.assertEqual(r.status_code, 403)
 
+    def test_admin_django_supprime_citoyen_et_dependances(self):
+        cible = self.creer("a_supprimer", Utilisateur.Role.CITOYEN)
+        from django.contrib import admin as django_admin
+        from django.test import RequestFactory
+        from users.models import HistoriqueConnexion
+        HistoriqueConnexion.objects.create(
+            utilisateur=cible, identifiant=cible.email, succes=True,
+        )
+        requete = RequestFactory().get("/")
+        requete.user = Utilisateur.objects.get(pk=self.admin.pk)
+        _, _, permissions_manquantes, _ = django_admin.site._registry[Utilisateur].get_deleted_objects(
+            [cible], requete,
+        )
+        self.assertFalse(permissions_manquantes, permissions_manquantes)
+        self.client.force_login(self.admin)
+        reponse = self.client.post(
+            f"/admin/users/utilisateur/{cible.pk}/delete/", {"post": "yes"}
+        )
+        self.assertEqual(reponse.status_code, 302, reponse.content.decode())
+        self.assertEqual(reponse.url, "/admin/users/utilisateur/")
+        self.assertFalse(Utilisateur.objects.filter(pk=cible.pk).exists())
+
 
 class AdminDjangoLectureSeuleTest(BaseTest):
     """L'admin simple voit tous les modules dans /admin/, en lecture seule pour les données métier."""

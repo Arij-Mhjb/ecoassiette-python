@@ -48,6 +48,10 @@ class MenuPlanifie(models.Model):
     repas_source = models.ForeignKey(
         "repas.Repas", on_delete=models.SET_NULL, null=True, blank=True, related_name="menus_alternatifs"
     )
+    repas_realise = models.OneToOneField(
+        "repas.Repas", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="menu_planifie", verbose_name="repas ajouté",
+    )
     produit_vegetal = models.ForeignKey(
         "impact.ProduitRecompense", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="menus_planifies", verbose_name="produit végétal recommandé",
