@@ -15,6 +15,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
+def env_cle(name):
+    """Clé secrète : enlève les espaces, retours à la ligne et guillemets collés par erreur."""
+    return os.getenv(name, "").strip().strip('"').strip("'").strip()
+
+
 def env_bool(name, default=False):
     return os.getenv(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
 
@@ -145,7 +150,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 #   BREVO_API_KEY défini   -> API HTTPS Brevo (fonctionne sur Render gratuit, qui bloque l'SMTP)
 #   EMAIL_HOST_USER défini -> SMTP (ex. Gmail + mot de passe d'application) — idéal en local
 #   sinon                  -> console (les e-mails s'affichent dans le terminal)
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_KEY = env_cle("BREVO_API_KEY")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
@@ -179,7 +184,7 @@ REST_FRAMEWORK = {
 }
 
 # --- IA (Gemini) ---------------------------------------------------------------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_API_KEY = env_cle("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "60"))
 # Si le modèle principal est surchargé (HTTP 503 « high demand »), on essaie ces modèles dans l'ordre.
