@@ -185,6 +185,8 @@ class AssistantRecetteTest(TestCase):
         self.assertIn("Burger végan maison", recette["nom"])
         self.assertEqual(recette["ingredients"][0]["quantite_g"], 200)
         self.assertIn("youtube.com/results", recette["video_url"])
+        self.assertGreater(recette["nutrition"]["proteines"], 0)
+        self.assertGreater(recette["nutrition"]["fibres"], 0)
 
         reponse = self.client.post(reverse("impact:assistant_recette"), {
             "type_repas": "DINER", "date": timezone.localdate().isoformat(),
@@ -194,6 +196,8 @@ class AssistantRecetteTest(TestCase):
         self.assertContains(reponse, "Burger végan maison")
         self.assertContains(reponse, "Ingrédients pour cette portion")
         self.assertContains(reponse, "Voir des tutoriels vidéo")
+        self.assertContains(reponse, "protéines")
+        self.assertContains(reponse, "fibres")
 
     @mock.patch("impact.recipe_ai.appeler_gemini", side_effect=ErreurIA("repli local"))
     def test_contexte_pain_burger_ne_recommande_pas_de_viande_mais_hamburger_oui(self, gemini):
@@ -485,6 +489,51 @@ class RecompensesTest(TestCase):
         self.assertEqual(self.produit.stock, 1)
         self.assertEqual(solde_points(self.user), 300)
         self.assertTrue(CommandeRecompense.objects.filter(utilisateur=self.user, produit=self.produit).exists())
+
+    def test_achat_genere_bon_pdf_avec_code_et_qr(self):
+        TransactionPoints.objects.create(utilisateur=self.user, montant=500, motif="Test bon")
+        self.client.post(reverse("impact:acheter_produit", args=[self.produit.pk]))
+        commande = CommandeRecompense.objects.get(utilisateur=self.user, produit=self.produit)
+        self.assertRegex(commande.code_bon, r"^ECO-[A-F0-9]{12}$")
+        pdf = self.client.get(reverse("impact:telecharger_bon", args=[commande.pk]))
+        self.assertEqual(pdf.status_code, 200)
+        self.assertEqual(pdf["Content-Type"], "application/pdf")
+        self.assertIn(commande.code_bon, pdf["Content-Disposition"])
+        self.assertTrue(pdf.content.startswith(b"%PDF"))
+        self.assertGreater(len(pdf.content), 3000)
+        verification = self.client.get(reverse("impact:verifier_bon", args=[commande.code_bon]))
+        self.assertContains(verification, commande.code_bon)
+        self.assertContains(verification, "Ce bon est valide")
+
+    def test_seul_proprietaire_telecharge_et_admin_valide_le_bon(self):
+        commande = CommandeRecompense.objects.create(
+            utilisateur=self.user, produit=self.produit, points_utilises=200,
+            prix_remise=Decimal("8.00"),
+        )
+        autre = Utilisateur.objects.create_user(
+            username="autre_bon", email="autre-bon@test.tn",
+            password="MotDePasse!42", email_verifie=True,
+        )
+        self.client.force_login(autre)
+        self.assertEqual(
+            self.client.get(reverse("impact:telecharger_bon", args=[commande.pk])).status_code, 404
+        )
+        self.assertEqual(
+            self.client.post(reverse("impact:verifier_bon", args=[commande.code_bon])).status_code, 403
+        )
+        admin = Utilisateur.objects.create_user(
+            username="admin_bon", email="admin-bon@test.tn",
+            password="MotDePasse!42", email_verifie=True,
+        )
+        admin.is_staff = True
+        admin.is_superuser = True
+        admin.save(update_fields=["is_staff", "is_superuser"])
+        self.client.force_login(admin)
+        validation = self.client.post(reverse("impact:verifier_bon", args=[commande.code_bon]))
+        self.assertEqual(validation.status_code, 200)
+        commande.refresh_from_db()
+        self.assertEqual(commande.statut, CommandeRecompense.Statut.UTILISEE)
+        self.assertIsNotNone(commande.utilise_le)
 
     def test_achat_refuse_si_solde_insuffisant(self):
         self.client.post(reverse("impact:acheter_produit", args=[self.produit.pk]))

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Vérification du bon{% endblock %}
+{% block content %}
+<div class="voucher-check card">
+  <p class="eyebrow">Vérification sponsor</p>
+  <h1>{{ commande.produit.nom }}</h1>
+  <p class="voucher-code">{{ commande.code_bon }}</p>
+  <dl class="details">
+    <div><dt>Sponsor</dt><dd>{{ commande.produit.sponsor.nom }}</dd></div>
+    <div><dt>Remise</dt><dd>{{ commande.produit.remise_pourcent }} %</dd></div>
+    <div><dt>Prix remisé</dt><dd>{{ commande.prix_remise|floatformat:2 }} €</dd></div>
+    <div><dt>Statut</dt><dd><strong>{{ commande.get_statut_display }}</strong></dd></div>
+    {% if commande.utilise_le %}<div><dt>Utilisé le</dt><dd>{{ commande.utilise_le|date:"d/m/Y à H:i" }}</dd></div>{% endif %}
+  </dl>
+  {% if commande.statut == 'CONFIRMEE' %}
+    {% if user.is_staff %}<form method="post">{% csrf_token %}<button class="btn" type="submit">Valider et marquer comme utilisé</button></form>
+    {% else %}<p class="alert alert-success">Ce bon est valide. Le partenaire doit se connecter pour confirmer son utilisation.</p>{% endif %}
+  {% elif commande.statut == 'UTILISEE' %}<p class="alert alert-warning">Ce bon a déjà été utilisé.</p>
+  {% else %}<p class="alert alert-error">Ce bon n’est plus valide.</p>{% endif %}
+</div>
+{% endblock %}

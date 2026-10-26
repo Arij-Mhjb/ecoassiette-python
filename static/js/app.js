@@ -54,6 +54,25 @@
   });
 })();
 
+/* Groupes de navigation : un seul ouvert, fermeture extérieure et avec Échap. */
+(function () {
+  const groupes = Array.from(document.querySelectorAll(".nav-group"));
+  if (!groupes.length) return;
+  groupes.forEach(function (groupe) {
+    groupe.addEventListener("toggle", function () {
+      if (groupe.open) groupes.forEach(function (autre) { if (autre !== groupe) autre.open = false; });
+    });
+  });
+  document.addEventListener("click", function (e) {
+    groupes.forEach(function (groupe) { if (groupe.open && !groupe.contains(e.target)) groupe.open = false; });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    const ouvert = groupes.find(function (groupe) { return groupe.open; });
+    if (ouvert) { ouvert.open = false; ouvert.querySelector("summary").focus(); }
+  });
+})();
+
 /* Application installable (PWA) : service worker + bouton « Installer l'application ». */
 (function () {
   if ("serviceWorker" in navigator) {

@@ -13,5 +13,7 @@ urlpatterns = [
     path("portefeuille/", views.portefeuille, name="portefeuille"),
     path("portefeuille/preuve/", views.soumettre_preuve, name="soumettre_preuve"),
     path("portefeuille/acheter/<int:produit_id>/", views.acheter_produit, name="acheter_produit"),
+    path("portefeuille/bon/<int:commande_id>/pdf/", views.telecharger_bon, name="telecharger_bon"),
+    path("bons/<str:code>/", views.verifier_bon, name="verifier_bon"),
     path("repas/<int:repas_id>/adopter/<int:alternative_id>/", views.adopter_alternative, name="adopter"),
 ]

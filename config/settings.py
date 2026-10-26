@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "users.apps.UsersConfig",
     "repas",
     "impact",
+    "planning.apps.PlanningConfig",
     "food_rescue.apps.FoodRescueConfig",
 ]
 

@@ -5,8 +5,13 @@ from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.http import Http404
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods
+from django.core.exceptions import PermissionDenied
+from django.urls import reverse
+from django.utils import timezone
 
 from repas.models import ElementRepas, Repas
 
@@ -18,10 +23,12 @@ from .models import (
     ProduitRecompense, TransactionPoints,
 )
 from .recipe_ai import extraire_recette, proposer_recettes_garde_manger
+from .nutrition import calculer_produit
 from .services import (
     analyser_ingredients, analyser_repas, proposer_alternative, proposer_recette_alternative,
     recommander_produits, solde_points,
 )
+from .voucher_pdf import generer_bon_pdf
 
 
 @login_required
@@ -58,6 +65,10 @@ def _lignes_apercu(formset, utilisateur):
         produits_recommandes = recommander_produits(
             donnees.get("aliment", ""), alternative
         ) if donnees and not donnees.get("DELETE") else []
+        for recommandation in produits_recommandes:
+            recommandation["nutrition"] = calculer_produit(
+                recommandation["produit"], donnees.get("quantite_g", 100)
+            )
         recette_maison = proposer_recette_alternative(
             donnees.get("aliment", ""), alternative, donnees.get("quantite_g", 100)
         ) if donnees and not donnees.get("DELETE") and alternative else None
@@ -236,8 +247,43 @@ def acheter_produit(request, produit_id):
         )
         produit.stock -= 1
         produit.save(update_fields=["stock"])
-    messages.success(request, "Récompense réservée. Le sponsor vous contactera pour la remise du produit.")
+    messages.success(
+        request,
+        "Récompense réservée. Votre bon PDF avec QR code est disponible dans le portefeuille.",
+    )
     return redirect("impact:portefeuille")
+
+
+@login_required
+def telecharger_bon(request, commande_id):
+    commande = get_object_or_404(
+        CommandeRecompense.objects.select_related("produit__sponsor"),
+        pk=commande_id, utilisateur=request.user,
+    )
+    url_verification = request.build_absolute_uri(
+        reverse("impact:verifier_bon", args=[commande.code_bon])
+    )
+    contenu = generer_bon_pdf(commande, url_verification)
+    reponse = HttpResponse(contenu, content_type="application/pdf")
+    reponse["Content-Disposition"] = f'attachment; filename="bon-{commande.code_bon}.pdf"'
+    return reponse
+
+
+@require_http_methods(["GET", "POST"])
+def verifier_bon(request, code):
+    commande = get_object_or_404(
+        CommandeRecompense.objects.select_related("produit__sponsor", "utilisateur"),
+        code_bon=code,
+    )
+    if request.method == "POST":
+        if not request.user.is_authenticated or not request.user.is_staff:
+            raise PermissionDenied("Seul un partenaire autorisé peut valider ce bon.")
+        if commande.statut == CommandeRecompense.Statut.CONFIRMEE:
+            commande.statut = CommandeRecompense.Statut.UTILISEE
+            commande.utilise_le = timezone.now()
+            commande.save(update_fields=["statut", "utilise_le"])
+            messages.success(request, "Bon validé. La remise peut être appliquée.")
+    return render(request, "impact/verifier_bon.html", {"commande": commande})
 
 
 @login_required

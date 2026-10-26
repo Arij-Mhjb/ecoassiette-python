@@ -33,6 +33,9 @@ GROUPES = {
             "impact.view_preuverepas", "impact.change_preuverepas",
             "impact.view_transactionpoints", "impact.view_commanderecompense", "impact.change_commanderecompense",
             "impact.view_alternativeadoptee", "impact.view_extractionrecetteia",
+            # Planificateur : supervision des menus générés et objectifs carbone
+            "planning.view_planmenu", "planning.change_planmenu",
+            "planning.view_menuplanifie", "planning.change_menuplanifie",
             # Food Rescue : supervision et modération des dons solidaires
             "food_rescue.view_annoncesurplus", "food_rescue.change_annoncesurplus",
             "food_rescue.delete_annoncesurplus", "food_rescue.moderer_surplus",

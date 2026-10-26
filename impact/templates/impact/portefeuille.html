@@ -48,6 +48,15 @@
   </article>{% endfor %}</div>{% else %}<p class="empty">Aucun produit n'est publié pour le moment.</p>{% endif %}
 </section>
 
+<section class="card" aria-labelledby="titre-bons"><h2 id="titre-bons">Mes bons de réduction</h2>
+  {% if commandes %}<div class="voucher-list">{% for commande in commandes %}
+    <article class="voucher-item">
+      <div><strong>{{ commande.produit.nom }}</strong><p class="small muted">{{ commande.code_bon }} · {{ commande.get_statut_display }} · {{ commande.prix_remise|floatformat:2 }} €</p></div>
+      <a class="btn btn-small" href="{% url 'impact:telecharger_bon' commande.pk %}">{% icon "download" 16 %}Télécharger le PDF</a>
+    </article>
+  {% endfor %}</div>{% else %}<p class="empty">Aucun bon de réduction pour le moment.</p>{% endif %}
+</section>
+
 <section class="card" aria-labelledby="titre-preuves"><h2 id="titre-preuves">Mes preuves</h2>
   {% if preuves %}<ul class="history-list">{% for preuve in preuves %}<li><strong>{{ preuve.repas }}</strong> — {{ preuve.get_statut_display }}{% if preuve.points_attribues %} · +{{ preuve.points_attribues }} points{% endif %}</li>{% endfor %}</ul>
   {% else %}<p class="empty">Aucune preuve envoyée.</p>{% endif %}

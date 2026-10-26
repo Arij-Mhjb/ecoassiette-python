@@ -11,6 +11,7 @@ from django.utils import timezone
 from .models import (
     AlternativeVegetale, FacteurImpact, PreuveRepas, ProduitRecompense, TransactionPoints,
 )
+from .nutrition import calculer_nutrition
 
 
 ZERO = Decimal("0")
@@ -156,12 +157,14 @@ def proposer_recette_alternative(aliment, alternative, quantite_g):
         ]
 
     recherche_video = quote_plus(f"recette {nom} facile en français")
+    ingredients_structures = [{"nom": nom_i, "quantite_g": poids} for nom_i, poids in ingredients]
     return {
         "nom": nom,
-        "ingredients": [{"nom": nom_i, "quantite_g": poids} for nom_i, poids in ingredients],
+        "ingredients": ingredients_structures,
         "etapes": etapes,
         "video_url": f"https://www.youtube.com/results?search_query={recherche_video}",
         "remplacement": alternative.remplacement,
+        "nutrition": calculer_nutrition(ingredients_structures),
     }
 
 

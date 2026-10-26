@@ -1,6 +1,11 @@
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.conf import settings
 from django.db import models
+import secrets
+
+
+def generer_code_bon():
+    return "ECO-" + secrets.token_hex(6).upper()
 
 
 class FacteurImpact(models.Model):
@@ -169,6 +174,11 @@ class ProduitRecompense(models.Model):
     cout_points = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     stock = models.PositiveIntegerField(default=0)
     produit_vegetal = models.BooleanField(default=True)
+    calories_100g = models.DecimalField(max_digits=7, decimal_places=1, blank=True, null=True, validators=[MinValueValidator(0)])
+    proteines_100g = models.DecimalField("protéines pour 100 g", max_digits=6, decimal_places=1, blank=True, null=True, validators=[MinValueValidator(0)])
+    glucides_100g = models.DecimalField("glucides pour 100 g", max_digits=6, decimal_places=1, blank=True, null=True, validators=[MinValueValidator(0)])
+    lipides_100g = models.DecimalField("lipides pour 100 g", max_digits=6, decimal_places=1, blank=True, null=True, validators=[MinValueValidator(0)])
+    fibres_100g = models.DecimalField("fibres pour 100 g", max_digits=6, decimal_places=1, blank=True, null=True, validators=[MinValueValidator(0)])
     mots_cles_recommandation = models.CharField(
         "mots-clés de recommandation",
         max_length=300,
@@ -248,6 +258,7 @@ class CommandeRecompense(models.Model):
         CONFIRMEE = "CONFIRMEE", "Confirmée"
         LIVREE = "LIVREE", "Livrée"
         ANNULEE = "ANNULEE", "Annulée"
+        UTILISEE = "UTILISEE", "Utilisée chez le sponsor"
 
     utilisateur = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="commandes_recompenses"
@@ -256,6 +267,8 @@ class CommandeRecompense(models.Model):
     points_utilises = models.PositiveIntegerField()
     prix_remise = models.DecimalField(max_digits=9, decimal_places=2)
     statut = models.CharField(max_length=10, choices=Statut.choices, default=Statut.CONFIRMEE)
+    code_bon = models.CharField(max_length=20, unique=True, default=generer_code_bon, editable=False)
+    utilise_le = models.DateTimeField(blank=True, null=True)
     creee_le = models.DateTimeField(auto_now_add=True)
 
     class Meta:

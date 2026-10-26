@@ -168,6 +168,11 @@ class ProduitRecompenseAdmin(admin.ModelAdmin):
                         cout_points=form.cleaned_data["cout_points"],
                         stock=0,
                         produit_vegetal=True,
+                        calories_100g=donnees.get("calories_100g"),
+                        proteines_100g=donnees.get("proteines_100g"),
+                        glucides_100g=donnees.get("glucides_100g"),
+                        lipides_100g=donnees.get("lipides_100g"),
+                        fibres_100g=donnees.get("fibres_100g"),
                         mots_cles_recommandation=donnees["mots_cles_recommandation"],
                         url_source=donnees["url_source"],
                         propose_par_ia=True,
@@ -244,6 +249,6 @@ class TransactionPointsAdmin(admin.ModelAdmin):
 
 @admin.register(CommandeRecompense)
 class CommandeRecompenseAdmin(admin.ModelAdmin):
-    list_display = ("id", "utilisateur", "produit", "points_utilises", "prix_remise", "statut", "creee_le")
+    list_display = ("id", "code_bon", "utilisateur", "produit", "points_utilises", "prix_remise", "statut", "utilise_le", "creee_le")
     list_filter = ("statut", "creee_le")
-    readonly_fields = ("utilisateur", "produit", "points_utilises", "prix_remise", "creee_le")
+    readonly_fields = ("utilisateur", "produit", "points_utilises", "prix_remise", "code_bon", "utilise_le", "creee_le")

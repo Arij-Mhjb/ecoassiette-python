@@ -129,6 +129,7 @@
                     <p><strong>{{ produit.prix_remise|floatformat:2 }} €</strong>
                       <span class="small muted">au lieu de {{ produit.prix_public|floatformat:2 }} € · −{{ produit.remise_pourcent }} %</span>
                     </p>
+                    {% include "impact/_nutrition.html" with nutrition=recommandation.nutrition %}
                     <div class="recommended-product-actions">
                       {% if ligne.alternative %}
                         <label class="product-choice">
@@ -173,6 +174,7 @@
                 <ol>{% for etape in ligne.recette_maison.etapes %}<li>{{ etape }}</li>{% endfor %}</ol>
               </div>
             </div>
+            {% include "impact/_nutrition.html" with nutrition=ligne.recette_maison.nutrition %}
             <a class="btn btn-small btn-ghost video-tutorial-link" href="{{ ligne.recette_maison.video_url }}" target="_blank" rel="noopener noreferrer">Voir des tutoriels vidéo pour cette recette</a>
           </article>
         {% endif %}

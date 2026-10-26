@@ -8,6 +8,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 
 from users.ai import ErreurIA, appeler_gemini
+from .nutrition import nombre_nutrition
 
 
 class ErreurImportProduit(Exception):
@@ -183,12 +184,17 @@ def analyser_url_produit(url):
         "prix_detecte": _prix_json(produit_json),
         "texte_page": " ".join(parser.textes)[:12000],
     }
+    nutrition_page = (produit_json or {}).get("nutrition", {})
+    if not isinstance(nutrition_page, dict):
+        nutrition_page = {}
     prompt = (
         "Tu extrais un produit alimentaire végétal à partir du contenu réel d'une page officielle. "
         "N'invente aucune information absente. Réponds uniquement en JSON avec : "
         '"nom", "description" (maximum 700 caractères), "sponsor_nom", '
         '"prix_public" (nombre, 0 si absent), "produit_vegetal" (booléen), '
-        '"mots_cles" (liste de 3 à 8 ingrédients animaux que ce produit peut remplacer). '
+        '"mots_cles" (liste de 3 à 8 ingrédients animaux que ce produit peut remplacer), '
+        '"nutrition_100g" {"calories", "proteines", "glucides", "lipides", "fibres"} '
+        "(nombres ou null, ne rien inventer si absent). "
         f"Données extraites : {json.dumps(donnees_page, ensure_ascii=False)}"
     )
     try:
@@ -199,6 +205,9 @@ def analyser_url_produit(url):
         source = "PAGE"
     if not isinstance(resultat, dict):
         resultat = {}
+    nutrition_ia = resultat.get("nutrition_100g", {})
+    if not isinstance(nutrition_ia, dict):
+        nutrition_ia = {}
     morceaux_titre = [m.strip() for m in str(donnees_page["titre"]).split("|") if m.strip()]
     nom_page = morceaux_titre[0] if morceaux_titre else donnees_page["titre"]
     marque_page = morceaux_titre[-1] if len(morceaux_titre) > 1 else ""
@@ -229,4 +238,19 @@ def analyser_url_produit(url):
         "mots_cles_recommandation": ", ".join(str(m).strip() for m in mots if str(m).strip())[:300],
         "url_source": url_finale,
         "source": source,
+        "calories_100g": nombre_nutrition(
+            nutrition_ia.get("calories") or nutrition_page.get("calories")
+        ),
+        "proteines_100g": nombre_nutrition(
+            nutrition_ia.get("proteines") or nutrition_page.get("proteinContent")
+        ),
+        "glucides_100g": nombre_nutrition(
+            nutrition_ia.get("glucides") or nutrition_page.get("carbohydrateContent")
+        ),
+        "lipides_100g": nombre_nutrition(
+            nutrition_ia.get("lipides") or nutrition_page.get("fatContent")
+        ),
+        "fibres_100g": nombre_nutrition(
+            nutrition_ia.get("fibres") or nutrition_page.get("fiberContent")
+        ),
     }
