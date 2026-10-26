@@ -8,6 +8,7 @@
     <p class="muted">Donnez ou récupérez les surplus alimentaires disponibles près de chez vous.</p>
   </div>
   <div class="form-actions">
+    <a class="btn btn-ghost" href="{% url 'food_rescue:assistant' %}">{% icon "zap" %}Assistant IA</a>
     <a class="btn btn-ghost" href="{% url 'food_rescue:tableau_bord' %}">{% icon "chart" %}Mon impact</a>
     <a class="btn" href="{% url 'food_rescue:creer' %}">{% icon "plus" %}Publier un surplus</a>
   </div>

@@ -7,6 +7,7 @@ en local, variables Render en production). Aucun secret dans le code source.
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -22,6 +23,7 @@ def env_bool(name, default=False):
 # --- Sécurité -----------------------------------------------------------------
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me")
 DEBUG = env_bool("DEBUG", False)
+TESTING = "test" in sys.argv
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
@@ -132,13 +134,38 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": (
             "django.contrib.staticfiles.storage.StaticFilesStorage"
-            if DEBUG
+            if DEBUG or TESTING
             else "whitenoise.storage.CompressedManifestStaticFilesStorage"
         )
     },
 }
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Cloudflare R2 (palier gratuit) : activé seulement quand toutes les variables
+# sont présentes. En local et dans les tests, les médias restent sur disque.
+R2_ACCOUNT_ID = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID", "")
+R2_ACCESS_KEY_ID = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY", "")
+R2_BUCKET = os.getenv("CLOUDFLARE_R2_BUCKET", "")
+R2_PUBLIC_URL = os.getenv("CLOUDFLARE_R2_PUBLIC_URL", "").rstrip("/")
+if all((R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET, R2_PUBLIC_URL)):
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "access_key": R2_ACCESS_KEY_ID,
+            "secret_key": R2_SECRET_ACCESS_KEY,
+            "bucket_name": R2_BUCKET,
+            "endpoint_url": f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+            "region_name": "auto",
+            "signature_version": "s3v4",
+            "querystring_auth": False,
+            "custom_domain": urlparse(R2_PUBLIC_URL).netloc,
+            "url_protocol": "https:",
+            "file_overwrite": False,
+        },
+    }
+    MEDIA_URL = f"{R2_PUBLIC_URL}/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -215,7 +242,6 @@ GEMINI_PAUSE_S = float(os.getenv("GEMINI_PAUSE_S", "4"))
 LABO_LIMITE_GEMINI = int(os.getenv("LABO_LIMITE_GEMINI", "40"))
 
 # --- Journalisation (silencieuse pendant les tests)
-TESTING = "test" in sys.argv
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,

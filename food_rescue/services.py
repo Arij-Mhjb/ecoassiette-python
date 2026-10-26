@@ -5,6 +5,7 @@ from django.utils import timezone
 from impact.models import TransactionPoints
 
 from .models import AnnonceSurplus, CollecteSurplus, ProfilBeneficiaire
+from .intelligence import score_matching
 
 
 URGENCE_POIDS = {"CRITIQUE": 40, "ELEVEE": 30, "MOYENNE": 20, "FAIBLE": 10, "": 0}
@@ -36,12 +37,10 @@ def annonces_recommandees(utilisateur, limite=6):
         texte = f"{annonce.titre} {annonce.description} {annonce.allergenes}".lower()
         if any(mot and mot in texte for mot in evites):
             continue
-        score = 50 + URGENCE_POIDS.get(annonce.urgence_ia, 0)
-        raisons = [f"urgence {annonce.urgence_ia.lower()}" if annonce.urgence_ia else "disponible bientôt"]
-        if ville and ville.lower() == annonce.ville.lower():
-            score += 10
-            raisons.append(f"dans votre ville ({ville})")
-        resultats.append({"annonce": annonce, "score": min(score, 100), "raisons": raisons})
+        matching = score_matching(utilisateur, annonce)
+        if not matching:
+            continue
+        resultats.append({"annonce": annonce, **matching})
         if len(resultats) >= limite:
             break
     return resultats

@@ -71,6 +71,10 @@ Chaque menu et chaque alternative affiche une estimation des calories, protéine
 - Réservation réservée aux profils éligibles et validés.
 - Adresse protégée jusqu'à l'acceptation.
 - Code de collecte, double confirmation et points solidaires.
+- Matching explicable selon la compatibilité, la ville, l'urgence, l'équité et la fiabilité.
+- Détection de doublons et estimation du risque de non-collecte.
+- Recettes anti-gaspillage et assistant privé avec moteur local gratuit en secours.
+- Tableau de pilotage intelligent réservé aux administrateurs.
 
 ### Comptes et accompagnement
 
@@ -183,8 +187,17 @@ GEMINI_TIMEOUT=60
 
 USE_CELERY=False
 REDIS_URL=redis://localhost:6379/0
+
+# Optionnel : avatars et photos Food Rescue sur Cloudflare R2.
+CLOUDFLARE_R2_ACCOUNT_ID=
+CLOUDFLARE_R2_ACCESS_KEY_ID=
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=
+CLOUDFLARE_R2_BUCKET=ecoassiette-media
+CLOUDFLARE_R2_PUBLIC_URL=
 ```
 
+Les cinq variables Cloudflare doivent être renseignées ensemble. Sinon, Django utilise automatiquement
+le stockage local. Les avatars sont contrôlés, redimensionnés à 512 × 512 maximum et convertis en WebP.
 Les secrets ne doivent jamais être ajoutés à Git.
 
 ## Commandes utiles

@@ -192,10 +192,13 @@ def demande_nutritionniste(request):
 
 @login_required
 def modifier_infos(request):
+    ancien_avatar = request.user.avatar.name if request.user.avatar else ""
     form = InfosPersonnellesForm(request.POST or None, request.FILES or None, instance=request.user)
     if request.method == "POST":
         if form.is_valid():
-            form.save()
+            utilisateur = form.save()
+            if "avatar" in form.changed_data and ancien_avatar and ancien_avatar != utilisateur.avatar.name:
+                utilisateur.avatar.storage.delete(ancien_avatar)
             if form.changed_data:
                 journaliser(request, JournalAudit.Action.INFOS_MODIFIEES, cible=request.user.username,
                             details="champs : " + ", ".join(str(form.fields[c].label or c) for c in form.changed_data))
