@@ -1123,6 +1123,9 @@ html[data-theme="dark"] .btn-outline-light:hover { background: rgba(255,255,255,
 .community-comment p small { display: block; color: var(--muted); margin-top: .15rem; }
 .community-comment > form button { border: 0; background: transparent; color: var(--muted); padding: .35rem; cursor: pointer; }
 .community-comment-form { display: grid; grid-template-columns: 1fr auto; gap: .45rem; margin-top: .8rem; }
+.comment-input-wrap { position: relative; min-width: 0; }
+.comment-input-wrap input { width: 100%; }
+.comment-mentions { display: block; margin-top: .25rem; color: var(--muted); font-size: .75rem; }
 .community-comment-form button { width: 42px; border: 0; border-radius: 10px; background: var(--primary); color: #fff; cursor: pointer; }
 .community-single { width: min(680px, 100%); margin-inline: auto; }
 .community-profile { display: flex; align-items: center; gap: 1.2rem; max-width: 680px; margin-inline: auto; }
@@ -1136,5 +1139,9 @@ html[data-theme="dark"] .btn-outline-light:hover { background: rgba(255,255,255,
 .js-mentions-select { min-height: 110px; }
 .mention-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
 .mention-chip { border: 1px solid var(--primary-soft); border-radius: 999px; padding: .3rem .55rem; background: var(--primary-softer); color: var(--primary-dark); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.notification-list { display: grid; gap: .75rem; }
+.community-notification { display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: center; padding: 1rem; margin: 0; }
+.community-notification p { margin: 0 0 .15rem; }
+.community-notification.is-unread { border-left: 4px solid var(--primary); background: var(--primary-softer); }
 @media (max-width: 860px) { .community-layout { grid-template-columns: minmax(0, 680px); } .community-sidebar { display: none; } }
 @media (max-width: 560px) { .community-actions { grid-template-columns: repeat(2, 1fr); } .community-search { grid-template-columns: 1fr; } .community-profile { align-items: flex-start; } }

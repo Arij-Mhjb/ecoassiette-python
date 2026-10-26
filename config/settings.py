@@ -89,6 +89,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "users.context_processors.notifications_admin",
                 "users.context_processors.notifications_citoyen",
+                "community.context_processors.notifications_communaute",
             ],
         },
     },

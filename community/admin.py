@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Commentaire, Jaime, Mention, Publication
+from .models import Commentaire, Jaime, Mention, MentionCommentaire, NotificationCommunaute, Publication
 
 
 @admin.register(Publication)
@@ -18,3 +18,12 @@ class PublicationAdmin(admin.ModelAdmin):
 admin.site.register(Commentaire)
 admin.site.register(Jaime)
 admin.site.register(Mention)
+admin.site.register(MentionCommentaire)
+
+
+@admin.register(NotificationCommunaute)
+class NotificationCommunauteAdmin(admin.ModelAdmin):
+    list_display = ("destinataire", "acteur", "type", "lue_le", "creee_le")
+    list_filter = ("type", "lue_le", "creee_le")
+    search_fields = ("destinataire__username", "acteur__username")
+    readonly_fields = ("creee_le",)

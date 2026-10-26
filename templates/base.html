@@ -43,7 +43,8 @@
       <nav id="menu-principal" class="main-nav" aria-label="Navigation principale">
         <ul>
           {% if user.is_authenticated %}
-            <li><a href="{% url 'community:fil' %}" {% if request.resolver_match.app_name == 'community' %}aria-current="page"{% endif %}>{% icon "users" %}Communauté</a></li>
+            <li><a href="{% url 'community:fil' %}" {% if request.resolver_match.app_name == 'community' and request.resolver_match.url_name != 'notifications' %}aria-current="page"{% endif %}>{% icon "users" %}Communauté</a></li>
+            <li><a href="{% url 'community:notifications' %}" {% if request.resolver_match.url_name == 'notifications' %}aria-current="page"{% endif %}>{% icon "bell" %}<span class="sr-only">Notifications</span>{% if nb_notifications_communaute %}<span class="pastille">{{ nb_notifications_communaute }}<span class="sr-only"> notification{{ nb_notifications_communaute|pluralize }} non lue{{ nb_notifications_communaute|pluralize }}</span></span>{% endif %}</a></li>
             {% if user.role == "CITOYEN" %}
             <li class="nav-group-li">
               <details class="nav-group">

@@ -47,6 +47,12 @@
     <a class="btn btn-ghost" href="{% url 'users:admin_stats' %}">Consulter les statistiques</a>
   </section>
 
+  <section class="card" aria-labelledby="admin-community">
+    <h2 id="admin-community"><span class="h-ico h-ico-blue">{% icon "message" %}</span>Communauté</h2>
+    <p>Modérez les publications et commentaires et masquez rapidement les contenus inappropriés.</p>
+    <a class="btn" href="{% url 'community:administration' %}">Gérer la communauté</a>
+  </section>
+
   <section class="card" aria-labelledby="admin-ia">
     <h2 id="admin-ia"><span class="h-ico h-ico-violet">{% icon "sparkles" %}</span>IA et planification</h2>
     <p>{{ nb_plans }} plan{{ nb_plans|pluralize }} de menus enregistré{{ nb_plans|pluralize }}.</p>

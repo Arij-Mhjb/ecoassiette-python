@@ -79,6 +79,10 @@ class Commentaire(models.Model):
     publication = models.ForeignKey(Publication, on_delete=models.CASCADE, related_name="commentaires")
     auteur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="commentaires_communaute")
     contenu = models.CharField(max_length=500)
+    mentions = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, through="MentionCommentaire",
+        related_name="commentaires_mentionnes", blank=True,
+    )
     cree_le = models.DateTimeField(auto_now_add=True)
     modifie_le = models.DateTimeField(auto_now=True)
 
@@ -87,3 +91,44 @@ class Commentaire(models.Model):
 
     def __str__(self):
         return f"Commentaire de {self.auteur}"
+
+
+class MentionCommentaire(models.Model):
+    commentaire = models.ForeignKey(Commentaire, on_delete=models.CASCADE, related_name="liens_mentions")
+    utilisateur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="mentions_commentaires_recues"
+    )
+    creee_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["commentaire", "utilisateur"], name="mention_unique_par_commentaire"
+            )
+        ]
+
+
+class NotificationCommunaute(models.Model):
+    class Type(models.TextChoices):
+        PUBLICATION = "MENTION_PUBLICATION", "Mention dans une publication"
+        COMMENTAIRE = "MENTION_COMMENTAIRE", "Mention dans un commentaire"
+
+    destinataire = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications_communaute"
+    )
+    acteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications_communaute_emises"
+    )
+    type = models.CharField(max_length=24, choices=Type.choices)
+    publication = models.ForeignKey(Publication, on_delete=models.CASCADE, related_name="notifications")
+    commentaire = models.ForeignKey(
+        Commentaire, on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
+    )
+    lue_le = models.DateTimeField(null=True, blank=True)
+    creee_le = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-creee_le"]
+
+    def __str__(self):
+        return f"{self.get_type_display()} pour {self.destinataire}"

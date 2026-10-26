@@ -3,7 +3,7 @@ import re
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Commentaire, Mention, Publication
+from .models import Commentaire, Mention, MentionCommentaire, Publication
 
 User = get_user_model()
 
@@ -62,12 +62,26 @@ class PublicationForm(forms.ModelForm):
     def enregistrer_mentions(self, publication):
         choisis = self.cleaned_data.get("mentions") or []
         Mention.objects.filter(publication=publication).exclude(utilisateur__in=choisis).delete()
+        nouveaux = []
         for utilisateur in choisis:
-            Mention.objects.get_or_create(publication=publication, utilisateur=utilisateur)
+            _, creee = Mention.objects.get_or_create(publication=publication, utilisateur=utilisateur)
+            if creee:
+                nouveaux.append(utilisateur)
+        return nouveaux
 
 
 class CommentaireForm(forms.ModelForm):
     class Meta:
         model = Commentaire
         fields = ["contenu"]
-        widgets = {"contenu": forms.TextInput(attrs={"placeholder": "Ajouter un commentaire…", "maxlength": 500})}
+        widgets = {"contenu": forms.TextInput(attrs={
+            "placeholder": "Ajouter un commentaire… Utilisez @ pour mentionner",
+            "maxlength": 500, "data-mention-input": "",
+        })}
+
+    def enregistrer_mentions(self, commentaire):
+        pseudos = set(re.findall(r"(?<![\w@])@([\w.-]{1,150})", commentaire.contenu))
+        utilisateurs = User.objects.filter(username__in=pseudos, is_active=True).exclude(pk=commentaire.auteur_id)
+        for utilisateur in utilisateurs:
+            MentionCommentaire.objects.get_or_create(commentaire=commentaire, utilisateur=utilisateur)
+        return list(utilisateurs)
