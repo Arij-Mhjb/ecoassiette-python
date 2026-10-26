@@ -62,7 +62,8 @@
             <li class="user-menu-li">
               <details class="user-menu">
                 <summary>
-                  <span class="avatar avatar-xs avatar-initiales" aria-hidden="true">{{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>
+                  {% if user.avatar %}<img class="avatar avatar-xs" src="{{ user.avatar.url }}" alt="" width="32" height="32">
+                  {% else %}<span class="avatar avatar-xs avatar-initiales" aria-hidden="true">{{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper }}</span>{% endif %}
                   <span class="user-menu-nom">{{ user.first_name|default:user.username }}</span>{% icon "chevron-down" 16 %}
                   <span class="sr-only">: menu du compte</span>
                 </summary>
