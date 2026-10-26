@@ -16,6 +16,7 @@ from impact.services import solde_points
 from .forms import AnnonceSurplusForm, ProfilBeneficiaireForm, ReservationSurplusForm
 from .models import AnalyseSurplusIA, AnnonceSurplus, CollecteSurplus, ProfilBeneficiaire, ReservationSurplus
 from .services import annonces_recommandees, crediter_donateur
+from .intelligence import doublons_probables, recettes_pour_annonce, repondre_assistant, risque_non_collecte, statistiques_intelligentes
 from .tasks import lancer
 
 
@@ -130,11 +131,15 @@ class AnnonceDetailView(LoginRequiredMixin, DetailView):
             None if deja or self.object.donateur_id == self.request.user.id or not peut_reserver
             else ReservationSurplusForm(annonce=self.object)
         )
-        contexte["reservations"] = self.object.reservations.all() if self.object.donateur_id == self.request.user.id else []
+        reservations = list(self.object.reservations.all()) if self.object.donateur_id == self.request.user.id else []
+        for reservation in reservations:
+            reservation.risque_ia = risque_non_collecte(reservation.beneficiaire)
+        contexte["reservations"] = reservations
         contexte["adresse_visible"] = (
             self.object.donateur_id == self.request.user.id
             or self.object.reservations.filter(beneficiaire=self.request.user, statut__in=["ACCEPTEE", "COLLECTEE"]).exists()
         )
+        contexte["doublons"] = doublons_probables(self.object) if self.object.donateur_id == self.request.user.id else []
         return contexte
 
 
@@ -284,4 +289,34 @@ def eligibilite(request):
     else:
         form = ProfilBeneficiaireForm(instance=profil)
     return render(request, "food_rescue/eligibilite.html", {"form": form, "eligibilite": profil})
+
+
+@login_required
+def assistant(request):
+    question = request.POST.get("question", "") if request.method == "POST" else ""
+    reponse = repondre_assistant(request.user, question) if question else ""
+    return render(request, "food_rescue/assistant.html", {"question": question, "reponse": reponse})
+
+
+@login_required
+def recettes(request, pk):
+    annonce = get_object_or_404(AnnonceSurplus, pk=pk)
+    autorise = annonce.donateur_id == request.user.id or annonce.reservations.filter(
+        beneficiaire=request.user, statut__in=["ACCEPTEE", "COLLECTEE"]
+    ).exists()
+    if not autorise:
+        raise PermissionDenied("Les recettes sont réservées aux participants de la collecte.")
+    propositions, source = recettes_pour_annonce(annonce, request.user)
+    return render(request, "food_rescue/recettes.html", {
+        "annonce": annonce, "recettes": propositions, "source": source,
+    })
+
+
+@login_required
+def intelligence_dashboard(request):
+    if not request.user.est_admin:
+        raise PermissionDenied
+    return render(request, "food_rescue/intelligence_dashboard.html", {
+        "stats": statistiques_intelligentes(),
+    })
 

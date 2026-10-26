@@ -1,6 +1,11 @@
+import io
+import uuid
+
 from django import forms
+from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from PIL import Image, UnidentifiedImageError
 
 from .models import DemandeNutritionniste, Invitation, ProfilAlimentaire, Recommandation
 from .securite import minutes_de_blocage
@@ -156,6 +161,18 @@ class InfosPersonnellesForm(AccessibleFormMixin, forms.ModelForm):
         avatar = self.cleaned_data.get("avatar")
         if avatar and hasattr(avatar, "size") and avatar.size > 2 * 1024 * 1024:
             raise forms.ValidationError("L'image ne doit pas dépasser 2 Mo.")
+        if avatar and hasattr(avatar, "read"):
+            try:
+                image = Image.open(avatar)
+                image.verify()
+                avatar.seek(0)
+                image = Image.open(avatar).convert("RGB")
+                image.thumbnail((512, 512), Image.Resampling.LANCZOS)
+                sortie = io.BytesIO()
+                image.save(sortie, format="WEBP", quality=85, method=6)
+                avatar = ContentFile(sortie.getvalue(), name=f"avatar-{uuid.uuid4().hex}.webp")
+            except (UnidentifiedImageError, OSError):
+                raise forms.ValidationError("Le fichier fourni n'est pas une image valide.")
         return avatar
 
 

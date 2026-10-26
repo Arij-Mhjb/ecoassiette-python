@@ -5,7 +5,7 @@ Ce dépôt contient le **module Utilisateurs & profils** (app Django `users`) : 
 rôles, profil alimentaire, analyse IA du profil, gestion des comptes (CRUD), API REST.
 
 - Django 5.2 · DRF · PostgreSQL (Render) / SQLite (local) · WhiteNoise · Celery (optionnel)
-- **327 tests**, couverture globale **91 %** (branches incluses) · audit axe-core historique sans violation sur les pages couvertes
+- **334 tests**, couverture globale **91 %** (branches incluses) · audit axe-core historique sans violation sur les pages couvertes
 
 ---
 
@@ -261,7 +261,7 @@ deux étudiants validés et une association validée.
 - Après la double confirmation, le donateur reçoit `50 + 10 × kg CO₂e évités`, plafonné à 200 points.
 - Le crédit utilise le portefeuille `impact.TransactionPoints` existant et ne peut être effectué qu'une fois.
 
-### IA gratuite et résiliente
+### IA avancée gratuite et résiliente
 
 - **Gemini API** : clé gratuite créée dans Google AI Studio, utilisée via HTTPS et stockée uniquement dans
   `GEMINI_API_KEY`. Elle analyse le texte et, lorsqu'elle existe, la photo.
@@ -269,6 +269,36 @@ deux étudiants validés et une association validée.
   et estimation CO₂. Il fonctionne hors ligne, sans clé et sans coût.
 - **Asynchronisme** : thread local par défaut ; Celery + Redis lorsque `USE_CELERY=True`.
 - **Validation humaine** : l'IA ne certifie jamais la sécurité sanitaire et ses champs restent vérifiables.
+- **Matching explicable** : compatibilité sémantique, ville, urgence, équité de distribution et historique de collecte.
+- **Détection de doublons** : comparaison hybride des titres et descriptions du même donateur.
+- **Risque de non-collecte** : score explicable fondé sur annulations et collectes acceptées en retard.
+- **Recettes anti-gaspillage** : propositions Gemini avec repli local selon le surplus et le profil alimentaire.
+- **Assistant Food Rescue** : réponses cloisonnées par utilisateur sur les dons, points et éligibilité.
+- **Dashboard IA** : indicateurs d'urgence, retards, catégories, collectes et bénéficiaires validés.
+
+Routes de démonstration :
+
+- `/food-rescue/assistant/` : assistant utilisateur ;
+- `/food-rescue/<id>/recettes/` : recettes réservées aux participants ;
+- `/food-rescue/intelligence/` : pilotage réservé à l'administrateur.
+
+### Photos de profil et médias avec Cloudflare R2
+
+Le stockage Cloudflare est optionnel. Sans configuration, Django conserve les fichiers localement. Avec les
+cinq variables ci-dessous, les avatars et photos Food Rescue sont envoyés dans R2. Les avatars sont validés,
+redimensionnés à 512 × 512 maximum et convertis en WebP avant l'envoi.
+
+```env
+CLOUDFLARE_R2_ACCOUNT_ID=...
+CLOUDFLARE_R2_ACCESS_KEY_ID=...
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=...
+CLOUDFLARE_R2_BUCKET=ecoassiette-media
+CLOUDFLARE_R2_PUBLIC_URL=https://pub-....r2.dev
+```
+
+Dans Cloudflare : créer un bucket R2 **Standard**, créer une clé API lecture/écriture et activer le domaine
+public de développement `r2.dev` (démonstration) ou connecter un domaine personnalisé (production). Ne jamais
+commiter les clés dans `.env`.
 
 ### Tests et métriques
 
