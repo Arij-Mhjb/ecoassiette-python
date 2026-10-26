@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Centre d'administration{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <p class="eyebrow">{% icon "shield" 14 %}Administration</p>
+    <h1>Centre d'administration</h1>
+    <p class="muted">Un point d'entrée unique pour piloter les utilisateurs et les modules EcoAssiette.</p>
+  </div>
+  {% if user.is_superuser %}<a class="btn btn-ghost" href="{% url 'admin:index' %}">{% icon "box" %}Maintenance Django</a>{% endif %}
+</div>
+
+{% include "users/admin/_onglets.html" %}
+
+<dl class="stat-tiles" aria-label="Vue d'ensemble de l'administration">
+  <div class="tile"><dt>Comptes</dt><dd>{{ nb_comptes }}</dd></div>
+  <div class="tile"><dt>Demandes nutritionnistes</dt><dd>{{ nb_demandes_nutri }}</dd></div>
+  <div class="tile"><dt>Éligibilités Food Rescue</dt><dd>{{ nb_eligibilites }}</dd></div>
+  <div class="tile"><dt>Annonces Food Rescue</dt><dd>{{ nb_annonces }}</dd></div>
+</dl>
+
+<div class="grid-2" style="align-items:start">
+  <section class="card" aria-labelledby="admin-utilisateurs">
+    <h2 id="admin-utilisateurs"><span class="h-ico h-ico-blue">{% icon "users" %}</span>Utilisateurs</h2>
+    <p>Gérez les comptes, les rôles, les demandes nutritionnistes et les invitations.</p>
+    <div class="form-actions">
+      <a class="btn" href="{% url 'users:admin_liste' %}">Gérer les comptes</a>
+      <a class="btn btn-ghost" href="{% url 'users:admin_demandes' %}">Demandes</a>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="admin-rescue">
+    <h2 id="admin-rescue"><span class="h-ico h-ico-violet">{% icon "heart" %}</span>Food Rescue</h2>
+    <p>Validez les étudiants et associations, puis surveillez les annonces et indicateurs IA.</p>
+    <div class="form-actions">
+      <a class="btn" href="{% url 'food_rescue:administration' %}">Éligibilités et annonces</a>
+      <a class="btn btn-ghost" href="{% url 'food_rescue:intelligence_dashboard' %}">Pilotage IA</a>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="admin-impact">
+    <h2 id="admin-impact"><span class="h-ico">{% icon "gift" %}</span>Impact et récompenses</h2>
+    <dl class="detail-list">
+      <div><dt>Transactions de points</dt><dd>{{ nb_transactions }}</dd></div>
+      <div><dt>Commandes de récompenses</dt><dd>{{ nb_commandes }}</dd></div>
+    </dl>
+    <a class="btn btn-ghost" href="{% url 'users:admin_stats' %}">Consulter les statistiques</a>
+  </section>
+
+  <section class="card" aria-labelledby="admin-ia">
+    <h2 id="admin-ia"><span class="h-ico h-ico-violet">{% icon "sparkles" %}</span>IA et planification</h2>
+    <p>{{ nb_plans }} plan{{ nb_plans|pluralize }} de menus enregistré{{ nb_plans|pluralize }}.</p>
+    <div class="form-actions">
+      <a class="btn" href="{% url 'repas:labo' %}">Laboratoire IA</a>
+      <a class="btn btn-ghost" href="{% url 'users:admin_stats' %}">Métriques IA</a>
+    </div>
+  </section>
+</div>
+{% endblock %}

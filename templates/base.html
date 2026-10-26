@@ -43,6 +43,7 @@
       <nav id="menu-principal" class="main-nav" aria-label="Navigation principale">
         <ul>
           {% if user.is_authenticated %}
+            <li><a href="{% url 'community:fil' %}" {% if request.resolver_match.app_name == 'community' %}aria-current="page"{% endif %}>{% icon "users" %}Communauté</a></li>
             {% if user.role == "CITOYEN" %}
             <li class="nav-group-li">
               <details class="nav-group">
@@ -75,8 +76,7 @@
               <li><a href="{% url 'users:nutri_profils' %}" {% if request.resolver_match.url_name == 'nutri_profils' or request.resolver_match.url_name == 'nutri_profil_detail' %}aria-current="page"{% endif %}>{% icon "users" %}Profils citoyens</a></li>
             {% endif %}
             {% if perms.users.gerer_utilisateurs %}
-              <li><a href="{% url 'users:admin_liste' %}" {% if request.resolver_match.url_name == 'admin_liste' or request.resolver_match.url_name == 'admin_demandes' or request.resolver_match.url_name == 'admin_invitations' or request.resolver_match.url_name == 'admin_journal' %}aria-current="page"{% endif %}>{% icon "shield" %}Comptes{% if nb_demandes_attente %} <span class="pastille" title="Demandes nutritionnistes en attente">{{ nb_demandes_attente }}<span class="sr-only"> demande(s) en attente</span></span>{% endif %}</a></li>
-              <li><a href="{% url 'users:admin_stats' %}" {% if request.resolver_match.url_name == 'admin_stats' %}aria-current="page"{% endif %}>{% icon "chart" %}Statistiques</a></li>
+              <li><a href="{% url 'users:admin_centre' %}" {% if request.resolver_match.url_name|slice:':6' == 'admin_' or request.resolver_match.url_name == 'administration' or request.resolver_match.url_name == 'intelligence_dashboard' %}aria-current="page"{% endif %}>{% icon "shield" %}Administration{% if nb_demandes_attente %} <span class="pastille" title="Demandes en attente">{{ nb_demandes_attente }}<span class="sr-only"> demande(s) en attente</span></span>{% endif %}</a></li>
             {% endif %}
             <li class="user-menu-li">
               <details class="user-menu">

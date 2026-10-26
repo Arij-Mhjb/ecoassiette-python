@@ -51,6 +51,7 @@ urlpatterns = [
     path("profils/<int:pk>/", views.ProfilPublicDetailView.as_view(), name="nutri_profil_detail"),
 
     # Administration (CRUD)
+    path("gestion/centre/", views.CentreAdministrationView.as_view(), name="admin_centre"),
     path("gestion/", views.UtilisateurListView.as_view(), name="admin_liste"),
     path("gestion/nouveau/", views.UtilisateurCreateView.as_view(), name="admin_creer"),
     path("gestion/statistiques/", views.StatistiquesView.as_view(), name="admin_stats"),

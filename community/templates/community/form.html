@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}{{ titre }}{% endblock %}
+{% block content %}
+<div class="narrow-wide community-compose" data-mention-url="{% url 'community:rechercher_utilisateurs' %}">
+  <a class="back-link" href="{% url 'community:fil' %}">{% icon "arrow-left" 16 %}Retour à la communauté</a>
+  <section class="card"><div class="page-head"><p class="eyebrow">{% icon "edit" 14 %}Communauté</p><h1>{{ titre }}</h1><p class="muted">Partagez un texte, une photo, et mentionnez les membres concernés.</p></div>
+    <form method="post" enctype="multipart/form-data" novalidate>{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="field{% if form.texte.errors %} has-error{% endif %}"><label for="{{ form.texte.id_for_label }}">Votre publication</label><div class="mention-input-wrap">{{ form.texte }}<div class="mention-suggestions" role="listbox" hidden></div></div>{{ form.texte.errors }}</div>
+      <div class="field{% if form.mentions.errors %} has-error{% endif %}"><label for="{{ form.mentions.id_for_label }}">Personnes mentionnées</label>{{ form.mentions }}<div class="mention-chips" aria-live="polite"></div><div class="help">Tapez <strong>@</strong> dans le texte puis choisissez un membre. Vous pouvez aussi utiliser la liste.</div>{{ form.mentions.errors }}</div>
+      <div class="field{% if form.image.errors %} has-error{% endif %}"><label for="{{ form.image.id_for_label }}">Photo</label>{{ form.image }}<div class="help">JPEG, PNG ou WebP, 8 Mo maximum. La photo est stockée sur Cloudflare R2 lorsque le service est configuré.</div>{{ form.image.errors }}</div>
+      <div class="form-actions"><button class="btn" type="submit">{% icon "check" %}Publier</button><a class="btn btn-ghost" href="{% url 'community:fil' %}">Annuler</a>{% if form.instance.pk %}<button class="btn btn-danger" type="submit" form="delete-publication">{% icon "trash" %}Supprimer</button>{% endif %}</div>
+    </form>
+    {% if form.instance.pk %}<form id="delete-publication" method="post" action="{% url 'community:supprimer' form.instance.pk %}" onsubmit="return confirm('Supprimer définitivement cette publication ?')">{% csrf_token %}</form>{% endif %}
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'community/community.js' %}" defer></script>{% endblock %}

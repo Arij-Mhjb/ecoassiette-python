@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}@{{ membre.username }}{% endblock %}
+{% block content %}
+<div class="community-profile card"><div class="community-profile-avatar">{% include "community/_avatar.html" with membre=membre %}</div><div><p class="eyebrow">Membre de la communauté</p><h1>{{ membre.get_full_name|default:membre.username }}</h1><p class="muted">@{{ membre.username }} · {{ page_obj.paginator.count }} publication{{ page_obj.paginator.count|pluralize }}</p></div></div>
+<div class="community-feed community-single">{% for publication in publications %}{% include "community/_publication.html" %}{% empty %}<div class="empty"><p><strong>Ce membre n’a encore rien publié.</strong></p></div>{% endfor %}{% if page_obj.paginator.num_pages > 1 %}{% include "users/_pagination.html" with is_paginated=True %}{% endif %}</div>
+{% endblock %}
+{% block scripts %}<script src="{% static 'community/community.js' %}" defer></script>{% endblock %}

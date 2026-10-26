@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Administration Food Rescue{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <p class="eyebrow">{% icon "shield" 14 %}Administration</p>
+    <h1>Éligibilités et annonces Food Rescue</h1>
+    <p class="muted">Validez uniquement les étudiants et associations dont les informations ont été vérifiées.</p>
+  </div>
+  <a class="btn btn-ghost" href="{% url 'food_rescue:intelligence_dashboard' %}">{% icon "chart" %}Pilotage IA</a>
+</div>
+
+{% include "users/admin/_onglets.html" %}
+
+<h2 class="section-titre"><span class="h-ico h-ico-amber">{% icon "clock" %}</span>Demandes en attente ({{ en_attente|length }})</h2>
+{% if en_attente %}
+<div class="table-wrap" tabindex="0" role="region" aria-label="Demandes d'éligibilité en attente">
+  <table class="table">
+    <thead><tr><th scope="col">Utilisateur</th><th scope="col">Type</th><th scope="col">Organisme</th><th scope="col">Référence</th><th scope="col">Actions</th></tr></thead>
+    <tbody>{% for profil in en_attente %}<tr>
+      <th scope="row">{{ profil.utilisateur.get_full_name|default:profil.utilisateur.username }}<br><span class="small muted">@{{ profil.utilisateur.username }}</span></th>
+      <td>{{ profil.get_type_beneficiaire_display }}</td><td>{{ profil.organisme }}</td><td>{{ profil.reference_justificatif }}</td>
+      <td><div class="form-actions">
+        <form method="post" action="{% url 'food_rescue:traiter_eligibilite' profil.pk 'valider' %}">{% csrf_token %}<button class="btn btn-small" type="submit">Valider</button></form>
+        <form method="post" action="{% url 'food_rescue:traiter_eligibilite' profil.pk 'refuser' %}">{% csrf_token %}<label class="sr-only" for="motif-{{ profil.pk }}">Motif du refus</label><input id="motif-{{ profil.pk }}" name="motif" required maxlength="300" placeholder="Motif du refus"><button class="btn btn-small btn-danger" type="submit">Refuser</button></form>
+      </div></td>
+    </tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% else %}<div class="empty"><p>Aucune demande d'éligibilité en attente.</p></div>{% endif %}
+
+<h2 class="section-titre">Dernières décisions</h2>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Éligibilités traitées">
+  <table class="table compact"><thead><tr><th scope="col">Utilisateur</th><th scope="col">Profil</th><th scope="col">Statut</th><th scope="col">Vérifié par</th></tr></thead>
+  <tbody>{% for profil in traites %}<tr><th scope="row">@{{ profil.utilisateur.username }}</th><td>{{ profil.get_type_beneficiaire_display }} — {{ profil.organisme }}</td><td><span class="badge statut-{{ profil.statut }}">{{ profil.get_statut_display }}</span>{% if profil.motif_refus %}<br><span class="small muted">{{ profil.motif_refus }}</span>{% endif %}</td><td>{{ profil.verifie_par|default:"—" }}</td></tr>{% empty %}<tr><td colspan="4">Aucune décision enregistrée.</td></tr>{% endfor %}</tbody></table>
+</div>
+
+<h2 class="section-titre">Annonces récentes</h2>
+<div class="table-wrap" tabindex="0" role="region" aria-label="Annonces Food Rescue récentes">
+  <table class="table compact"><thead><tr><th scope="col">Annonce</th><th scope="col">Donateur</th><th scope="col">Ville</th><th scope="col">Urgence IA</th><th scope="col">Statut</th></tr></thead>
+  <tbody>{% for annonce in annonces %}<tr><th scope="row"><a href="{% url 'food_rescue:detail' annonce.pk %}">{{ annonce.titre }}</a></th><td>@{{ annonce.donateur.username }}</td><td>{{ annonce.ville }}</td><td>{{ annonce.urgence_ia|default:"—" }}</td><td>{{ annonce.get_statut_display }}</td></tr>{% empty %}<tr><td colspan="5">Aucune annonce.</td></tr>{% endfor %}</tbody></table>
+</div>
+{% endblock %}

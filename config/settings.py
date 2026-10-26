@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "impact",
     "planning.apps.PlanningConfig",
     "food_rescue.apps.FoodRescueConfig",
+    "community.apps.CommunityConfig",
 ]
 
 MIDDLEWARE = [

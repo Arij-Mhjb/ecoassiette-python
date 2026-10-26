@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from food_rescue.intelligence import doublons_probables, risque_non_collecte, score_matching
-from food_rescue.models import ReservationSurplus
+from food_rescue.models import ProfilBeneficiaire, ReservationSurplus
 from users.models import Utilisateur
 
 from .base import FoodRescueTestCase
@@ -54,3 +54,34 @@ class IntelligenceAvanceeTest(FoodRescueTestCase):
         self.assertEqual(self.client.get(reverse("food_rescue:intelligence_dashboard")).status_code, 403)
         self.client.force_login(admin)
         self.assertEqual(self.client.get(reverse("food_rescue:intelligence_dashboard")).status_code, 200)
+
+    def test_administration_unifiee_valide_eligibilite(self):
+        admin = Utilisateur.objects.create_user(
+            "adminrescue", "adminrescue@test.tn", "MotDePasse!42", role="ADMIN", email_verifie=True
+        )
+        profil = ProfilBeneficiaire.objects.create(
+            utilisateur=self.autre, type_beneficiaire="ASSOCIATION",
+            organisme="Association test", reference_justificatif="ASSO-42",
+        )
+        self.client.force_login(self.beneficiaire)
+        self.assertEqual(self.client.get(reverse("food_rescue:administration")).status_code, 403)
+        self.client.force_login(admin)
+        self.assertContains(self.client.get(reverse("food_rescue:administration")), "Association test")
+        reponse = self.client.post(reverse("food_rescue:traiter_eligibilite", args=[profil.pk, "valider"]))
+        self.assertRedirects(reponse, reverse("food_rescue:administration"))
+        profil.refresh_from_db()
+        self.assertEqual(profil.statut, ProfilBeneficiaire.Statut.VALIDEE)
+        self.assertEqual(profil.verifie_par, admin)
+
+    def test_refus_eligibilite_exige_un_motif(self):
+        admin = Utilisateur.objects.create_user(
+            "adminrefus", "adminrefus@test.tn", "MotDePasse!42", role="ADMIN", email_verifie=True
+        )
+        profil = ProfilBeneficiaire.objects.create(
+            utilisateur=self.autre, type_beneficiaire="ETUDIANT",
+            organisme="Université test", reference_justificatif="ETU-42",
+        )
+        self.client.force_login(admin)
+        self.client.post(reverse("food_rescue:traiter_eligibilite", args=[profil.pk, "refuser"]), {"motif": ""})
+        profil.refresh_from_db()
+        self.assertEqual(profil.statut, ProfilBeneficiaire.Statut.EN_ATTENTE)

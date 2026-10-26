@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Publication de {{ publication.auteur.username }}{% endblock %}
+{% block content %}<div class="community-feed community-single"><a class="back-link" href="{% url 'community:fil' %}">{% icon "arrow-left" 16 %}Retour à la communauté</a>{% include "community/_publication.html" %}</div>{% endblock %}
+{% block scripts %}<script src="{% static 'community/community.js' %}" defer></script>{% endblock %}
