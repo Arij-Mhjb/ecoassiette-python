@@ -182,24 +182,12 @@ POLLINATIONS_IMAGE_MODEL = os.getenv("POLLINATIONS_IMAGE_MODEL", "flux")
 POLLINATIONS_TIMEOUT = int(os.getenv("POLLINATIONS_TIMEOUT", "90"))
 
 # --- E-mails ------------------------------------------------------------------------
-<<<<<<< HEAD
-# Choix automatique du backend :
-#   BREVO_API_KEY défini   -> API HTTPS Brevo (fonctionne sur Render gratuit, qui bloque l'SMTP)
-#   EMAIL_HOST_USER défini -> SMTP (ex. Gmail + mot de passe d'application) — idéal en local
-#   sinon                  -> console (les e-mails s'affichent dans le terminal)
-BREVO_API_KEY = env_cle("BREVO_API_KEY")
-EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-=======
 # Choix automatique du backend. Les noms Django EMAIL_* et les noms MAIL_*
 # (souvent utilisés dans les fichiers .env Laravel) sont tous les deux acceptés.
 #   BREVO_API_KEY défini              -> API HTTPS Brevo
 #   MAIL_MAILER=smtp ou identifiant   -> SMTP (Gmail + mot de passe d'application)
 #   sinon                             -> console
-BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+BREVO_API_KEY = env_cle("BREVO_API_KEY")
 MAIL_MAILER = os.getenv("MAIL_MAILER", "").strip().lower()
 EMAIL_HOST = os.getenv("EMAIL_HOST") or os.getenv("MAIL_HOST") or "smtp.gmail.com"
 EMAIL_PORT = int(os.getenv("EMAIL_PORT") or os.getenv("MAIL_PORT") or "587")
@@ -213,7 +201,6 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") or os.getenv("MAIL_PASSWO
 # Google affiche les mots de passe d'application par groupes de quatre caractères.
 if EMAIL_HOST.lower() == "smtp.gmail.com":
     EMAIL_HOST_PASSWORD = "".join(EMAIL_HOST_PASSWORD.split())
->>>>>>> b1b56d0e2c630417285efaf89a3b958452eaf64f
 EMAIL_TIMEOUT = 15
 if BREVO_API_KEY:
     EMAIL_BACKEND = "users.email_backends.BrevoBackend"
@@ -224,10 +211,11 @@ else:
 EMAIL_FROM_ADDRESS = os.getenv("MAIL_FROM_ADDRESS") or EMAIL_HOST_USER or "no-reply@ecoassiette.tn"
 EMAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "EcoAssiette").strip()
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", f"{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>")
-# Confirmation obligatoire de l'e-mail à l'inscription. Mettre False quand aucun service
-# d'envoi n'est disponible (ex. Render gratuit sans Brevo) : le compte est activé directement.
+# Confirmation OBLIGATOIRE de l'e-mail à l'inscription : le compte reste inactif tant que le lien
+# reçu par e-mail n'a pas été cliqué. Sans service d'envoi (en local), le lien s'affiche dans le terminal.
+# CONFIRMATION_EMAIL=False uniquement pour une démo sans e-mail (activation directe).
 SERVICE_EMAIL_CONFIGURE = bool(BREVO_API_KEY or (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD))
-CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", SERVICE_EMAIL_CONFIGURE)
+CONFIRMATION_EMAIL = env_bool("CONFIRMATION_EMAIL", True)
 INVITATION_DUREE_HEURES = 48          # validité d'un lien d'invitation (nutritionniste)
 # Durée de validité des liens (confirmation d'e-mail et réinitialisation) : 1 jour
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
