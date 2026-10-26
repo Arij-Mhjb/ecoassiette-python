@@ -89,6 +89,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "users.context_processors.notifications_admin",
                 "users.context_processors.notifications_citoyen",
+                "community.context_processors.notifications_communaute",
             ],
         },
     },
@@ -169,6 +170,13 @@ if R2_CONFIGURED:
     }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Génération locale d'images communautaires, sans clé ni API externe.
+LOCAL_IMAGE_MODEL = os.getenv("LOCAL_IMAGE_MODEL", "stabilityai/sd-turbo")
+LOCAL_IMAGE_DEVICE = os.getenv("LOCAL_IMAGE_DEVICE", "auto")  # auto, cuda ou cpu
+LOCAL_IMAGE_OFFLINE = env_bool("LOCAL_IMAGE_OFFLINE", False)
+LOCAL_IMAGE_STEPS = int(os.getenv("LOCAL_IMAGE_STEPS", "2"))
+LOCAL_IMAGE_SIZE = int(os.getenv("LOCAL_IMAGE_SIZE", "512"))
 
 # --- E-mails ------------------------------------------------------------------------
 # Choix automatique du backend. Les noms Django EMAIL_* et les noms MAIL_*

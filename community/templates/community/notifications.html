@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="narrow-wide">
+  <div class="page-head row-between"><div><p class="eyebrow">{% icon "bell" 14 %}Communauté</p><h1>Notifications</h1><p class="muted">Les membres qui vous ont mentionné dans leurs publications ou commentaires.</p></div>{% if nb_notifications_communaute %}<form method="post" action="{% url 'community:tout_lire' %}">{% csrf_token %}<button class="btn btn-ghost" type="submit">Tout marquer comme lu</button></form>{% endif %}</div>
+  <div class="notification-list">
+  {% for notification in notifications %}
+    <article class="card community-notification{% if not notification.lue_le %} is-unread{% endif %}">
+      {% include "community/_avatar.html" with membre=notification.acteur %}
+      <div><p><strong>@{{ notification.acteur.username }}</strong> vous a mentionné {% if notification.type == "MENTION_COMMENTAIRE" %}dans un commentaire{% else %}dans une publication{% endif %}.</p><small class="muted">{{ notification.creee_le|timesince }}</small></div>
+      <form method="post" action="{% url 'community:lire_notification' notification.pk %}">{% csrf_token %}<button class="btn btn-small" type="submit">Voir</button></form>
+    </article>
+  {% empty %}<div class="empty">{% icon "bell" 36 %}<p><strong>Aucune notification pour le moment.</strong></p><a class="btn" href="{% url 'community:fil' %}">Voir la communauté</a></div>{% endfor %}
+  </div>
+</div>
+{% endblock %}

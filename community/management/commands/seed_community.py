@@ -1,7 +1,9 @@
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 
-from community.models import Commentaire, Jaime, Mention, Publication
+from community.models import (
+    Commentaire, Jaime, Mention, MentionCommentaire, NotificationCommunaute, Publication,
+)
 from users.models import Utilisateur
 
 
@@ -22,12 +24,22 @@ class Command(BaseCommand):
             post, cree = Publication.objects.get_or_create(auteur=membres[auteur], texte=texte)
             posts[auteur] = post
             self.stdout.write(f"{'+' if cree else '='} publication @{auteur}")
-        Mention.objects.get_or_create(publication=posts["amine"], utilisateur=membres["yasmine"])
+        mention, _ = Mention.objects.get_or_create(publication=posts["amine"], utilisateur=membres["yasmine"])
+        NotificationCommunaute.objects.get_or_create(
+            destinataire=membres["yasmine"], acteur=membres["amine"],
+            type=NotificationCommunaute.Type.PUBLICATION, publication=posts["amine"],
+        )
         Jaime.objects.get_or_create(publication=posts["amine"], utilisateur=membres["karim"])
         Jaime.objects.get_or_create(publication=posts["karim"], utilisateur=membres["amine"])
-        Commentaire.objects.get_or_create(
+        commentaire, _ = Commentaire.objects.get_or_create(
             publication=posts["amine"], auteur=membres["yasmine"],
-            contenu="Bravo ! La prochaine fois, essaie aussi les légumes rôtis.",
+            contenu="Bravo @karim ! La prochaine fois, essaie aussi les légumes rôtis.",
+        )
+        MentionCommentaire.objects.get_or_create(commentaire=commentaire, utilisateur=membres["karim"])
+        NotificationCommunaute.objects.get_or_create(
+            destinataire=membres["karim"], acteur=membres["yasmine"],
+            type=NotificationCommunaute.Type.COMMENTAIRE,
+            publication=posts["amine"], commentaire=commentaire,
         )
         Publication.objects.get_or_create(auteur=membres["leila"], publication_originale=posts["karim"])
         self.stdout.write(self.style.SUCCESS("Scénario Communauté prêt : publications, mention, likes, commentaire et repartage."))

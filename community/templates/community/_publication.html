@@ -19,7 +19,7 @@
     </div>
   {% else %}
     {% if publication.texte %}<p class="community-text">{{ publication.texte|linebreaksbr }}</p>{% endif %}
-    {% if publication.image %}<a href="{{ publication.get_absolute_url }}"><img class="community-image" src="{{ publication.image.url }}" alt="Image publiée par {{ publication.auteur.username }}" loading="lazy"></a>{% endif %}
+    {% if publication.image %}<div class="community-image-wrap"><a href="{{ publication.get_absolute_url }}"><img class="community-image" src="{{ publication.image.url }}" alt="Image publiée par {{ publication.auteur.username }}" loading="lazy"></a>{% if publication.image_generee_ia %}<span class="community-ai-label">{% icon "sparkles" 14 %}Générée par IA</span>{% endif %}</div>{% endif %}
   {% endif %}
 
   {% if publication.mentions.all %}<p class="community-mentions"><span>Avec</span>{% for membre in publication.mentions.all %}<a href="{% url 'community:profil_membre' membre.username %}">@{{ membre.username }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
@@ -39,14 +39,14 @@
   {% if publication.commentaires.all %}
   <div class="community-comments" id="commentaires">
     {% for commentaire in publication.commentaires.all|slice:":3" %}
-      <div class="community-comment">
+      <div class="community-comment" id="commentaire-{{ commentaire.pk }}">
         {% include "community/_avatar.html" with membre=commentaire.auteur %}
-        <p><a href="{% url 'community:profil_membre' commentaire.auteur.username %}"><strong>@{{ commentaire.auteur.username }}</strong></a> {{ commentaire.contenu }} <small>{{ commentaire.cree_le|timesince }}</small></p>
+        <p><a href="{% url 'community:profil_membre' commentaire.auteur.username %}"><strong>@{{ commentaire.auteur.username }}</strong></a> {{ commentaire.contenu }}{% if commentaire.mentions.all %}<span class="comment-mentions">Mentionne {% for membre in commentaire.mentions.all %}<a href="{% url 'community:profil_membre' membre.username %}">@{{ membre.username }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}<small>{{ commentaire.cree_le|timesince }}</small></p>
         {% if commentaire.auteur_id == user.id or user.est_admin %}<form method="post" action="{% url 'community:supprimer_commentaire' commentaire.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" aria-label="Supprimer ce commentaire">{% icon "x" 14 %}</button></form>{% endif %}
       </div>
     {% endfor %}
     {% if publication.nb_commentaires > 3 %}<a class="small" href="{{ publication.get_absolute_url }}#commentaires">Voir tous les commentaires</a>{% endif %}
   </div>
   {% endif %}
-  <form class="community-comment-form" method="post" action="{% url 'community:commenter' publication.pk %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><label class="sr-only" for="comment-{{ publication.pk }}">Ajouter un commentaire</label><input id="comment-{{ publication.pk }}" name="contenu" maxlength="500" required placeholder="Ajouter un commentaire…"><button type="submit" aria-label="Publier le commentaire">{% icon "arrow" 18 %}</button></form>
+  <form class="community-comment-form" method="post" action="{% url 'community:commenter' publication.pk %}" data-mention-url="{% url 'community:rechercher_utilisateurs' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><label class="sr-only" for="comment-{{ publication.pk }}">Ajouter un commentaire</label><span class="comment-input-wrap"><input id="comment-{{ publication.pk }}" name="contenu" maxlength="500" required data-mention-input placeholder="Ajouter un commentaire… Utilisez @ pour mentionner"><span class="mention-suggestions" role="listbox" hidden></span></span><button type="submit" aria-label="Publier le commentaire">{% icon "arrow" 18 %}</button></form>
 </article>
