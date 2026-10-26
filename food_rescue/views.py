@@ -320,3 +320,43 @@ def intelligence_dashboard(request):
         "stats": statistiques_intelligentes(),
     })
 
+
+@login_required
+def administration(request):
+    if not request.user.has_perm("users.gerer_utilisateurs"):
+        raise PermissionDenied
+    profils = ProfilBeneficiaire.objects.select_related("utilisateur", "verifie_par")
+    return render(request, "food_rescue/administration.html", {
+        "en_attente": profils.filter(statut=ProfilBeneficiaire.Statut.EN_ATTENTE),
+        "traites": profils.exclude(statut=ProfilBeneficiaire.Statut.EN_ATTENTE)[:30],
+        "annonces": AnnonceSurplus.objects.select_related("donateur")[:20],
+    })
+
+
+@login_required
+@require_POST
+def traiter_eligibilite(request, pk, action):
+    if not request.user.has_perm("users.gerer_utilisateurs"):
+        raise PermissionDenied
+    if action not in {"valider", "refuser"}:
+        raise PermissionDenied("Action inconnue.")
+    with transaction.atomic():
+        profil = get_object_or_404(ProfilBeneficiaire.objects.select_for_update(), pk=pk)
+        if action == "valider":
+            profil.statut = ProfilBeneficiaire.Statut.VALIDEE
+            profil.motif_refus = ""
+            message = f"Éligibilité validée pour {profil.utilisateur}."
+        else:
+            motif = request.POST.get("motif", "").strip()
+            if not motif:
+                messages.error(request, "Indiquez un motif de refus.")
+                return redirect("food_rescue:administration")
+            profil.statut = ProfilBeneficiaire.Statut.REFUSEE
+            profil.motif_refus = motif[:300]
+            message = f"Éligibilité refusée pour {profil.utilisateur}."
+        profil.verifie_par = request.user
+        profil.verifie_le = timezone.now()
+        profil.save(update_fields=["statut", "motif_refus", "verifie_par", "verifie_le", "modifie_le"])
+    messages.success(request, message)
+    return redirect("food_rescue:administration")
+

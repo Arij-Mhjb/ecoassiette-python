@@ -16,7 +16,7 @@
   </div>
   {% if user.role == "CITOYEN" %}<a class="btn btn-light" href="{% url 'repas:liste' %}">{% icon "utensils" %}Mes repas & mon bilan</a>
   {% elif user.role == "NUTRITIONNISTE" %}<a class="btn btn-light" href="{% url 'users:nutri_profils' %}">{% icon "users" %}Profils citoyens</a>
-  {% else %}<a class="btn btn-light" href="{% url 'users:admin_liste' %}">{% icon "shield" %}Gestion des comptes</a>{% endif %}
+  {% else %}<a class="btn btn-light" href="{% url 'users:admin_centre' %}">{% icon "shield" %}Centre d'administration</a>{% endif %}
 </section>
 
 {% if demande and demande.statut == "EN_ATTENTE" %}
@@ -121,6 +121,7 @@
       <div><dt>Demandes à valider</dt><dd><strong>{{ nb_demandes_attente|default:0 }}</strong> en attente</dd></div>
     </dl>
     <ul class="link-list" style="margin-top:0">
+      <li><a href="{% url 'users:admin_centre' %}">{% icon "shield" %}Centre d'administration</a></li>
       <li><a href="{% url 'users:admin_liste' %}">{% icon "users" %}Gestion des comptes</a></li>
       <li><a href="{% url 'users:admin_demandes' %}">{% icon "chef-hat" %}Demandes nutritionnistes</a></li>
       <li><a href="{% url 'users:admin_invitations' %}">{% icon "mail" %}Inviter une nutritionniste</a></li>
@@ -134,8 +135,9 @@
       <div><dt>Demandes traitées</dt><dd><strong>{{ nb_traitees }}</strong> par moi</dd></div>
       <div><dt>Invitations envoyées</dt><dd><strong>{{ nb_invitations }}</strong> par moi</dd></div>
     </dl>
-    <p class="small muted">Le tableau de bord technique Django reste disponible pour la maintenance.</p>
-    <a class="btn btn-ghost" href="{% url 'admin:index' %}">{% icon "box" %}Administration Django</a>
+    <p class="small muted">Toutes les fonctions métier sont regroupées dans le centre d'administration.</p>
+    <a class="btn" href="{% url 'users:admin_centre' %}">{% icon "shield" %}Ouvrir le centre</a>
+    {% if user.is_superuser %}<a class="btn btn-ghost" href="{% url 'admin:index' %}">{% icon "box" %}Maintenance Django</a>{% endif %}
   </section>
 </div>
 {% endif %}

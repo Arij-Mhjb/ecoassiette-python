@@ -380,6 +380,32 @@ class AdminRequisMixin(PermissionOu403Mixin):
     permission_required = "users.gerer_utilisateurs"
 
 
+class CentreAdministrationView(AdminRequisMixin, TemplateView):
+    """Point d'entrée unique de l'administration métier EcoAssiette."""
+    template_name = "users/admin/centre.html"
+
+    def get_context_data(self, **kw):
+        from food_rescue.models import AnnonceSurplus, ProfilBeneficiaire
+        from impact.models import CommandeRecompense, TransactionPoints
+        from planning.models import PlanMenu
+
+        ctx = super().get_context_data(**kw)
+        ctx.update({
+            "nb_comptes": User.objects.count(),
+            "nb_demandes_nutri": DemandeNutritionniste.objects.filter(
+                statut=DemandeNutritionniste.Statut.EN_ATTENTE
+            ).count(),
+            "nb_eligibilites": ProfilBeneficiaire.objects.filter(
+                statut=ProfilBeneficiaire.Statut.EN_ATTENTE
+            ).count(),
+            "nb_annonces": AnnonceSurplus.objects.count(),
+            "nb_transactions": TransactionPoints.objects.count(),
+            "nb_commandes": CommandeRecompense.objects.count(),
+            "nb_plans": PlanMenu.objects.count(),
+        })
+        return ctx
+
+
 class UtilisateurListView(AdminRequisMixin, ListView):
     model = User
     template_name = "users/admin/liste.html"

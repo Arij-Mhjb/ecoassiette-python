@@ -11,7 +11,7 @@ class AccesAnonymeTest(BaseTest):
         urls = [
             reverse("users:profil"), reverse("users:modifier_profil"), reverse("users:modifier_infos"),
             reverse("users:supprimer_compte"), reverse("users:nutri_profils"),
-            reverse("users:admin_liste"), reverse("users:admin_stats"),
+            reverse("users:admin_centre"), reverse("users:admin_liste"), reverse("users:admin_stats"),
             reverse("users:admin_detail", args=[self.citoyen.pk]),
         ]
         for url in urls:
@@ -30,7 +30,7 @@ class AccesCitoyenTest(BaseTest):
 
     def test_citoyen_interdit_admin_et_nutri(self):
         urls = [
-            reverse("users:admin_liste"), reverse("users:admin_creer"), reverse("users:admin_stats"),
+            reverse("users:admin_centre"), reverse("users:admin_liste"), reverse("users:admin_creer"), reverse("users:admin_stats"),
             reverse("users:admin_detail", args=[self.autre.pk]),
             reverse("users:admin_modifier", args=[self.autre.pk]),
             reverse("users:admin_supprimer", args=[self.autre.pk]),
@@ -53,6 +53,21 @@ class AccesCitoyenTest(BaseTest):
     def test_admin_django_inaccessible(self):
         r = self.client.get("/admin/")
         self.assertEqual(r.status_code, 302)  # non staff -> page de login admin
+
+
+class CentreAdministrationTest(BaseTest):
+    def test_admin_accede_au_centre_unique(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse("users:admin_centre"))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Centre d'administration")
+        self.assertContains(r, reverse("food_rescue:administration"))
+        self.assertNotContains(r, reverse("admin:index"))
+
+    def test_superutilisateur_voit_la_maintenance_django(self):
+        superadmin = Utilisateur.objects.create_superuser("root", "root@test.tn", "UnMotDePasse!Solide42")
+        self.client.force_login(superadmin)
+        self.assertContains(self.client.get(reverse("users:admin_centre")), reverse("admin:index"))
 
 
 class AccesNutritionnisteTest(BaseTest):
