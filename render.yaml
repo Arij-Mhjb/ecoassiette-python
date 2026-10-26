@@ -36,7 +36,7 @@ services:
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false
       - key: SEED_DEMO
-        value: "True"
+        value: "False"
       - key: CLOUDFLARE_R2_ACCOUNT_ID
         sync: false
       - key: CLOUDFLARE_R2_ACCESS_KEY_ID

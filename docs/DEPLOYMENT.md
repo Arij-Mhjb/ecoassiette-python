@@ -11,6 +11,7 @@ Les secrets et les services externes doivent être configurés dans **Render > e
 | `SECRET_KEY` | Générée par Render ; ne jamais la modifier après mise en production |
 | `DEBUG` | `False` |
 | `ALLOWED_HOSTS` | Domaine Render et éventuel domaine personnalisé |
+| `SEED_DEMO` | `False` en production : évite les comptes aux mots de passe de démonstration connus |
 
 ## E-mails de confirmation avec Brevo
 
