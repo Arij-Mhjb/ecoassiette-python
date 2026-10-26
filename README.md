@@ -160,7 +160,7 @@ Après `python manage.py seed_demo` :
 |---|---|---|
 | `admin_eco` | Administrateur | `EcoDemo2026!` |
 | `nutri_sarra` | Nutritionniste | `EcoDemo2026!` |
-| `amine`, `yasmine`, `karim` | Citoyen | `EcoDemo2026!` |
+| `amine`, `yasmine`, `Arij` | Citoyen | `EcoDemo2026!` |
 
 Ces identifiants sont destinés uniquement à la démonstration locale. Changez tous les mots de passe en production.
 
