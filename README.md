@@ -1,296 +1,285 @@
-# EcoAssiette — Module « Utilisateurs & profils »
+# EcoAssiette
 
-Plateforme qui aide les citoyens à suivre et réduire l'empreinte carbone de leur alimentation.
-Ce dépôt contient le **module Utilisateurs & profils** (app Django `users`) : authentification,
-rôles, profil alimentaire, analyse IA du profil, gestion des comptes (CRUD), API REST.
+**Plateforme intelligente d'alimentation durable** - analysez vos repas, mesurez leur impact environnemental et adoptez des alternatives végétales adaptées à votre quotidien.
 
-- Django 5.2 · DRF · PostgreSQL (Render) / SQLite (local) · WhiteNoise · Celery (optionnel)
-- **327 tests**, couverture globale **91 %** (branches incluses) · audit axe-core historique sans violation sur les pages couvertes
+![Aperçu de la page d'accueil EcoAssiette](docs/images/ecoassiette-home.png)
 
----
+## Pourquoi EcoAssiette ?
 
-## 1. Installation locale
+L'impact environnemental d'un repas est difficile à visualiser et les alternatives végétales ne sont pas toujours simples à intégrer. EcoAssiette transforme une recette ou une photo en informations concrètes : émissions de CO₂e, consommation d'eau, utilisation des terres, substitutions possibles et économies obtenues.
 
-```bash
+La plateforme accompagne ensuite l'utilisateur jusqu'à l'action avec des menus hebdomadaires, une liste de courses, des produits partenaires, des récompenses et des preuves de réalisation.
+
+## Fonctionnalités principales
+
+### Assistant de recette intelligent
+
+- Analyse d'une recette en texte libre avec Gemini.
+- Extraction des ingrédients, catégories et quantités.
+- Repli local déterministe lorsque l'API est indisponible.
+- Correction manuelle avant validation.
+- Brouillons automatiques, reprise et suppression.
+- Compréhension contextuelle : `pain burger` reste un féculent, tandis que `hamburger` est traité comme un plat à végétaliser.
+- Suggestions maison avec quantités, préparation et tutoriels vidéo.
+
+### Impact environnemental
+
+- Estimation du CO₂e, de l'eau et de l'utilisation des terres.
+- Indication du risque de déforestation.
+- Comparaison avant/après une substitution végétale.
+- Historique des réductions réellement adoptées.
+- Tableau de bord personnel.
+
+> Les valeurs sont des estimations pédagogiques fondées sur des moyennes de catégories alimentaires. Elles ne constituent pas une analyse de cycle de vie propre à chaque marque.
+
+### Alternatives et produits végétaux
+
+- Recommandations de produits publiés par les sponsors.
+- Correspondance par ingrédient et contexte de recette.
+- Import administratif d'un produit depuis son URL officielle avec extraction assistée par IA.
+- Nom, description, prix, marque, mots-clés et données nutritionnelles vérifiables.
+- Utilisation d'un même produit dans plusieurs plats distincts : burger, bolognaise, tacos, keftas, wrap, curry, etc.
+
+### Nutrition par portion
+
+Chaque menu et chaque alternative affiche une estimation des calories, protéines, fibres, glucides et lipides. Les valeurs exactes d'un produit peuvent être saisies pour 100 g dans l'administration. En leur absence, EcoAssiette utilise un référentiel moyen et signale clairement qu'il s'agit d'une estimation.
+
+### Planificateur écologique
+
+- 14 créneaux par semaine : déjeuner et dîner.
+- Objectif carbone hebdomadaire personnalisable.
+- Menus végétaux générés par Gemini ou par le moteur local.
+- Nouveau groupe de recettes à chaque régénération.
+- Remplacement intelligent des repas trop émetteurs.
+- Intégration des produits végétaux disponibles.
+- Tutoriel vidéo pour chaque menu.
+- Liste de courses agrégée et imprimable.
+
+### Récompenses, preuves et bons partenaires
+
+- Envoi d'une photo ou d'une vidéo comme preuve d'un repas réalisé.
+- Validation administrative et attribution idempotente des points.
+- Portefeuille avec historique des crédits et dépenses.
+- Réservation de produits partenaires avec remise.
+- Bon PDF contenant un code unique et un QR code.
+- Page de vérification du bon et validation à usage unique par un administrateur autorisé.
+
+### Food Rescue
+
+- Publication de surplus alimentaires.
+- Analyse IA du contenu, de l'urgence et des allergènes.
+- Réservation réservée aux profils éligibles et validés.
+- Adresse protégée jusqu'à l'acceptation.
+- Code de collecte, double confirmation et points solidaires.
+
+### Comptes et accompagnement
+
+- Rôles Citoyen, Nutritionniste et Administrateur.
+- Inscription, confirmation d'e-mail et réinitialisation du mot de passe.
+- Profil alimentaire : régime, goûts, exclusions, activité, foyer et objectif CO₂.
+- Recommandations personnalisées et partage volontaire avec un nutritionniste.
+- Journal d'audit et historique de connexion.
+
+## Parcours utilisateur
+
+```text
+Profil alimentaire
+       |
+Analyse IA d'une recette
+       |
+Impact environnemental + nutrition
+       |
+Alternative maison ou produit végétal
+       |
+Repas validé -> preuve -> points
+       |
+Produit partenaire -> bon PDF + QR code
+```
+
+## Technologies
+
+| Domaine | Technologies |
+|---|---|
+| Backend | Python 3.13, Django 5.2, Django REST Framework |
+| IA | Google Gemini via API REST, moteurs locaux de secours |
+| Données | PostgreSQL en production, SQLite en développement |
+| Tâches | Celery + Redis en option, thread local par défaut |
+| Frontend | Templates Django, HTML sémantique, CSS responsive, JavaScript natif |
+| Documents | ReportLab pour les bons PDF et QR codes |
+| Déploiement | Render, Gunicorn, Uvicorn, WhiteNoise |
+| Qualité | Tests Django, Coverage, contrôles d'accessibilité |
+
+## Installation locale
+
+### Prérequis
+
+- Python 3.12 ou 3.13 ;
+- Git ;
+- Redis uniquement si `USE_CELERY=True`.
+
+### Windows PowerShell
+
+```powershell
+git clone https://github.com/onsjaouadi2-dotcom/ecoassiette.git
+cd ecoassiette
 python -m venv venv
-venv\Scripts\activate            # Windows   |   source venv/bin/activate (Linux/Mac)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-copy .env.example .env           # puis mettre DEBUG=True et (optionnel) GEMINI_API_KEY
-python manage.py migrate         # crée aussi les groupes Citoyen / Nutritionniste / Administrateur
-python manage.py seed_demo       # comptes de démonstration
-python manage.py runserver
-```
-
-| Compte        | Rôle            | Mot de passe   |
-|---------------|-----------------|----------------|
-| `admin_eco`   | Administrateur  | `EcoDemo2026!` |
-| `nutri_sarra` | Nutritionniste  | `EcoDemo2026!` |
-| `amine`, `yasmine`, `karim` | Citoyen | `EcoDemo2026!` |
-
-Connexion possible avec le **nom d'utilisateur ou l'e-mail**.
-
-## 2. Fonctionnalités
-
-| Rôle | Ce qu'il peut faire |
-|------|---------------------|
-| Visiteur | Accueil, inscription (rôle forcé à *Citoyen*) avec **confirmation par e-mail**, connexion, mot de passe oublié **par e-mail** |
-| Citoyen | Voir/modifier son profil alimentaire et ses infos, avatar, changer son mot de passe, **analyse IA**, adopter l'objectif CO₂ proposé, supprimer son compte |
-| Nutritionniste | Consulter les profils que les citoyens ont choisi de **partager** (`profil_public`) + leur dernière analyse |
-| Administrateur | **CRUD complet des comptes** (liste, recherche, filtres, création, modification, suppression, activation/désactivation), statistiques, dashboard `/admin/` |
-
-### Modèles (`users/models.py`)
-- `Utilisateur(AbstractUser)` : e-mail unique (normalisé), `role`, `telephone` (validé par regex), `avatar`.
-  Permissions personnalisées : `gerer_utilisateurs`, `voir_statistiques`.
-- `ProfilAlimentaire` (OneToOne, créé automatiquement par signal) : régime, aliments aimés/évités,
-  foyer, activité, temps de cuisine, ville, objectif CO₂, partage.
-  Règles métier dans `clean()` : un aliment ne peut pas être aimé **et** évité ; l'objectif doit être
-  < empreinte estimée ; bornes 5–100 kg.
-- `AnalyseProfilIA` : statut (EN_ATTENTE → EN_COURS → TERMINE/ECHEC), source (GEMINI/LOCAL),
-  résultat JSON, **temps de réponse en ms**.
-
-Empreinte estimée = émissions moyennes du régime × 7 (Scarborough et al., 2014, *Climatic Change*) :
-végan 2,89 · végétarien 3,81 · pescétarien 3,91 · flexitarien 4,67 · omnivore 5,63 · gros mangeur de viande 7,19 kg CO₂e/jour.
-
-## 3. E-mails
-
-| Quand | E-mail envoyé |
-|---|---|
-| Inscription | Lien de **confirmation de l'adresse** (valable 24 h, usage unique). La connexion est **bloquée** tant que l'adresse n'est pas confirmée ; lien « Renvoyer le lien » disponible. |
-| Mot de passe oublié | Lien de **réinitialisation** (24 h, usage unique). Même réponse que l'e-mail existe ou non (anti-énumération). |
-| Mot de passe changé (depuis le profil ou après réinitialisation) | **Notification de sécurité** avec un lien « Ce n'est pas vous ? ». |
-
-Jetons signés avec `SECRET_KEY` (`PasswordResetTokenGenerator`) : le lien de confirmation devient invalide
-dès que l'adresse est confirmée ou modifiée. E-mails en **HTML + texte**. Comptes créés par un admin,
-superutilisateurs et comptes démo sont considérés comme confirmés. Si l'envoi échoue, le compte est créé
-et l'utilisateur est invité à renvoyer le lien (pas de page d'erreur).
-
-**Configuration** (dans `.env`, le backend est choisi automatiquement) :
-- *Rien* → les e-mails s'affichent dans le terminal (pratique pour tester / démo).
-- *Gmail (local)* : activer la validation en 2 étapes, créer un **mot de passe d'application**
-  (myaccount.google.com/apppasswords), puis `EMAIL_HOST_USER=...@gmail.com` et `EMAIL_HOST_PASSWORD=...`.
-- *Render* : l'offre gratuite **bloque les ports SMTP** → utiliser l'API HTTPS **Brevo** (300 e-mails/jour
-  gratuits) : `BREVO_API_KEY=...` et `DEFAULT_FROM_EMAIL=EcoAssiette <expediteur.verifie.dans.brevo@...>`.
-
-## 3 bis. Intelligence artificielle
-
-### Assistant de recette et impact environnemental
-
-La page `/impact/assistant-recette/` accepte une recette en texte libre. Gemini extrait les ingrédients,
-leurs grammages et leurs catégories ; sans clé ou en cas d'erreur, un extracteur local prend le relais.
-L'utilisateur corrige toujours le brouillon avant validation, conserve ses ingrédients et choisit les
-substitutions végétales proposées. Seul le repas confirmé rejoint son historique. Son détail affiche le
-CO₂, l'eau, les terres et le risque de déforestation estimés. La page `/impact/` cumule l'impact réel des
-repas validés et les économies obtenues grâce aux alternatives adoptées.
-
-**Besoin réel couvert :** à l'inscription, l'utilisateur ne sait pas quel objectif se fixer ni par quoi
-remplacer les plats qu'il aime. L'IA transforme son profil en : empreinte estimée, **objectif CO₂ réaliste**
-(adoptable en un clic), **alternatives végétales basées sur ses plats préférés** (y compris tunisiens :
-couscous, ojja, kafteji…), conseils adaptés au temps de cuisine et à la taille du foyer.
-
-**Chaîne de traitement (`users/ai.py`)**
-1. Appel **Gemini** (API REST, réponse JSON imposée via `responseMimeType`), clé dans `GEMINI_API_KEY`
-   envoyée en en-tête `x-goog-api-key` (jamais dans l'URL, jamais dans le code).
-2. **Validation** de la réponse : schéma, objectif borné, suppression de toute alternative contenant un
-   aliment évité ou un produit animal.
-3. **Repli local** déterministe (table de substitutions + facteurs Poore & Nemecek 2018) si : pas de clé,
-   timeout, erreur HTTP/quota, JSON illisible, réponse incomplète. L'utilisateur a toujours un résultat
-   et la source est affichée.
-
-**Asynchrone (`users/tasks.py`)** — l'appel IA ne bloque jamais la requête HTTP :
-`POST /comptes/profil/analyse/` crée l'analyse et répond **202** ; le navigateur interroge
-`GET /comptes/profil/analyse/<id>/` chaque seconde (indicateur de chargement, région `aria-live`,
-message d'erreur explicite, délai max 60 s).
-- `USE_CELERY=True` → tâche **Celery** (`celery -A config worker -l info`, Redis dans `REDIS_URL`)
-- `USE_CELERY=False` → thread d'arrière-plan (démo locale / Render gratuit sans Redis)
-
-**Métriques (`python manage.py evaluer_ia [--local] [--json rapport.json]`)** sur 10 profils de référence :
-
-| Métrique | Définition | Moteur local |
-|---|---|---|
-| Réponses exploitables | JSON valide et conforme | 100 % |
-| Respect des aliments évités | aucune alternative ne contient un aliment évité | 100 % |
-| Alternatives 100 % végétales | aucun produit animal en remplacement | 100 % |
-| Pertinence goûts | % d'alternatives partant d'un plat aimé | 57 % |
-| Cohérence de l'objectif | 5 kg ≤ objectif ≤ empreinte | 100 % |
-| Latence moyenne / p95 | temps de réponse | < 1 ms |
-
-Avec une clé Gemini, relancer la commande sans `--local` pour obtenir les chiffres Gemini (latence typique
-de quelques secondes → justifie le traitement asynchrone). La page **Statistiques** affiche en continu :
-nombre d'analyses, part Gemini/local, échecs, temps moyen et p95.
-
-## 4. Tests
-
-```bash
-python manage.py test users              # 117 tests
-coverage run manage.py test users && coverage report && coverage html   # rapport dans htmlcov/
-```
-
-| Fichier | Contenu |
-|---|---|
-| `test_models.py` | hachage PBKDF2, e-mail unique, profil auto, groupe ↔ rôle, règles `clean()`, bornes |
-| `test_forms.py` | inscription (rôle forcé), e-mail en double, mot de passe faible, attributs ARIA |
-| `test_views.py` | statuts HTTP, inscription/connexion/déconnexion, reset par e-mail, IA (202, polling), 404/500 |
-| `test_permissions.py` | **accès par URL directe** : anonyme → login, citoyen → 403, nutritionniste limité, CRUD admin |
-| `test_api.py` | API DRF : authentification, permissions, validation métier (400) |
-| `test_emails.py` | confirmation (envoi, connexion bloquée, lien unique, lien invalide, renvoi), notification de changement, reset complet, backend Brevo |
-| `test_ai.py` | Gemini simulé (`mock`) : succès, filtrage, timeout, 429, JSON invalide → repli ; tâche ; commandes |
-
-## 5. Sécurité (bases OWASP)
-
-- CSRF actif sur tous les formulaires et l'appel IA (`X-CSRFToken`) ; déconnexion en **POST**.
-- ORM uniquement (aucun SQL brut) ; mots de passe **PBKDF2-SHA256** + validateurs Django.
-- Secrets dans `.env` / variables Render (`SECRET_KEY`, `DATABASE_URL`, `GEMINI_API_KEY`) — `.env` ignoré par Git.
-- `DEBUG=False` en production → cookies `Secure`, HSTS, redirection HTTPS, `X-Frame-Options: DENY`.
-- Contrôle d'accès : `@login_required`, `LoginRequiredMixin`, `PermissionRequiredMixin` (mixin
-  `PermissionOu403Mixin` : anonyme → login, connecté sans droit → 403) + **groupes/permissions Django**.
-- Un nutritionniste ne voit que les profils partagés ; un citoyen ne peut lire que **ses** analyses (404 sinon).
-- Un admin ne peut ni se supprimer, ni se désactiver, ni retirer son propre rôle.
-- Connexion : message identique pour compte inexistant / mauvais mot de passe (anti-énumération).
-- Données IA insérées dans le DOM via `textContent` (pas d'`innerHTML` → pas de XSS).
-- Pages d'erreur personnalisées 403 / 404 / 500 ; `try/except` ciblés autour de l'API IA.
-
-## 6. Accessibilité
-
-`lang="fr"`, lien d'évitement, `<header>/<nav>/<main>/<footer>`, un seul `h1` par page,
-labels reliés, aide et erreurs reliées par `aria-describedby` + `aria-invalid`, `aria-current` dans le
-menu, `aria-live` pour le statut IA, menu mobile avec `aria-expanded` (Échap pour fermer), focus visible
-(3 px), cibles ≥ 44 px, contrastes ≥ 4,5:1, tableaux avec `caption`/`scope`, `prefers-reduced-motion`.
-Audit : **axe-core 4.10 → 0 violation** sur accueil, connexion, inscription (avec erreurs), profil, gestion,
-statistiques, création de compte, profils nutritionniste, 404. À refaire en démo avec Lighthouse (Chrome).
-
-## 7. Intégration avec les autres modules de l'équipe
-
-> **Important :** `AUTH_USER_MODEL = "users.Utilisateur"` doit être en place **avant la première migration**
-> du projet commun. Les autres apps référencent l'utilisateur ainsi :
-> `models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)`.
-
-- Profil accessible partout : `request.user.profil.regime`, `.liste_aimes`, `.liste_evites`,
-  `.objectif_co2_hebdo`, `.emission_estimee_hebdo`.
-- Permissions dans les templates : `{% if perms.users.gerer_utilisateurs %}`.
-- API (session) : `GET/PATCH /api/moi/`, `GET/PUT/PATCH /api/moi/profil/`, `GET /api/utilisateurs/` (admin).
-- Le module *Alternatives végétales* peut réutiliser `users.ai.SUBSTITUTIONS` et `FACTEURS`.
-
-## 8. Déploiement sur Render
-
-Conforme au guide du cours (PostgreSQL + WhiteNoise + `build.sh` + Gunicorn/Uvicorn).
-
-1. Pousser le dépôt sur GitHub.
-2. Soit **Blueprint** (`render.yaml` crée la base et le service), soit manuellement :
-   - Build : `./build.sh` · Start : `python -m gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker`
-3. Variables : `DATABASE_URL` (Internal URL), `SECRET_KEY`, `WEB_CONCURRENCY=4`, `DEBUG=False`,
-   `GEMINI_API_KEY`, `DJANGO_SUPERUSER_USERNAME/EMAIL/PASSWORD`, `SEED_DEMO=True` (optionnel).
-
-## 9. Arborescence
-
-```
-config/            settings (env), urls, celery, asgi/wsgi
-users/
-  models.py        Utilisateur, ProfilAlimentaire, AnalyseProfilIA
-  forms.py         formulaires + mixin d'accessibilité
-  views.py         auth, espace citoyen, IA, nutritionniste, CRUD admin, erreurs
-  permissions.py   PermissionOu403Mixin
-  signals.py       groupes/permissions, profil automatique
-  backends.py      connexion e-mail ou username
-  ai.py            Gemini + validation + moteur local
-  tasks.py         exécution asynchrone (Celery / thread)
-  api/             DRF
-  management/commands/  seed_demo, evaluer_ia
-  emails.py        e-mails (confirmation, notification) + jeton
-  email_backends.py  envoi via API Brevo
-  tests/           117 tests
-food_rescue/
-  models.py        annonces, analyses IA, réservations, collectes
-  ai.py            vision Gemini + moteur local gratuit
-  services.py      recommandations explicables
-  tasks.py         traitement asynchrone
-  management/      données de démo + évaluation IA
-  tests/           modèles, CRUD, permissions, IA et scénario complet
-templates/         base, accueil, includes accessibles, erreurs
-static/            css, js (menu, analyse IA)
-```
-
-## 10. Questions probables en soutenance
-
-- **Pourquoi `AbstractUser` ?** Recommandation Django : modèle personnalisé dès le départ ; on garde
-  tout l'existant (hachage, permissions) et on ajoute `role`, `telephone`, `avatar`.
-- **Pourquoi `role` + groupes ?** `role` = source unique de vérité lisible ; le signal synchronise le
-  groupe Django, et ce sont les **permissions** (pas le rôle) qui sont vérifiées dans les vues.
-- **Pourquoi un repli local ?** L'API externe peut être lente, en panne ou hors quota : la fonctionnalité
-  reste disponible et la source est transparente pour l'utilisateur.
-- **Pourquoi asynchrone ?** Gemini prend quelques secondes ; un worker Gunicorn bloqué pendant ce temps
-  ne sert personne d'autre. 202 + polling libère la requête immédiatement.
-- **Comment évaluer une IA générative ?** Pas de vérité unique → critères vérifiables (contraintes
-  respectées, cohérence des chiffres, pertinence par rapport aux goûts) + latence.
-- **Comment empêcher le contournement par URL ?** Toutes les vues sensibles sont protégées côté serveur
-  et testées (`test_permissions.py`), y compris les requêtes POST directes.
-
-## 11. Food Rescue AI — surplus alimentaires solidaires
-
-L'application Django `food_rescue` transforme un surplus en don traçable : publication, analyse IA,
-recommandation, réservation, acceptation, code de collecte et double confirmation. L'adresse précise
-reste masquée jusqu'à l'acceptation de la demande. Tout membre peut donner, mais seuls les profils
-**Étudiant** ou **Association** validés par un administrateur peuvent réserver.
-
-### Parcours de démonstration complet
-
-```bash
+Copy-Item .env.example .env
 python manage.py migrate
 python manage.py seed_demo
 python manage.py seed_food_rescue
 python manage.py runserver
 ```
 
-Tous les comptes de démonstration utilisent `EcoDemo2026!` :
-
-1. Se connecter avec `amine`, ouvrir **Food Rescue**, puis publier un surplus avec ou sans photo.
-2. Constater l'analyse asynchrone : Gemini si `GEMINI_API_KEY` est définie, sinon moteur local gratuit.
-3. Se connecter avec `yasmine` (profil étudiant validé), ouvrir l'annonce et envoyer une réservation.
-4. Revenir avec `amine`, accepter la demande et noter le code de collecte.
-5. Confirmer la remise côté donateur, puis la récupération côté bénéficiaire avec le code.
-6. Consulter **Mon impact Food Rescue** : la collecte, le CO₂ évité et les points du donateur sont comptabilisés.
-
-La commande de seed ajoute quatre scénarios prêts à présenter (disponible, urgent, réservé et collecté),
-deux étudiants validés et une association validée.
-
-### Éligibilité sociale et points solidaires
-
-- Un membre non validé peut consulter et publier, mais le serveur bloque toute réservation directe.
-- L'étudiant ou l'association dépose une demande depuis `/food-rescue/eligibilite/`.
-- L'administrateur valide ou refuse le profil depuis l'administration Django.
-- L'éligibilité est revérifiée à la réservation et avant l'acceptation par le donateur.
-- Après la double confirmation, le donateur reçoit `50 + 10 × kg CO₂e évités`, plafonné à 200 points.
-- Le crédit utilise le portefeuille `impact.TransactionPoints` existant et ne peut être effectué qu'une fois.
-
-### IA gratuite et résiliente
-
-- **Gemini API** : clé gratuite créée dans Google AI Studio, utilisée via HTTPS et stockée uniquement dans
-  `GEMINI_API_KEY`. Elle analyse le texte et, lorsqu'elle existe, la photo.
-- **Moteur local** : classifieur déterministe français/tounsi, détection d'allergènes, urgence temporelle
-  et estimation CO₂. Il fonctionne hors ligne, sans clé et sans coût.
-- **Asynchronisme** : thread local par défaut ; Celery + Redis lorsque `USE_CELERY=True`.
-- **Validation humaine** : l'IA ne certifie jamais la sécurité sanitaire et ses champs restent vérifiables.
-
-### Tests et métriques
+### Linux ou macOS
 
 ```bash
-python manage.py test food_rescue
-coverage run manage.py test food_rescue
-coverage report -m
-python manage.py evaluer_food_rescue
-python manage.py evaluer_food_rescue --json rapport_food_rescue.json
+git clone https://github.com/onsjaouadi2-dotcom/ecoassiette.git
+cd ecoassiette
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py seed_demo
+python manage.py seed_food_rescue
+python manage.py runserver
 ```
 
-Le jeu annoté contient 20 descriptions couvrant les six catégories. La commande calcule accuracy,
-précision, rappel, F1 macro et matrice de confusion. Le moteur local de référence obtient actuellement
-une accuracy de 0,90 et un F1 macro de 0,925 sur ce petit jeu de démonstration ; ces résultats ne doivent
-pas être présentés comme une validation scientifique générale.
+Ouvrez ensuite [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
 
-### Entités et sécurité
+## Comptes de démonstration
 
-- `AnnonceSurplus` : CRUD propriétaire, statut, disponibilité, conservation et impact estimé.
-- `AnalyseSurplusIA` : résultat structuré, source, erreur et latence.
-- `ReservationSurplus` : une demande par bénéficiaire et par annonce.
-- `CollecteSurplus` : double confirmation donateur/bénéficiaire.
-- `ProfilBeneficiaire` : type étudiant/association et validation administrative.
-- Toutes les écritures utilisent POST + CSRF ; les requêtes sont filtrées par propriétaire et testées
-  contre l'accès direct par URL.
+Après `python manage.py seed_demo` :
+
+| Identifiant | Rôle | Mot de passe |
+|---|---|---|
+| `admin_eco` | Administrateur | `EcoDemo2026!` |
+| `nutri_sarra` | Nutritionniste | `EcoDemo2026!` |
+| `amine`, `yasmine`, `karim` | Citoyen | `EcoDemo2026!` |
+
+Ces identifiants sont destinés uniquement à la démonstration locale. Changez tous les mots de passe en production.
+
+## Configuration
+
+Copiez `.env.example` vers `.env`. Les principales variables sont :
+
+```dotenv
+DEBUG=True
+SECRET_KEY=changez-moi
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# SQLite est utilisé si cette valeur est absente.
+DATABASE_URL=
+
+# Le moteur local prend automatiquement le relais sans clé.
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-flash-latest
+GEMINI_TIMEOUT=60
+
+USE_CELERY=False
+REDIS_URL=redis://localhost:6379/0
+```
+
+Les secrets ne doivent jamais être ajoutés à Git.
+
+## Commandes utiles
+
+```bash
+# Démarrer l'application
+python manage.py runserver
+
+# Migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# Tests
+python manage.py test
+python manage.py test users repas impact planning food_rescue
+
+# Couverture
+coverage run manage.py test
+coverage report -m
+coverage html
+```
+
+## Structure du projet
+
+```text
+ecoassiette/
+├── config/          # paramètres, URLs, ASGI/WSGI et Celery
+├── users/           # comptes, rôles, profils, e-mails et recommandations
+├── repas/           # suivi des repas et analyses photo/texte/audio
+├── impact/          # impacts, alternatives, sponsors, points et bons PDF
+├── planning/        # menus hebdomadaires et listes de courses
+├── food_rescue/     # dons de surplus et collectes solidaires
+├── templates/       # mise en page globale et composants partagés
+├── static/          # CSS, JavaScript, polices et icônes
+├── docs/images/     # captures utilisées par la documentation
+├── requirements.txt
+├── render.yaml
+└── manage.py
+```
+
+## Intelligence artificielle responsable
+
+EcoAssiette suit une chaîne de traitement contrôlée :
+
+1. Gemini reçoit une consigne JSON structurée.
+2. La réponse est validée par le serveur.
+3. Les aliments évités et résultats non conformes sont filtrés.
+4. Un moteur local prend le relais en cas d'absence de clé, timeout, quota ou réponse invalide.
+5. L'utilisateur vérifie et corrige les données avant toute validation définitive.
+
+L'IA ne certifie ni la sécurité sanitaire, ni la valeur médicale d'un conseil, ni l'analyse environnementale exacte d'une marque.
+
+## Sécurité et confidentialité
+
+- Authentification Django et mots de passe hachés.
+- Autorisations contrôlées côté serveur pour chaque rôle.
+- Isolation des repas, brouillons, preuves, plannings et bons par propriétaire.
+- Formulaires protégés par CSRF ; actions sensibles en POST.
+- QR codes aléatoires et bons utilisables une seule fois.
+- Secrets chargés depuis l'environnement.
+- ORM Django sans SQL brut.
+- Cookies sécurisés, HSTS et redirection HTTPS en production.
+- Export et suppression des données personnelles.
+
+## Déploiement sur Render
+
+Le dépôt contient `render.yaml` et `build.sh`.
+
+1. Créez un Blueprint Render depuis le dépôt.
+2. Configurez `SECRET_KEY`, `GEMINI_API_KEY` et les variables d'e-mail.
+3. Render fournit `DATABASE_URL` à partir de PostgreSQL.
+4. Le build installe les dépendances, collecte les fichiers statiques et applique les migrations.
+
+Commande de démarrage :
+
+```bash
+python -m gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker
+```
+
+## Sources environnementales
+
+Les facteurs de démonstration s'inspirent notamment de :
+
+- Poore, J. & Nemecek, T. (2018), *Reducing food's environmental impacts through producers and consumers*, Science.
+- Scarborough et al. (2014), étude des émissions alimentaires selon les régimes.
+
+Les sources et facteurs doivent être revus avant toute utilisation scientifique, réglementaire ou commerciale.
+
+## Contribution
+
+1. Créez une branche depuis `main`.
+2. Implémentez une fonctionnalité avec ses tests et migrations.
+3. Exécutez `python manage.py test` et `python manage.py check`.
+4. Ouvrez une pull request en décrivant le besoin, la solution et les vérifications effectuées.
+
+## Licence
+
+Projet pédagogique 5TWIN - Esprit, 2026. Ajoutez un fichier `LICENSE` avant toute diffusion publique ou commerciale.
