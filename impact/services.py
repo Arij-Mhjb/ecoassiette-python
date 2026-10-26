@@ -1,16 +1,171 @@
 from decimal import Decimal, ROUND_HALF_UP
+import re
 from types import SimpleNamespace
+import unicodedata
+from urllib.parse import quote_plus
 
 from django.db.models import Sum
 from django.db import transaction
 from django.utils import timezone
 
-from .models import AlternativeVegetale, FacteurImpact, PreuveRepas, TransactionPoints
+from .models import (
+    AlternativeVegetale, FacteurImpact, PreuveRepas, ProduitRecompense, TransactionPoints,
+)
+from .nutrition import calculer_nutrition
 
 
 ZERO = Decimal("0")
 Q2 = Decimal("0.01")
 RANG_RISQUE = {"FAIBLE": 1, "MOYEN": 2, "ELEVE": 3}
+MOTS_PRODUIT_IGNORES = {
+    "avec", "dans", "de", "des", "du", "et", "la", "le", "les", "pour",
+    "produit", "produits", "vegetal", "vegetale", "vegan", "vegane",
+}
+MARQUEURS_PAIN_BURGER = ("pain burger", "pain hamburger", "burger bun", "bun burger")
+MARQUEURS_PLAT_CARNE = (
+    "hamburger", "cheeseburger", "burger", "steak", "viande hache", "boulette de viande",
+)
+
+
+def _normaliser_recherche(texte):
+    texte = str(texte or "").replace("œ", "oe").replace("Œ", "OE").replace("æ", "ae").replace("Æ", "AE")
+    texte = unicodedata.normalize("NFKD", texte).encode("ascii", "ignore").decode()
+    return " ".join(re.findall(r"[a-z0-9]+", texte.casefold()))
+
+
+def _termes_recherche(texte):
+    return {
+        mot for mot in _normaliser_recherche(texte).split()
+        if len(mot) >= 3 and mot not in MOTS_PRODUIT_IGNORES
+    }
+
+
+def _est_pain_burger(aliment):
+    texte = _normaliser_recherche(aliment)
+    return any(expression in texte for expression in MARQUEURS_PAIN_BURGER)
+
+
+def _categorie_semantique(aliment, categorie):
+    texte = _normaliser_recherche(aliment)
+    if _est_pain_burger(texte):
+        return "FECULENT"
+    if any(expression in texte for expression in MARQUEURS_PLAT_CARNE):
+        return "VIANDE_ROUGE"
+    return categorie
+
+
+def recommander_produits(aliment, alternative=None, limite=3):
+    """Classe les produits végétaux disponibles selon l'ingrédient détecté par l'assistant."""
+    if _est_pain_burger(aliment):
+        return []
+    origine = _normaliser_recherche(aliment)
+    remplacement = _normaliser_recherche(
+        alternative.remplacement if alternative is not None else ""
+    )
+    termes_cibles = _termes_recherche(f"{origine} {remplacement}")
+    recommandations = []
+    produits = ProduitRecompense.objects.filter(
+        statut=ProduitRecompense.Statut.PUBLIE,
+        produit_vegetal=True,
+        stock__gt=0,
+        sponsor__actif=True,
+    ).select_related("sponsor")
+
+    for produit in produits:
+        mots_cles = [
+            _normaliser_recherche(mot)
+            for mot in produit.mots_cles_recommandation.split(",") if mot.strip()
+        ]
+        texte_produit = _normaliser_recherche(
+            f"{produit.nom} {produit.description} {' '.join(mots_cles)}"
+        )
+        termes_produit = _termes_recherche(texte_produit)
+        score = 0
+        raisons = []
+        if origine and any(origine == mot or origine in mot or mot in origine for mot in mots_cles):
+            score += 100
+            raisons.append(f"correspond à « {aliment} »")
+        elif origine and origine in texte_produit:
+            score += 70
+            raisons.append(f"correspond à « {aliment} »")
+        if remplacement and remplacement in texte_produit:
+            score += 45
+            raisons.append(f"contient l'alternative « {alternative.remplacement} »")
+        score += 12 * len(termes_cibles & termes_produit)
+        if score > 0:
+            recommandations.append({
+                "produit": produit,
+                "score": score,
+                "raison": " et ".join(raisons) or "recommandé selon les ingrédients détectés",
+            })
+
+    recommandations.sort(key=lambda item: (-item["score"], item["produit"].nom.casefold()))
+    return recommandations[:limite]
+
+
+def proposer_recette_alternative(aliment, alternative, quantite_g):
+    """Construit une préparation maison portionnée à partir de l'alternative retenue."""
+    if not alternative:
+        return None
+    quantite = max(1, int(quantite_g or 100))
+    source = _normaliser_recherche(aliment)
+    remplacement = _normaliser_recherche(alternative.remplacement)
+    burger = any(mot in source for mot in ("burger", "hamburger", "steak", "viande hache")) or (
+        "boeuf" in source and remplacement in {"lentilles", "haricots", "pois chiches"}
+    )
+
+    if burger:
+        base = alternative.remplacement
+        ingredients = [
+            (base, quantite),
+            ("flocons d'avoine", max(15, round(quantite * 0.18))),
+            ("oignon", max(20, round(quantite * 0.20))),
+            ("huile végétale", max(5, round(quantite * 0.05))),
+        ]
+        nom = f"Burger végan maison aux {base}"
+        etapes = [
+            f"Écrasez les {base} puis mélangez-les avec l'oignon finement coupé.",
+            "Ajoutez les flocons d'avoine, du paprika, du cumin, du sel et du poivre.",
+            "Formez un steak et laissez-le reposer 10 minutes.",
+            "Faites cuire 4 à 5 minutes de chaque côté dans une poêle légèrement huilée.",
+        ]
+    elif "tofu" in remplacement or "seitan" in remplacement:
+        ingredients = [
+            (alternative.remplacement, quantite),
+            ("sauce soja", max(10, round(quantite * 0.10))),
+            ("huile végétale", max(5, round(quantite * 0.05))),
+            ("épices", max(2, round(quantite * 0.02))),
+        ]
+        nom = f"{alternative.remplacement.capitalize()} mariné maison"
+        etapes = [
+            f"Découpez le {alternative.remplacement} en morceaux réguliers.",
+            "Mélangez la sauce soja, l'huile et les épices, puis marinez 10 minutes.",
+            "Faites dorer à la poêle jusqu'à obtenir une surface croustillante.",
+        ]
+    else:
+        ingredients = [
+            (alternative.remplacement, quantite),
+            ("oignon", max(20, round(quantite * 0.20))),
+            ("tomates", max(40, round(quantite * 0.35))),
+            ("épices", max(2, round(quantite * 0.02))),
+        ]
+        nom = f"Alternative maison aux {alternative.remplacement}"
+        etapes = [
+            "Faites revenir l'oignon avec les épices.",
+            f"Ajoutez les {alternative.remplacement} et les tomates.",
+            "Laissez mijoter jusqu'à obtenir la texture souhaitée, puis rectifiez l'assaisonnement.",
+        ]
+
+    recherche_video = quote_plus(f"recette {nom} facile en français")
+    ingredients_structures = [{"nom": nom_i, "quantite_g": poids} for nom_i, poids in ingredients]
+    return {
+        "nom": nom,
+        "ingredients": ingredients_structures,
+        "etapes": etapes,
+        "video_url": f"https://www.youtube.com/results?search_query={recherche_video}",
+        "remplacement": alternative.remplacement,
+        "nutrition": calculer_nutrition(ingredients_structures),
+    }
 
 
 def solde_points(utilisateur):
@@ -65,8 +220,9 @@ from django.core.exceptions import ObjectDoesNotExist  # noqa: E402
 
 
 def _alternative_pour(element, evites):
+    categorie = _categorie_semantique(element.aliment, element.categorie)
     candidats = AlternativeVegetale.objects.filter(
-        categorie_source=element.categorie, actif=True
+        categorie_source=categorie, actif=True
     ).select_related("facteur_remplacement")
     nom = element.aliment.casefold()
     correspondances = [a for a in candidats if a.aliment_source and a.aliment_source.casefold() in nom]
@@ -99,7 +255,8 @@ def _analyser_elements(elements, utilisateur=None):
     risque_max = "FAIBLE"
 
     for element in elements:
-        facteur = facteurs.get(element.categorie)
+        categorie = _categorie_semantique(element.aliment, element.categorie)
+        facteur = facteurs.get(categorie)
         if not facteur:
             continue
         actuel = _impact(element.quantite_g, facteur)

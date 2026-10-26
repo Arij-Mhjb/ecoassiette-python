@@ -10,15 +10,51 @@
 
 <section aria-labelledby="titre-catalogue"><h2 id="titre-catalogue">Produits sponsorisés</h2>
   {% if produits %}<div class="reward-grid">{% for produit in produits %}
-  <article class="card reward-card">
-    {% if produit.image %}<img src="{{ produit.image.url }}" alt="{{ produit.nom }}">{% endif %}
-    <p class="eyebrow">{{ produit.sponsor.nom }}</p><h3>{{ produit.nom }}</h3><p>{{ produit.description }}</p>
-    <p><del>{{ produit.prix_public }} €</del> <strong>{{ produit.prix_remise|floatformat:2 }} €</strong> · remise {{ produit.remise_pourcent }} %</p>
-    <p><strong>{{ produit.cout_points }} points</strong> · {{ produit.stock }} disponible{{ produit.stock|pluralize }}</p>
-    <form method="post" action="{% url 'impact:acheter_produit' produit.pk %}">{% csrf_token %}
-      <button class="btn btn-small" type="submit" {% if solde < produit.cout_points %}disabled{% endif %}>Réserver avec mes points</button>
-    </form>
+  <article class="card reward-card" id="produit-{{ produit.pk }}">
+    <div class="reward-media">
+      {% if produit.image %}<img src="{{ produit.image.url }}" alt="{{ produit.nom }}">
+      {% else %}<div class="reward-placeholder" aria-hidden="true">{% icon "gift" 44 %}</div>{% endif %}
+      <span class="reward-discount">−{{ produit.remise_pourcent }} %</span>
+    </div>
+    <div class="reward-content">
+      <p class="reward-sponsor">Offre de <strong>{{ produit.sponsor.nom }}</strong></p>
+      <h3>{{ produit.nom }}</h3>
+      <p class="reward-description">{{ produit.description }}</p>
+      <dl class="reward-details">
+        <div><dt>Prix public</dt><dd><del>{{ produit.prix_public|floatformat:2 }} €</del></dd></div>
+        <div class="reward-final"><dt>Prix avec la remise</dt><dd>{{ produit.prix_remise|floatformat:2 }} €</dd></div>
+        <div><dt>Points nécessaires</dt><dd>{{ produit.cout_points }} points</dd></div>
+      </dl>
+      {% if produit.stock > 0 %}
+        <p class="reward-stock {% if produit.stock <= 3 %}reward-stock-low{% endif %}">
+          {% icon "box" 16 %}{{ produit.stock }} produit{{ produit.stock|pluralize }} disponible{{ produit.stock|pluralize }}
+        </p>
+      {% else %}
+        <p class="reward-stock reward-stock-low">{% icon "box" 16 %}Rupture de stock</p>
+      {% endif %}
+      {% if produit.url_source %}<p><a class="reward-source" href="{{ produit.url_source }}" target="_blank" rel="noopener noreferrer">Voir le produit sur le site officiel<span class="sr-only"> de {{ produit.sponsor.nom }}</span></a></p>{% endif %}
+      <form method="post" action="{% url 'impact:acheter_produit' produit.pk %}">{% csrf_token %}
+        {% if produit.stock < 1 %}
+          <button class="btn reward-button" type="button" disabled>Produit temporairement indisponible</button>
+          <p class="small muted reward-help">Cette offre reste visible et reviendra dès que le stock sera ajouté.</p>
+        {% elif solde >= produit.cout_points %}
+          <button class="btn reward-button" type="submit">Utiliser {{ produit.cout_points }} points</button>
+        {% else %}
+          <button class="btn reward-button" type="button" disabled>Il manque {{ produit.points_manquants }} points</button>
+          <p class="small muted reward-help">Votre solde est de {{ solde }} points.</p>
+        {% endif %}
+      </form>
+    </div>
   </article>{% endfor %}</div>{% else %}<p class="empty">Aucun produit n'est publié pour le moment.</p>{% endif %}
+</section>
+
+<section class="card" aria-labelledby="titre-bons"><h2 id="titre-bons">Mes bons de réduction</h2>
+  {% if commandes %}<div class="voucher-list">{% for commande in commandes %}
+    <article class="voucher-item">
+      <div><strong>{{ commande.produit.nom }}</strong><p class="small muted">{{ commande.code_bon }} · {{ commande.get_statut_display }} · {{ commande.prix_remise|floatformat:2 }} €</p></div>
+      <a class="btn btn-small" href="{% url 'impact:telecharger_bon' commande.pk %}">{% icon "download" 16 %}Télécharger le PDF</a>
+    </article>
+  {% endfor %}</div>{% else %}<p class="empty">Aucun bon de réduction pour le moment.</p>{% endif %}
 </section>
 
 <section class="card" aria-labelledby="titre-preuves"><h2 id="titre-preuves">Mes preuves</h2>

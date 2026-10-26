@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Liste de courses{% endblock %}
+{% block content %}
+<a class="back-link" href="{% url 'planning:tableau' %}?semaine={{ plan.semaine_du|date:'Y-m-d' }}">{% icon "arrow-left" 16 %}Retour au planning</a>
+<div class="page-head">
+  <p class="eyebrow">Semaine du {{ plan.semaine_du|date:"d/m" }} au {{ fin_semaine|date:"d/m/Y" }}</p>
+  <h1>Ma liste de courses</h1>
+  <p class="muted">Les quantités identiques ont été regroupées pour limiter les achats inutiles.</p>
+</div>
+<section class="card shopping-card">
+  {% if courses %}
+  <ul class="shopping-list">
+    {% for article in courses %}
+    <li><label><input type="checkbox"> <span>{{ article.nom|capfirst }}</span><strong>{{ article.quantite_g }} g</strong></label></li>
+    {% endfor %}
+  </ul>
+  <button class="btn btn-ghost" type="button" onclick="window.print()">Imprimer la liste</button>
+  {% else %}<p class="empty">Aucun ingrédient dans ce planning.</p>{% endif %}
+</section>
+{% endblock %}

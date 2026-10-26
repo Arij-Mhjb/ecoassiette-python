@@ -33,6 +33,23 @@ class UtilisateurAdmin(UserAdmin):
             return False
         return super().has_delete_permission(request, obj)
 
+    def get_deleted_objects(self, objs, request):
+        """Autorise les dépendances à suivre la suppression d'un compte gérable.
+
+        Profil et connexions restent non supprimables directement. Django exige
+        néanmoins leurs permissions `delete` avant une cascade ; on lève cette
+        exigence uniquement dans cette vue et jamais pour un administrateur ou
+        le propre compte de l'acteur.
+        """
+        objets = list(objs)
+        deleted_objects, model_count, perms_needed, protected = super().get_deleted_objects(objets, request)
+        cascade_autorisee = objets and all(
+            obj.pk != request.user.pk and request.user.peut_gerer(obj) for obj in objets
+        )
+        if cascade_autorisee:
+            perms_needed = set()
+        return deleted_objects, model_count, perms_needed, protected
+
     def formfield_for_choice_field(self, db_field, request, **kwargs):
         if db_field.name == "role" and not request.user.is_superuser:
             kwargs["choices"] = [c for c in db_field.choices if c[0] != Utilisateur.Role.ADMIN]
@@ -63,6 +80,10 @@ class ProfilAlimentaireAdmin(admin.ModelAdmin):
     list_filter = ("regime", "niveau_activite", "profil_public")
     search_fields = ("utilisateur__username", "utilisateur__email", "ville")
     readonly_fields = ("mis_a_jour",)
+
+    def has_delete_permission(self, request, obj=None):
+        # Le profil est supprimé automatiquement avec son utilisateur, jamais seul.
+        return False
 
 
 @admin.register(AnalyseProfilIA)

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Planificateur de menus{% endblock %}
+{% block content %}
+<div class="page-head row-between">
+  <div>
+    <p class="eyebrow">Semaine écologique</p>
+    <h1>Planificateur de menus</h1>
+    <p class="muted">Menus végétaux personnalisés, objectif carbone et liste de courses automatique.</p>
+  </div>
+  {% if plan %}<a class="btn" href="{% url 'planning:courses' plan.pk %}">{% icon "box" 18 %}Liste de courses</a>{% endif %}
+</div>
+
+<section class="card planner-form-card" aria-labelledby="titre-generation">
+  <h2 id="titre-generation">Planifier une semaine</h2>
+  <form method="post" action="{% url 'planning:generer' %}" class="planner-form">
+    {% csrf_token %}
+    {% for field in form %}{% include "includes/champ.html" %}{% endfor %}
+    <button class="btn" type="submit">{% if plan %}Régénérer les menus{% else %}Générer mes menus végétaux{% endif %}</button>
+  </form>
+</section>
+
+{% if plan %}
+<section class="planner-objective" aria-labelledby="titre-objectif">
+  <div><span id="titre-objectif">Objectif hebdomadaire</span><strong>{{ total_co2|floatformat:2 }} / {{ plan.objectif_co2 }} kg CO₂e</strong></div>
+  <progress max="100" value="{{ progression }}">{{ progression }} %</progress>
+  <p class="small {% if plan.respecte_objectif %}planner-success{% else %}planner-warning{% endif %}">
+    {% if plan.respecte_objectif %}Objectif respecté : ce planning reste sous votre limite carbone.{% else %}Objectif dépassé : remplacez les menus signalés par une option plus sobre.{% endif %}
+  </p>
+  <p class="small muted">Propositions générées par {% if plan.source == 'GEMINI' %}Gemini{% else %}le moteur écologique local{% endif %}.</p>
+</section>
+
+{% regroup plan.menus.all by date as jours %}
+<div class="week-planner">
+  {% for jour in jours %}
+  <section class="planner-day">
+    <h2>{{ jour.grouper|date:"l d F"|capfirst }}</h2>
+    <div class="planner-meals">
+      {% for menu in jour.list %}
+      <article class="card planner-meal">
+        <div class="row-between"><span class="tag">{{ menu.get_type_repas_display }}</span><span class="co2 co2-faible">{{ menu.co2_estime }} kg CO₂e</span></div>
+        <h3>{{ menu.nom }}</h3>
+        <p class="small">{{ menu.explication }}</p>
+        {% if menu.produit_vegetal %}
+          <div class="planner-product">
+            {% if menu.produit_vegetal.image %}<img src="{{ menu.produit_vegetal.image.url }}" alt="{{ menu.produit_vegetal.nom }}">{% endif %}
+            <div><span class="recommendation-ai">Produit végétal partenaire</span><strong>{{ menu.produit_vegetal.nom }}</strong><small>{{ menu.produit_vegetal.sponsor.nom }} · {{ menu.produit_vegetal.prix_remise|floatformat:2 }} € avec remise</small></div>
+            {% if menu.produit_vegetal.url_source %}<a href="{{ menu.produit_vegetal.url_source }}" target="_blank" rel="noopener noreferrer">Voir le produit</a>{% endif %}
+          </div>
+        {% endif %}
+        {% include "impact/_nutrition.html" with nutrition=menu.nutrition %}
+        {% if menu.repas_source and menu.economie_co2 > 0 %}
+          <p class="planner-saving"><strong>−{{ menu.economie_co2 }} kg CO₂e</strong> par rapport au repas enregistré ({{ menu.co2_avant }} kg).</p>
+        {% endif %}
+        <details>
+          <summary>Voir les ingrédients et la préparation</summary>
+          <ul>{% for ingredient in menu.ingredients %}<li>{{ ingredient.quantite_g }} g de {{ ingredient.nom }}</li>{% endfor %}</ul>
+          <ol>{% for instruction in menu.instructions %}<li>{{ instruction }}</li>{% endfor %}</ol>
+        </details>
+        {% if menu.repas_realise_id %}
+          <div class="planner-meal-added">
+            <strong>{% icon "check" 17 %} Ajouté à mes repas</strong>
+            {% if not menu.repas_realise.preuve_ecologique %}
+              <a class="btn btn-small" href="{% url 'impact:soumettre_preuve' %}?repas={{ menu.repas_realise_id }}">Envoyer une preuve et gagner des points</a>
+            {% else %}
+              <span class="small muted">Preuve {{ menu.repas_realise.preuve_ecologique.get_statut_display|lower }}</span>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="planner-actions">
+            <form method="post" action="{% url 'planning:ajouter_comme_repas' menu.pk %}">{% csrf_token %}<button class="btn btn-small" type="submit">Ajouter à mes repas</button></form>
+            <form method="post" action="{% url 'planning:remplacer' menu.pk %}">{% csrf_token %}<button class="btn btn-small btn-ghost" type="submit">Proposer une autre option plus sobre</button></form>
+          </div>
+        {% endif %}
+        <a class="planner-tutorial" href="{{ menu.tutoriel_video_url }}" target="_blank" rel="noopener noreferrer">{% icon "play" 17 %}Voir un tutoriel vidéo pour préparer ce menu</a>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty planner-empty">{% icon "calendar" 32 %}<p><strong>Aucun planning pour cette semaine.</strong></p><p>Choisissez votre objectif et laissez l’IA construire vos menus.</p></div>
+{% endif %}
+{% endblock %}
